@@ -1,93 +1,899 @@
 ticker,harga,chg_pct,skor,uptrend,breakout,pola,rsi,vol_ratio,nilai_20h,beta,sektor,daily,weekly,h1,candle,kondisi,alasan,entry,stop_loss,target
-BNGA,1740.0,0.58,61.5,False,False,,56.1,0.37,6113802850,0.37,Financial Services,Buy,Buy,Neutral,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 56,1 sehat",1730-1740,1700,1800
-AUTO,3380.0,1.2,60.0,True,False,,66.1,0.24,13206944050,0.55,Consumer Cyclical,Buy,Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 66,1 sehat",3350-3380,3280,3540
-PTBA,3090.0,1.31,55.0,True,False,,68.4,0.6,155694421750,0.5,Energy,Buy,Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 68,4 sehat",2990-3090,2890,3330
-MAPI,1510.0,0.0,52.8,False,False,,57.2,0.44,10779738300,0.4,Consumer Cyclical,Buy,Buy,Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 57,2 sehat",1450-1510,1395,1655
+INTD,412.0,8.42,94.0,True,True,Bullish Engulfing,72.9,2.57,767124960,0.48,Barang Baku,Buy,Buy,Strong Buy,2026-09-25,Tunggu pullback,Harga sudah jauh di atas MA20. Tunggu turun ke area entry,332-372,292,472
+MEJA,143.0,10.0,94.0,True,True,Bullish Marubozu,71.8,4.08,3880432850,1.41,Konsumen Non-Primer,Buy,Buy,Buy,2026-09-25,Tunggu pullback,Harga sudah jauh di atas MA20. Tunggu turun ke area entry,126-134,118,156
+PCAR,56.0,9.8,82.0,True,True,Bullish Marubozu,82.5,5.2,122485515,0.67,Konsumen Primer,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+UVCR,200.0,12.99,79.0,False,True,Bullish Marubozu,71.4,3.47,14050337880,1.29,Teknologi,Buy,Strong Buy,Buy,2026-09-25,Tunggu pullback,Harga sudah jauh di atas MA20. Tunggu turun ke area entry,175-187,163,220
+ARGO,1275.0,9.91,76.0,True,False,,66.5,5.3,228388050,0.75,Konsumen Non-Primer,Strong Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DAAZ,1790.0,8.48,76.0,False,False,Bullish Engulfing,63.9,3.85,782446050,1.18,Basic Materials,Buy,Buy,Strong Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 0,8 M/hari (di bawah Rp 5 M). Gunakan lot kecil",1685-1790,1580,2050
+JRPT,1150.0,0.0,75.0,True,False,,77.9,2.81,612263350,0.07,Properti & Real Estat,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 77,9 sudah panas. Tunggu harga turun ke area entry",1115-1130,1095,1180
+KETR,975.0,4.84,74.5,True,False,Bullish Engulfing,62.9,1.56,47095321225,1.77,Infrastruktur,Buy,Buy,Strong Buy,2026-09-25,Tunggu konfirmasi,Bullish Engulfing baru muncul. Tunggu candle berikutnya hijau dan tutup di atas 1.025,910-975,835,1160
+VISI,1390.0,5.3,73.5,True,False,,80.1,1.1,3221022900,0.48,Perindustrian,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 80,1 sudah panas. Tunggu harga turun ke area entry",1220-1305,1135,1520
+BIKE,1210.0,10.0,72.0,True,False,,70.3,0.58,989130025,0.38,Konsumen Non-Primer,Buy,Buy,Buy,2026-09-25,Tunggu pullback,Harga sudah jauh di atas MA20. Tunggu turun ke area entry,1065-1135,995,1320
+MBTO,206.0,34.64,72.0,False,True,,81.5,6.77,3077354205,0.75,Konsumen Primer,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 81,5 sudah panas. Tunggu harga turun ke area entry",180-193,167,226
+TMPO,179.0,5.29,72.0,True,False,,57.3,1.5,6737199790,0.82,Konsumen Non-Primer,Strong Buy,Strong Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 57,3 sehat",164-179,147,220
+MTLA,575.0,10.58,71.5,False,True,,71.6,122.82,7574550,0.05,Properti & Real Estat,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AKKU,45.0,9.76,70.8,True,True,,100.0,73.19,4964280,0.46,Konsumen Non-Primer,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+URBN,280.0,3.7,70.8,True,True,,82.6,5.14,47842980,0.67,Properti & Real Estat,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TUGU,1560.0,1.3,70.0,True,False,Hammer,62.2,0.34,5560397950,0.62,Keuangan,Buy,Buy,Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 62,2 sehat, Hammer terkonfirmasi",1495-1560,1430,1725
+TFCO,935.0,10.0,69.2,True,False,,67.1,0.4,2189800,0.21,Konsumen Non-Primer,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+UNSP,336.0,5.0,67.0,False,True,,99.4,21.43,1418158720,1.21,Konsumen Primer,Buy,Strong Buy,,2026-09-25,Tunggu pullback,"RSI 99,4 sudah panas. Tunggu harga turun ke area entry",304-320,288,360
+MPRO,12100.0,0.62,66.0,True,False,,51.5,1.46,21461250,0.18,Properti & Real Estat,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PEGE,141.0,1.44,66.0,False,False,,69.7,2.76,2168707670,1.34,Keuangan,Buy,Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 2,2 M/hari (di bawah Rp 5 M). Gunakan lot kecil",132-141,123,163
+MAYA,208.0,1.96,64.5,False,False,,60.6,2.17,620319080,0.73,Keuangan,Strong Buy,Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 0,6 M/hari (di bawah Rp 5 M). Gunakan lot kecil",200-208,193,226
+MMIX,890.0,0.56,64.0,True,False,,77.8,1.19,24564865950,0.18,Kesehatan,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 77,8 sudah panas. Tunggu harga turun ke area entry",835-855,805,935
+AYAM,500.0,0.0,63.2,True,False,,59.5,2.57,10692014435,1.08,Konsumen Primer,Buy,Buy,Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 59,5 sehat",492-500,474,545
+NASI,199.0,-14.96,63.2,True,False,,53.2,3.44,7512689805,0.8,Konsumen Primer,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",187-199,162,256
+KBLI,352.0,-1.12,62.5,True,False,Hammer,52.7,0.44,1038724800,0.19,Perindustrian,Buy,Strong Buy,Sell,2026-09-25,Tunggu konfirmasi,Hammer baru muncul. Tunggu candle berikutnya hijau dan tutup di atas 358,348-352,330,390
+PRDA,2830.0,-0.7,62.5,True,False,Hammer,64.1,0.49,2944122000,0.41,Kesehatan,Buy,Buy,Neutral,2026-09-25,Tunggu konfirmasi,Hammer baru muncul. Tunggu candle berikutnya hijau dan tutup di atas 2.860,2790-2830,2710,3000
+SURE,3100.0,-0.32,62.5,True,False,Bullish Marubozu,58.2,0.05,59068950,0.2,Energi,Strong Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TRUS,450.0,5.14,62.5,True,False,Hammer,52.0,0.61,64012970,0.42,Keuangan,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BNGA,1740.0,0.58,61.5,False,False,,56.1,0.37,6113802850,0.37,Keuangan,Buy,Buy,Neutral,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 56,1 sehat",1730-1740,1700,1800
+JARR,3640.0,1.68,61.0,True,False,,59.4,1.15,88416760500,2.07,Konsumen Primer,Buy,Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 59,4 sehat",3490-3640,3180,4350
+SHID,905.0,24.83,61.0,False,False,Bullish Engulfing,72.2,2.37,269790575,0.01,Konsumen Non-Primer,Strong Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AUTO,3380.0,1.2,60.0,True,False,,66.1,0.24,13206944050,0.55,Konsumen Non-Primer,Buy,Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 66,1 sehat",3350-3380,3280,3540
+UNIC,15200.0,0.33,60.0,True,False,,61.1,0.26,393571250,0.3,Barang Baku,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AYLS,206.0,6.74,59.5,False,False,,69.3,8.07,3218120150,0.94,Barang Baku,Strong Buy,Strong Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 3,2 M/hari (di bawah Rp 5 M). Gunakan lot kecil",186-206,167,256
+GGRP,336.0,-2.89,59.5,True,False,,60.6,1.79,606457370,0.47,Barang Baku,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",324-336,312,366
+KING,372.0,-8.37,59.5,True,False,,53.8,2.03,1128777790,-0.05,Perindustrian,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",366-372,330,446
+MKAP,1125.0,1.81,59.5,False,False,Bullish Engulfing,48.7,1.7,1135053225,-0.06,Energi,Buy,Neutral,Buy,2026-09-25,Tunggu konfirmasi,Bullish Engulfing baru muncul. Tunggu candle berikutnya hijau dan tutup di atas 1.125,1120-1125,1105,1160
+PORT,935.0,-1.58,59.5,False,False,Hammer,52.3,1.62,31795375,0.61,Infrastruktur,Neutral,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ROCK,2110.0,10.18,59.5,False,False,,56.9,13.7,182270725,1.4,Properti & Real Estat,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BSWD,1485.0,-1.0,58.8,False,False,,71.0,10.0,15000,0.09,Keuangan,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TRUK,2580.0,24.64,58.8,True,False,,97.7,0.42,507888300,1.77,Transportasi & Logistik,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 97,7 sudah panas. Tunggu harga turun ke area entry",2330-2450,2210,2770
+BTPN,2340.0,1.3,58.5,False,False,,54.1,1.32,87598100,0.31,Keuangan,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NOBU,535.0,0.94,58.5,False,False,,54.4,1.04,2764241770,0.86,Keuangan,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",530-535,505,585
+MBSS,2890.0,-0.69,56.5,True,False,,58.0,0.14,5448123750,1.14,Energi,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,2870-2890,2840,2960
+ALDO,960.0,0.52,55.0,True,False,,60.2,0.45,81453525,0.18,Barang Baku,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HOPE,280.0,0.72,55.0,True,False,,61.0,0.37,14898411210,1.93,Perindustrian,Buy,Buy,Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 61 sehat",252-280,226,346
+NEST,765.0,0.66,55.0,True,False,,60.4,0.79,6558228375,0.57,Consumer Defensive,Strong Buy,Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 60,4 sehat",740-765,715,830
+PTBA,3090.0,1.31,55.0,True,False,,68.4,0.6,155694421750,0.5,Energi,Buy,Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 68,4 sehat",2990-3090,2890,3330
+RSGK,1050.0,0.96,55.0,False,False,Bullish Engulfing,58.8,0.05,51490400,0.55,Kesehatan,Strong Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMAR,6200.0,-0.4,55.0,False,False,Hammer,50.5,0.4,766142375,1.14,Konsumen Primer,Sell,Strong Buy,Sell,2026-09-25,Tunggu konfirmasi,Hammer baru muncul. Tunggu candle berikutnya hijau dan tutup di atas 6.225,6050-6200,5800,6775
+TRIM,805.0,0.63,55.0,True,False,,62.5,0.1,1110114575,0.93,Keuangan,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",755-805,695,945
+VICI,965.0,2.66,55.0,False,False,Hammer,51.4,0.65,10368994175,0.75,Konsumen Primer,Neutral,Strong Buy,Neutral,2026-09-25,Tunggu konfirmasi,Hammer baru muncul. Tunggu candle berikutnya hijau dan tutup di atas 970,920-965,835,1160
+CSMI,202.0,-14.41,53.5,True,False,,55.0,1.05,8094475860,1.24,Konsumen Non-Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,197-202,175,250
+PBID,525.0,-0.94,53.5,False,False,,49.6,1.84,473911725,0.31,Barang Baku,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MAPI,1510.0,0.0,52.8,False,False,,57.2,0.44,10779738300,0.4,Konsumen Non-Primer,Buy,Buy,Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 57,2 sehat",1450-1510,1395,1655
+PACK,645.0,6.61,52.8,False,False,,73.0,1.36,66102959375,1.48,Barang Baku,Buy,Neutral,Buy,2026-09-25,Tunggu pullback,Harga sudah jauh di atas MA20. Tunggu turun ke area entry,585-615,560,690
+PANS,1660.0,0.0,52.8,False,False,,64.4,0.36,339154900,0.41,Keuangan,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BFIN,970.0,2.11,52.5,False,False,,55.3,0.29,22737250950,0.66,Keuangan,Buy,Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 55,3 sehat",950-970,910,1060
+CAKK,160.0,0.0,52.5,False,False,,57.6,0.56,82361920,0.81,Perindustrian,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CLAY,2750.0,0.0,52.5,False,False,,54.8,0.54,51300050,0.04,Konsumen Non-Primer,Strong Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+JAWA,186.0,10.06,52.5,False,False,,64.2,0.85,5752781765,1.22,Konsumen Primer,Strong Buy,Buy,Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 64,2 sehat",167-186,149,234
+AKSI,372.0,-12.26,52.0,False,False,,59.4,4.71,1163740930,1.24,Transportasi & Logistik,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",332-372,286,486
+BIPP,75.0,-13.79,52.0,False,False,,56.2,19.04,2827570455,1.69,Properti & Real Estat,Strong Buy,Strong Buy,Neutral,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 2,8 M/hari (di bawah Rp 5 M). Gunakan lot kecil",68-75,61,94
+CCSI,342.0,-14.5,52.0,False,False,,50.1,2.13,2951187410,0.77,Perindustrian,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,318-342,272,446
+DOOH,364.0,-7.14,52.0,False,False,,51.2,1.96,30436399410,2.29,Konsumen Non-Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,348-364,318,432
+DOSS,171.0,-6.56,52.0,False,False,,51.9,2.28,476112625,1.19,Consumer Cyclical,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HADE,29.0,-9.38,52.0,False,False,,64.6,1.89,350299385,1.04,Infrastruktur,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NFCX,1715.0,0.88,52.0,False,False,,55.6,2.06,16016600,0.13,Teknologi,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TOSK,80.0,-6.98,52.0,False,False,,51.3,1.64,3321541635,0.98,Teknologi,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,77-80,72,91
+BMHS,200.0,0.0,51.2,True,False,,62.7,0.45,230307395,0.41,Kesehatan,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+EPMT,2630.0,0.0,51.2,True,False,,68.3,0.43,297800550,0.08,Konsumen Primer,Strong Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IPAC,189.0,0.0,51.2,True,False,,63.1,0.0,12057435,0.44,Properti & Real Estat,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MARK,1180.0,0.0,51.2,True,False,,60.6,0.89,16885151175,0.48,Perindustrian,Strong Buy,Buy,Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 60,6 sehat",1130-1180,1085,1295
+MDIY,955.0,0.0,51.2,True,False,,53.6,0.74,692534200,0.39,Consumer Cyclical,Strong Buy,Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 0,7 M/hari (di bawah Rp 5 M). Gunakan lot kecil",950-955,925,1005
+AXIO,115.0,2.68,51.0,False,False,,51.8,1.01,123158075,0.5,Teknologi,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ALKA,7400.0,0.0,49.8,True,False,,88.4,0.0,654437900,1.55,Barang Baku,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 88,4 sudah panas. Tunggu harga turun ke area entry",6975-7175,6775,7725
+INPS,1065.0,0.0,49.8,True,False,,80.6,0.0,285782875,0.62,Energi,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MPXL,218.0,9.55,49.8,False,False,,71.7,5.84,1516560310,0.89,Transportasi & Logistik,Buy,Buy,Buy,2026-09-25,Tunggu pullback,Harga sudah jauh di atas MA20. Tunggu turun ke area entry,187-202,172,242
+PPGL,468.0,0.0,49.8,True,False,,94.9,0.0,1052973640,1.02,Transportasi & Logistik,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 94,9 sudah panas. Tunggu harga turun ke area entry",452-460,444,480
+VERN,230.0,0.0,49.8,False,False,,50.5,1.15,2397008290,1.02,Communication Services,Sell,Buy,Neutral,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",224-230,212,258
+WAPO,352.0,0.0,49.8,True,False,,96.6,0.0,1876466920,0.72,Konsumen Primer,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 96,6 sudah panas. Tunggu harga turun ke area entry",306-328,282,388
+KDSI,462.0,-0.86,49.0,False,False,,50.8,0.11,6610080,0.07,Barang Baku,Sell,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PKPK,5575.0,1.36,49.0,True,False,,82.8,2.37,11250236650,1.05,Energi,Buy,Buy,Neutral,2026-09-25,Tunggu pullback,"RSI 82,8 sudah panas. Tunggu harga turun ke area entry",4960-5250,4650,6050
+SOSS,890.0,0.0,48.2,False,False,,41.4,1.86,3210875,0.03,Perindustrian,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
 AADI,11250.0,0.9,47.5,False,False,,51.9,0.35,142536249125,0.42,Energy,Neutral,Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,11050-11250,10650,12150
-ERAA,600.0,-1.64,47.5,True,False,,62.0,0.56,93341294240,0.77,Consumer Cyclical,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",585-600,560,665
-TINS,4720.0,-2.68,47.5,True,False,,59.9,0.52,218705611500,1.62,Basic Materials,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",4540-4720,4340,5225
-ADRO,2600.0,1.56,45.0,False,False,,48.2,0.42,133616260050,0.56,Energy,Neutral,Strong Buy,Buy,2026-09-25,Pantau,Belum ada arah yang jelas,2560-2600,2490,2770
-ITMG,25500.0,1.8,45.0,False,False,,47.1,0.34,40549546000,0.2,Energy,Neutral,Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,25225-25500,24700,26675
-AALI,7850.0,0.96,40.0,False,False,,43.5,0.29,19043896000,0.57,Consumer Defensive,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,7725-7850,7475,8400
-AKRA,1465.0,-1.68,40.0,False,False,,52.3,0.78,31262477450,0.52,Energy,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,1440-1465,1400,1560
-BDMN,4400.0,-0.68,40.0,False,False,,51.5,0.61,10436973900,0.5,Financial Services,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,4350-4400,4250,4630
-DSNG,1575.0,-1.56,40.0,False,False,,51.1,0.42,9916964575,0.69,Consumer Defensive,Neutral,Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,1535-1575,1465,1735
-MDKA,3070.0,0.33,40.0,False,False,,58.6,0.81,119563664700,1.36,Basic Materials,Strong Buy,Buy,Neutral,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 58,6 sehat",2950-3070,2830,3370
-TAPG,2030.0,0.5,36.2,False,False,,45.0,0.26,64948650850,0.82,Consumer Defensive,Neutral,Strong Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,1980-2030,1880,2260
-AMMN,4720.0,-0.21,32.5,False,False,,53.0,0.27,412551430950,1.88,Basic Materials,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,4700-4720,4500,5125
-ANTM,3230.0,-1.22,32.5,False,False,,53.0,0.59,365914432950,1.19,Basic Materials,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,3190-3230,3080,3470
-CUAN,935.0,-0.53,32.5,False,False,,57.7,0.4,439679429675,2.17,Energy,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,925-935,875,1045
-ISAT,2350.0,-2.08,32.5,False,False,,48.1,0.57,167091074100,0.87,Communication Services,Sell,Strong Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",2290-2350,2190,2590
-LSIP,1530.0,-1.29,32.5,False,False,,42.3,0.45,28121704225,0.64,Consumer Defensive,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,1500-1530,1440,1660
-PSAB,535.0,0.0,32.5,False,False,,44.3,0.85,38706692425,0.81,Basic Materials,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",520-535,496,595
-SRTG,1765.0,-0.84,32.5,False,False,,44.1,0.21,6785521075,0.92,Financial Services,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1740-1765,1690,1875
-TLKM,2410.0,0.0,31.5,False,False,,30.3,1.52,290128331650,0.98,Communication Services,Sell,Sell,Neutral,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-ENRG,1325.0,1.15,31.0,False,False,,50.0,1.04,123281956375,1.94,Energy,Sell,Sell,Buy,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BBRI,3150.0,0.32,30.0,False,False,,41.9,0.44,660560550350,0.83,Financial Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-ELSA,665.0,-2.92,29.5,False,False,,37.2,0.98,15510793425,0.59,Energy,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",650-665,625,725
-MAPA,650.0,0.78,28.8,False,False,,43.8,0.65,9721124675,0.69,Consumer Cyclical,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-MEGA,1940.0,-0.26,27.0,False,False,,37.0,0.16,113497700,0.44,Financial Services,Strong Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
-BBCA,6250.0,0.4,25.0,False,False,,43.6,0.71,815215956875,0.84,Financial Services,Sell,Sell,Buy,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-KLBF,735.0,0.0,25.0,False,False,Hammer,40.6,0.34,58161561625,0.53,Healthcare,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
-MEDC,1450.0,-2.68,25.0,False,False,,48.3,0.71,100216262250,0.57,Energy,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,1415-1450,1350,1600
-PTRO,5300.0,-1.4,25.0,False,False,,52.6,0.43,240278712625,2.28,Basic Materials,Sell,Strong Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",5150-5300,4910,5900
-SMGR,1580.0,0.64,25.0,False,False,,47.1,0.28,52851741600,0.98,Basic Materials,Sell,Sell,Neutral,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-AMRT,1305.0,1.95,23.5,False,False,,47.0,1.02,46275545200,0.89,Consumer Defensive,Neutral,Sell,Buy,2026-09-25,Pantau,Belum ada arah yang jelas,1285-1305,1245,1395
-INDF,6750.0,-2.88,23.5,False,False,,29.9,0.46,43844458125,0.37,Consumer Defensive,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-INTP,5075.0,-1.46,23.5,False,False,,41.8,1.28,6725640125,0.48,Basic Materials,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-PGEO,1020.0,-4.67,23.5,False,False,,44.5,1.12,13516986650,0.9,Utilities,Sell,Neutral,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1000-1020,965,1100
-GGRM,17150.0,-1.15,22.0,False,False,,30.7,0.62,21759622625,0.66,Consumer Defensive,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-UNVR,1630.0,0.62,22.0,False,False,Hammer,39.3,0.28,34485905475,0.55,Consumer Defensive,Sell,Sell,Buy,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
-HRUM,875.0,0.0,21.2,False,False,,45.3,0.34,13439137975,1.41,Basic Materials,Sell,Sell,Neutral,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-MNCN,136.0,-3.55,20.5,False,False,,12.8,2.52,15947126460,0.77,Communication Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-GOTO,50.0,0.0,19.8,False,False,,38.4,0.37,601743000,0.38,Technology,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BMRI,4080.0,0.25,18.2,False,False,,38.1,0.5,611497932850,0.88,Financial Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-CTRA,570.0,0.88,18.2,False,False,,37.8,0.47,7158568950,0.78,Real Estate,Sell,Sell,Neutral,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-ADMR,1525.0,-0.65,17.5,False,False,,42.5,0.27,60713488450,1.13,Basic Materials,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-ARCI,1300.0,-0.38,17.5,False,False,,49.1,0.2,56703084325,1.44,Basic Materials,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1270-1300,1210,1430
-BRMS,660.0,-2.94,17.5,False,False,,43.8,0.4,228355835175,2.08,Basic Materials,Sell,Neutral,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",640-660,610,735
-BUMI,182.0,-1.62,17.5,False,False,,40.2,0.46,694225271985,2.03,Energy,Sell,Neutral,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",177-182,167,204
-CPIN,3010.0,-0.33,17.5,False,False,,41.6,0.2,193064344600,0.5,Consumer Defensive,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-INDY,2690.0,-3.24,17.5,False,False,,48.5,0.41,72926335100,1.13,Energy,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",2610-2690,2470,3020
-MTEL,466.0,-3.32,17.5,False,False,,43.7,0.42,16455645960,0.11,Communication Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-NCKL,905.0,-1.09,17.5,False,False,,44.8,0.53,47640081900,1.17,Basic Materials,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-NISP,1255.0,0.0,17.5,False,False,,47.5,0.93,7847946300,0.42,Financial Services,Strong Sell,Sell,Strong Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-PWON,266.0,-0.75,17.5,False,False,,46.3,0.45,10071593370,0.58,Real Estate,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-UNTR,24225.0,0.31,17.5,False,False,,41.1,0.49,109376561750,0.66,Basic Materials,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BBNI,3500.0,-0.57,14.5,False,False,,34.6,0.99,152679770550,0.76,Financial Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BJTM,510.0,-0.97,14.5,False,False,,36.5,0.92,2668098025,0.43,Financial Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BRIS,1510.0,-3.21,14.5,False,False,,21.7,1.5,35092831125,0.87,Financial Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BSDE,560.0,-1.75,14.5,False,False,,32.0,0.61,19721673175,0.81,Real Estate,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-ESSA,580.0,-2.52,14.5,False,False,,35.7,0.63,79029070175,0.92,Basic Materials,Sell,Strong Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-EXCL,2330.0,-2.92,14.5,False,False,,30.0,0.76,18851991850,1.32,Communication Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-INKP,8225.0,0.92,14.5,False,False,,39.3,0.69,42516732250,1.11,Basic Materials,Sell,Neutral,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",8075-8225,7825,8825
-JPFA,2130.0,-2.29,14.5,False,False,,38.4,0.49,31378177450,0.8,Consumer Defensive,Sell,Neutral,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",2090-2130,2010,2310
-JSMR,2720.0,-0.37,14.5,False,False,,36.8,0.23,9574183350,0.53,Industrials,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-MIKA,1720.0,-0.58,14.5,False,False,,36.8,0.16,7160010525,0.44,Healthcare,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-TKIM,7125.0,-1.04,14.5,False,False,,36.7,0.34,23857043750,1.21,Basic Materials,Sell,Neutral,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",6975-7125,6675,7775
-TOWR,390.0,-1.52,14.5,False,False,,33.1,0.65,28005789920,0.79,Real Estate,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BUKA,104.0,-0.95,10.0,False,False,,40.4,0.25,22193944390,0.81,Consumer Cyclical,Strong Sell,Sell,Strong Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-INCO,4680.0,-0.85,10.0,False,False,,42.3,0.36,80306842600,1.39,Basic Materials,Strong Sell,Strong Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-MBMA,500.0,-0.99,10.0,False,False,,44.5,0.43,73860730750,1.57,Basic Materials,Strong Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-SIDO,350.0,0.0,10.0,False,False,,45.1,0.68,8306207910,0.45,Consumer Defensive,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-ARTO,850.0,-1.16,8.5,False,False,,28.5,0.36,27249519975,1.34,Financial Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BRPT,1510.0,-3.21,8.5,False,False,,29.7,0.58,115297731600,2.36,Basic Materials,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-EMTK,420.0,-2.33,8.5,False,False,,25.0,0.66,20508023735,1.54,Communication Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-HEAL,620.0,-1.59,8.5,False,False,,27.7,0.41,16886801700,0.43,Healthcare,Sell,Sell,Strong Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-HMSP,635.0,0.0,8.5,False,False,,24.0,0.36,15113771225,0.71,Consumer Defensive,Sell,Strong Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-MYOR,1435.0,-1.03,8.5,False,False,,27.4,0.42,30696237175,0.34,Consumer Defensive,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-RAJA,665.0,-3.62,8.5,False,False,,25.5,0.77,51905477950,2.37,Utilities,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-SCMA,171.0,-1.16,8.5,False,False,,24.1,0.49,12252955245,1.49,Communication Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-SMRA,254.0,-2.31,8.5,False,False,,24.4,0.42,15483763670,0.84,Real Estate,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-ACES,342.0,-0.58,7.0,False,False,,39.7,0.33,6769682750,0.6,Consumer Cyclical,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-ASII,4690.0,-1.68,7.0,False,False,,38.5,0.68,221136058900,0.83,Industrials,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BBTN,1105.0,-0.45,7.0,False,False,,30.9,0.38,21038941725,0.98,Financial Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BIRD,1570.0,-0.95,7.0,False,False,,32.6,0.65,1119596225,0.52,Industrials,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BJBR,755.0,-1.31,7.0,False,False,,33.0,0.45,5848726075,0.39,Financial Services,Sell,Strong Sell,Strong Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-BREN,3050.0,-1.61,7.0,False,False,,39.1,0.38,44645097650,1.45,Utilities,Strong Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-DEWA,356.0,-2.2,7.0,False,False,,35.8,0.52,193064713990,2.46,Energy,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-ICBP,6650.0,-4.66,7.0,False,False,,34.5,0.72,42502895125,0.54,Consumer Defensive,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-PGAS,1430.0,-0.69,7.0,False,False,,34.7,0.36,55404864250,0.73,Utilities,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-PNBN,850.0,0.0,7.0,False,False,,32.0,0.37,2603704825,0.63,Financial Services,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-SILO,1945.0,-5.12,7.0,False,False,,35.8,0.73,3139156150,-0.15,Healthcare,Strong Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
-TPIA,1800.0,-1.1,7.0,False,False,,38.6,0.39,294110061500,1.6,Basic Materials,Strong Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AGAR,2030.0,-14.35,47.5,True,False,,51.6,0.49,4263603375,0.31,Konsumen Primer,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",2000-2030,1645,2770
+AGII,3450.0,-1.15,47.5,True,False,,61.3,0.22,1780101450,0.88,Barang Baku,Strong Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",3270-3450,3090,3900
+ARII,326.0,-2.4,47.5,True,False,,63.5,0.32,158750610,0.58,Energi,Strong Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BAJA,334.0,-13.92,47.5,True,False,,51.8,0.75,11536591790,1.17,Barang Baku,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",318-334,278,422
+BKDP,187.0,0.0,47.5,True,False,,56.3,0.58,6318208275,0.58,Properti & Real Estat,Strong Buy,Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 56,3 sehat",173-187,156,228
+BLES,187.0,-3.61,47.5,False,False,Hammer,41.3,0.84,2533527635,0.85,Barang Baku,Sell,Buy,Sell,2026-09-25,Tunggu konfirmasi,Hammer baru muncul. Tunggu candle berikutnya hijau dan tutup di atas 193,182-187,172,210
+BMSR,340.0,-0.58,47.5,True,False,,52.7,0.66,219246180,0.9,Barang Baku,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BSML,540.0,-1.82,47.5,True,False,,53.9,0.39,6729924550,0.8,Energi,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",535-540,515,580
+CARS,125.0,-3.1,47.5,True,False,,72.7,1.47,1326161805,1.1,Konsumen Non-Primer,Buy,Buy,Buy,2026-09-25,Pantau,"Tren naik, tapi RSI 72,7 belum di zona ideal 45-70",118-125,112,141
+CASH,246.0,-4.65,47.5,True,False,,53.2,0.15,735813030,1.11,Teknologi,Buy,Strong Buy,Neutral,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 0,7 M/hari (di bawah Rp 5 M). Gunakan lot kecil",238-246,218,292
+CBPE,510.0,-8.11,47.5,True,False,,53.3,0.8,104458460,0.35,Properti & Real Estat,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ERAA,600.0,-1.64,47.5,True,False,,62.0,0.56,93341294240,0.77,Konsumen Non-Primer,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",585-600,560,665
+GULA,815.0,-1.81,47.5,True,False,,55.3,0.42,16644542025,1.08,Konsumen Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,805-815,770,885
+KICI,294.0,-1.34,47.5,True,False,,58.7,0.34,5870272580,1.25,Konsumen Non-Primer,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",282-294,250,364
+LFLO,555.0,-2.63,47.5,False,False,Hammer,52.8,0.09,94432225,0.07,Konsumen Non-Primer,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+LRNA,218.0,-0.91,47.5,False,False,,63.7,0.23,329224910,0.94,Transportasi & Logistik,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MGLV,14975.0,-4.01,47.5,True,False,,64.3,0.45,20109384625,0.74,Konsumen Non-Primer,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",14025-14975,12925,17675
+MOLI,370.0,-5.13,47.5,True,False,,65.6,0.74,4028704920,0.88,Barang Baku,Buy,Buy,Neutral,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 4,0 M/hari (di bawah Rp 5 M). Gunakan lot kecil",348-370,328,424
+MPIX,182.0,-11.65,47.5,True,False,,64.0,0.37,10179561105,0.97,Teknologi,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",161-182,141,234
+POLI,945.0,1.61,47.5,False,False,Bullish Engulfing,56.7,0.13,56237250,1.39,Properti & Real Estat,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PRIM,121.0,-0.82,47.5,True,False,,57.4,0.36,801427320,0.59,Kesehatan,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",120-121,115,131
+PSSI,354.0,1.72,47.5,False,False,,57.3,0.51,210882810,0.63,Energi,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PTSN,400.0,0.5,47.5,False,False,,57.8,0.62,5126212930,0.92,Teknologi,Buy,Buy,Strong Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 57,8 sehat",362-400,322,498
+RELF,41.0,0.0,47.5,False,False,,57.4,0.39,559963885,0.83,Properti & Real Estat,Strong Buy,Strong Buy,Neutral,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 0,6 M/hari (di bawah Rp 5 M). Gunakan lot kecil",38-41,35,49
+SAPX,356.0,-9.18,47.5,True,False,,53.9,0.28,5096952490,0.52,Transportasi & Logistik,Neutral,Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,340-356,288,466
+SOCI,650.0,-1.52,47.5,True,False,,59.2,0.65,16628976500,2.02,Energi,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",635-650,590,750
+SRSN,123.0,-7.52,47.5,True,False,,64.3,0.82,49584514450,0.68,Barang Baku,Strong Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",112-123,101,150
+TBMS,1230.0,2.5,47.5,False,False,Bullish Engulfing,51.9,0.53,41438775,0.73,Barang Baku,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TINS,4720.0,-2.68,47.5,True,False,,59.9,0.52,218705611500,1.62,Barang Baku,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",4540-4720,4340,5225
+TOTL,1575.0,-2.78,47.5,True,False,,59.2,0.91,6002358650,0.43,Infrastruktur,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",1530-1575,1475,1715
+YULE,3580.0,2.29,47.5,False,False,,50.3,0.42,117336650,0.08,Keuangan,Neutral,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ZONE,685.0,-2.14,47.5,False,False,Hammer,44.7,0.07,175482225,0.53,Konsumen Non-Primer,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ARNA,530.0,0.0,46.8,False,False,,71.4,0.39,2420189270,0.3,Perindustrian,Buy,Buy,Buy,2026-09-25,Pantau,"Tren naik, tapi RSI 71,4 belum di zona ideal 45-70",515-530,500,565
+DUTI,4790.0,0.0,46.8,False,False,,74.8,0.2,2374150,-0.08,Properti & Real Estat,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SINI,18300.0,0.0,46.8,False,False,,76.5,0.0,211583869500,1.66,Perindustrian,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 76,5 sudah panas. Tunggu harga turun ke area entry",16100-17200,15025,19950
+ASPI,650.0,-13.33,46.0,False,False,,61.9,1.37,1905918775,1.52,Properti & Real Estat,Buy,Strong Buy,Neutral,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 1,9 M/hari (di bawah Rp 5 M). Gunakan lot kecil",575-650,505,830
+HELI,240.0,-4.0,46.0,False,False,,63.3,1.04,812582160,0.87,Transportasi & Logistik,Strong Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",218-240,197,294
+HRTA,2290.0,-0.87,46.0,False,False,,57.2,1.34,18067849250,1.29,Konsumen Non-Primer,Buy,Strong Buy,Buy,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 57,2 sehat",2210-2290,2120,2510
+INDR,2940.0,-2.33,46.0,False,False,,59.2,1.13,236764500,0.82,Konsumen Non-Primer,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMIL,424.0,-3.64,46.0,False,False,,51.9,1.33,19601606010,0.52,Perindustrian,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,412-424,392,472
+TEBE,2340.0,-1.27,46.0,False,False,,74.9,2.4,35328422500,1.89,Energi,Buy,Buy,Strong Buy,2026-09-25,Tunggu pullback,Harga sudah jauh di atas MA20. Tunggu turun ke area entry,1975-2150,1790,2620
+ABDA,4930.0,0.0,45.2,True,False,,74.8,0.22,83308850,0.02,Keuangan,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BHAT,1770.0,0.0,45.2,False,False,,67.7,0.0,0,0.37,Keuangan,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BSSR,5375.0,0.0,45.2,True,False,,74.2,0.94,11022435750,0.17,Energi,Buy,Buy,Buy,2026-09-25,Tunggu pullback,Harga sudah jauh di atas MA20. Tunggu turun ke area entry,5125-5250,5000,5575
+EDGE,4790.0,0.0,45.2,False,False,,53.3,0.0,0,0.06,Teknologi,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+RSCH,448.0,0.0,45.2,True,False,,73.3,0.93,10730093510,0.64,Kesehatan,Buy,Buy,Buy,2026-09-25,Pantau,"Tren naik, tapi RSI 73,3 belum di zona ideal 45-70",430-448,412,492
+TIRT,590.0,0.0,45.2,False,False,,56.1,0.0,0,0.74,Barang Baku,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TOTO,242.0,0.83,45.2,False,False,,58.0,0.3,125164180,0.24,Perindustrian,Buy,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ADRO,2600.0,1.56,45.0,False,False,,48.2,0.42,133616260050,0.56,Energi,Neutral,Strong Buy,Buy,2026-09-25,Pantau,Belum ada arah yang jelas,2560-2600,2490,2770
+CRAB,222.0,0.91,45.0,False,False,,59.0,0.72,328403430,0.47,Konsumen Primer,Strong Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+FAPA,7425.0,-0.34,45.0,False,False,,48.8,0.01,150840375,0.02,Konsumen Primer,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HATM,550.0,0.92,45.0,False,False,,47.8,0.08,9288937150,0.92,Transportasi & Logistik,Neutral,Buy,Buy,2026-09-25,Pantau,Belum ada arah yang jelas,530-550,494,635
+ITMG,25500.0,1.8,45.0,False,False,,47.1,0.34,40549546000,0.2,Energi,Neutral,Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,25225-25500,24700,26675
+LPGI,645.0,0.0,45.0,False,False,,52.2,0.08,11453300,0.32,Keuangan,Buy,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MPMX,1020.0,0.49,45.0,False,False,,49.2,0.52,3241704425,0.07,Konsumen Non-Primer,Sell,Buy,Buy,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1010-1020,995,1055
+SCNP,164.0,0.61,45.0,False,False,,62.2,0.46,230122970,0.32,Konsumen Non-Primer,Strong Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SFAN,2000.0,0.5,45.0,False,False,,42.0,0.69,127101300,0.07,Keuangan,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMMA,20025.0,0.12,45.0,False,False,,48.4,0.16,167458500,0.01,Keuangan,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SNLK,240.0,2.56,45.0,False,False,,51.5,0.92,4322205240,0.48,Konsumen Non-Primer,Buy,Neutral,Buy,2026-09-25,Pantau,Belum ada arah yang jelas,238-240,222,272
+ANDI,22.0,-4.35,44.5,False,False,,61.4,1.51,209130610,1.03,Konsumen Primer,Strong Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BALI,1305.0,0.38,44.5,False,False,,50.1,1.95,63822850,0.1,Infrastruktur,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BAPI,23.0,-8.0,44.5,False,False,,57.2,2.16,307477045,1.29,Properti & Real Estat,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CSIS,199.0,0.51,44.5,False,False,Hammer,43.4,1.98,293161280,1.28,Properti & Real Estat,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DEWI,226.0,1.8,44.5,True,False,,85.8,0.61,11027507215,0.94,Konsumen Primer,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 85,8 sudah panas. Tunggu harga turun ke area entry",204-214,193,244
+DNET,9725.0,-0.26,44.5,False,False,,41.0,2.44,87590500,0.12,Keuangan,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+FUJI,286.0,-0.69,44.5,False,False,,56.6,1.68,1280148380,1.24,Keuangan,Buy,Neutral,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,264-286,236,352
+GLVA,326.0,-1.21,44.5,False,False,,50.9,1.95,18134860,0.38,Teknologi,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+GUNA,220.0,0.0,44.5,False,False,,62.2,9.0,38307520,0.77,Konsumen Primer,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KREN,15.0,-6.25,44.5,False,False,,53.5,4.21,325112330,1.13,Teknologi,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+LMPI,160.0,-3.61,44.5,False,False,,50.3,3.05,176010750,0.87,Konsumen Non-Primer,Neutral,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MAPB,1110.0,9.9,44.5,False,False,Bullish Engulfing,43.2,2.05,1483275,0.04,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NASA,34.0,-8.11,44.5,False,False,,51.7,2.17,30348370,0.57,Properti & Real Estat,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PART,112.0,-5.88,44.5,False,False,,54.9,1.7,4372708655,1.47,Konsumen Non-Primer,Strong Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",108-112,100,131
+RELI,530.0,-7.02,44.5,False,False,,46.0,2.05,18199025,0.28,Keuangan,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SAGE,33.0,-2.94,44.5,False,False,,56.7,8.0,147494820,1.29,Properti & Real Estat,Strong Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SDPC,191.0,-0.52,44.5,False,False,,45.5,3.33,101392270,0.59,Konsumen Primer,Sell,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TARA,32.0,-3.03,44.5,False,False,,55.5,2.41,46388395,0.84,Properti & Real Estat,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BAUT,40.0,0.0,43.8,False,False,,56.8,0.64,176892075,1.35,Konsumen Non-Primer,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BDKR,159.0,0.0,43.8,False,False,,51.3,1.0,1638655590,0.62,Infrastruktur,Buy,Buy,Strong Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 1,6 M/hari (di bawah Rp 5 M). Gunakan lot kecil",157-159,153,169
+SCCO,2590.0,0.0,43.8,False,False,,51.9,0.37,863802950,0.32,Perindustrian,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",2510-2590,2350,2940
+TRST,474.0,0.0,43.8,False,False,,52.1,0.46,38481630,0.33,Barang Baku,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BRAM,4590.0,-1.92,42.2,False,False,,46.2,1.44,3232800,0.14,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IDEA,148.0,0.0,42.2,False,False,,93.1,0.0,1760382155,1.15,Konsumen Non-Primer,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 93,1 sudah panas. Tunggu harga turun ke area entry",134-141,128,158
+NAYZ,69.0,0.0,42.2,False,False,,45.5,1.3,1916143965,0.32,Konsumen Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,66-69,62,79
+PMJS,137.0,-1.44,42.2,False,False,,47.9,1.25,312960565,0.8,Konsumen Non-Primer,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ADMF,8650.0,-0.57,41.5,False,False,,46.4,0.34,500529625,0.34,Keuangan,Neutral,Neutral,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,8600-8650,8500,8850
+LPIN,430.0,0.0,41.5,False,False,,53.4,0.49,53171760,0.45,Konsumen Non-Primer,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MGRO,695.0,-1.42,41.5,False,False,,55.9,0.9,2900630800,0.33,Konsumen Primer,Buy,Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 2,9 M/hari (di bawah Rp 5 M). Gunakan lot kecil",685-695,670,735
+MSJA,865.0,0.0,41.5,True,False,,73.3,0.82,11401390890,0.44,Konsumen Primer,Buy,Buy,Buy,2026-09-25,Tunggu pullback,Harga sudah jauh di atas MA20. Tunggu turun ke area entry,745-805,685,955
+SAFE,625.0,-14.38,41.5,False,False,,38.0,3.56,493438625,0.28,Transportasi & Logistik,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SGER,735.0,0.68,41.5,True,False,,71.7,0.48,41273117850,1.4,Energi,Buy,Buy,Buy,2026-09-25,Pantau,"Tren naik, tapi RSI 71,7 belum di zona ideal 45-70",700-735,665,825
+SMMT,3130.0,-1.26,41.5,True,False,,74.2,0.46,2874070425,0.69,Energi,Buy,Buy,Strong Buy,2026-09-25,Pantau,"Tren naik, tapi RSI 74,2 belum di zona ideal 45-70",2940-3130,2760,3590
+NICK,2820.0,0.0,40.8,True,False,,85.7,0.0,92997725,0.06,Keuangan,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PBSA,810.0,0.0,40.8,False,False,,56.3,1.77,1372624875,1.48,Infrastruktur,Buy,Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 1,4 M/hari (di bawah Rp 5 M). Gunakan lot kecil",780-810,735,920
+SEMA,264.0,0.0,40.8,True,False,,96.6,0.0,4577581530,0.74,Energi,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 96,6 sudah panas. Tunggu harga turun ke area entry",236-250,224,284
+SMLE,282.0,0.0,40.8,True,False,,82.8,0.0,8259740990,1.49,Barang Baku,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 82,8 sudah panas. Tunggu harga turun ke area entry",244-262,226,310
+TAMU,26.0,4.0,40.8,False,False,,51.3,2.34,195001035,1.55,Energi,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AALI,7850.0,0.96,40.0,False,False,,43.5,0.29,19043896000,0.57,Konsumen Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,7725-7850,7475,8400
+ADES,34000.0,-2.58,40.0,False,False,,61.4,0.85,336187250,0.14,Konsumen Primer,Strong Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AKRA,1465.0,-1.68,40.0,False,False,,52.3,0.78,31262477450,0.52,Energi,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,1440-1465,1400,1560
+AMIN,260.0,-4.41,40.0,False,False,,57.3,0.29,130243710,0.58,Perindustrian,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ASGR,2100.0,-0.47,40.0,False,False,,55.0,0.36,2959964750,0.56,Perindustrian,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,2060-2100,1990,2270
+BBMD,1995.0,0.0,40.0,False,False,,52.3,0.47,12186225,0.14,Keuangan,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BDMN,4400.0,-0.68,40.0,False,False,,51.5,0.61,10436973900,0.5,Keuangan,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,4350-4400,4250,4630
+BEEF,432.0,-4.0,40.0,False,False,,50.2,0.77,2576381110,1.48,Konsumen Primer,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",418-432,392,492
+BNBA,850.0,-0.58,40.0,False,False,,61.1,0.5,869115475,1.03,Keuangan,Strong Buy,Strong Buy,Neutral,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 0,9 M/hari (di bawah Rp 5 M). Gunakan lot kecil",805-850,760,965
+CINT,195.0,-1.02,40.0,False,False,,58.8,0.49,809841435,0.42,Konsumen Non-Primer,Strong Buy,Strong Buy,Neutral,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 0,8 M/hari (di bawah Rp 5 M). Gunakan lot kecil",189-195,174,228
+DMAS,185.0,-3.65,40.0,False,False,,50.3,0.28,80519540720,0.52,Properti & Real Estat,Neutral,Buy,Strong Sell,2026-09-25,Pantau,Belum ada arah yang jelas,180-185,171,206
+DSNG,1575.0,-1.56,40.0,False,False,,51.1,0.42,9916964575,0.69,Konsumen Primer,Neutral,Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,1535-1575,1465,1735
+EKAD,392.0,-1.01,40.0,False,False,,57.0,0.16,6698727370,0.46,Barang Baku,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,380-392,356,446
+EMAS,7625.0,0.99,40.0,False,False,,44.6,0.23,210091871000,0.76,Basic Materials,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",7425-7625,7075,8450
+FLMC,138.0,3.76,40.0,False,False,,66.5,0.57,1172973690,0.68,Konsumen Primer,Buy,Strong Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 1,2 M/hari (di bawah Rp 5 M). Gunakan lot kecil",126-138,114,167
+GRPH,125.0,-7.41,40.0,False,False,,57.8,0.06,8917749035,1.01,Konsumen Non-Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,120-125,112,144
+HBAT,360.0,-10.0,40.0,False,False,,59.2,0.35,750216500,0.33,Properti & Real Estat,Buy,Strong Buy,Neutral,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",336-360,310,426
+ICON,143.0,-2.05,40.0,False,False,,52.0,0.35,14340878630,0.93,Perindustrian,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,135-143,121,176
+INCI,790.0,-1.25,40.0,False,False,,57.7,0.2,363423500,0.37,Barang Baku,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+LTLS,960.0,-3.03,40.0,False,False,,52.4,0.05,464803425,0.39,Barang Baku,Neutral,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MDKA,3070.0,0.33,40.0,False,False,,58.6,0.81,119563664700,1.36,Barang Baku,Strong Buy,Buy,Neutral,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 58,6 sehat",2950-3070,2830,3370
+MGNA,195.0,-7.14,40.0,False,False,,68.5,0.22,8678435055,1.26,Konsumen Non-Primer,Strong Buy,Strong Buy,Neutral,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 68,5 sehat",168-195,142,262
+MITI,264.0,-4.35,40.0,False,False,,54.9,0.44,4508159190,1.56,Transportasi & Logistik,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,254-264,228,324
+NATO,1055.0,-14.92,40.0,False,False,,53.7,0.41,1317745375,0.6,Konsumen Non-Primer,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",990-1055,870,1330
+OILS,294.0,-5.77,40.0,False,False,,55.5,0.36,5915004710,0.44,Konsumen Primer,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,284-294,264,340
+PGUN,9625.0,-1.03,40.0,False,False,,54.6,0.5,1272465250,1.76,Konsumen Primer,Buy,Strong Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 1,3 M/hari (di bawah Rp 5 M). Gunakan lot kecil",9600-9625,8825,11175
+PLAN,67.0,-1.47,40.0,False,False,,62.1,0.47,1240003070,1.02,Konsumen Non-Primer,Buy,Strong Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 1,2 M/hari (di bawah Rp 5 M). Gunakan lot kecil",63-67,57,82
+POLA,71.0,-5.33,40.0,False,False,,52.5,0.15,8523481660,1.08,Keuangan,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,69-71,60,89
+POWR,945.0,-1.05,40.0,False,False,,52.4,0.37,12002871575,0.27,Infrastruktur,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,920-945,880,1040
+PRAY,760.0,-0.65,40.0,False,False,,52.4,0.21,46536650,0.11,Kesehatan,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PTSP,1190.0,0.42,40.0,False,False,,52.9,0.02,494910950,0.45,Konsumen Non-Primer,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SAMF,316.0,0.0,40.0,False,False,,58.0,0.3,116718020,0.37,Barang Baku,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMDR,392.0,-2.49,40.0,False,False,,67.5,0.88,13829488190,1.02,Transportasi & Logistik,Buy,Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",376-392,362,428
+SSMS,1075.0,-0.92,40.0,False,False,Hammer,50.7,0.68,14910842850,0.92,Konsumen Primer,Neutral,Neutral,Neutral,2026-09-25,Tunggu konfirmasi,Hammer baru muncul. Tunggu candle berikutnya hijau dan tutup di atas 1.090,1040-1075,970,1235
+UANG,3800.0,-4.52,40.0,False,False,,56.2,0.27,6904594500,2.11,Properti & Real Estat,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",3720-3800,3360,4550
+UCID,490.0,-0.41,40.0,False,False,,50.7,0.77,764695975,0.35,Konsumen Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,480-490,464,530
+VICO,168.0,-2.89,40.0,False,False,,59.4,0.28,303829185,0.76,Keuangan,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+VOKS,258.0,-3.73,40.0,False,False,,50.5,0.18,859808830,0.53,Perindustrian,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",244-258,216,322
+WINS,565.0,-0.88,40.0,False,False,,50.1,0.12,1875958275,0.54,Energi,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,550-565,520,635
+GRIA,155.0,-13.89,38.5,False,False,,42.5,1.28,1925170435,-0.19,Properti & Real Estat,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",148-155,136,183
+JTPE,595.0,0.85,38.5,False,False,,44.9,1.09,690784700,0.48,Perindustrian,Sell,Neutral,Buy,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",585-595,570,630
+KSIX,396.0,-1.98,38.5,False,False,,46.0,1.43,166858460,0.39,Real Estate,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PDPP,322.0,3.21,38.5,False,False,,48.0,1.14,92849340,0.5,Barang Baku,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PSKT,248.0,-0.8,38.5,False,False,,56.7,1.11,4263185920,2.27,Konsumen Non-Primer,Buy,Strong Buy,Buy,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 4,3 M/hari (di bawah Rp 5 M). Gunakan lot kecil",240-248,224,284
+TRUE,60.0,-14.29,38.5,False,False,,51.4,1.08,17787243190,1.99,Properti & Real Estat,Buy,Neutral,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,57-60,50,74
+WMPP,27.0,-10.0,38.5,False,False,,44.7,1.26,1113992460,0.71,Konsumen Primer,Strong Sell,Sell,Strong Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ASLI,486.0,0.0,37.8,False,False,,75.1,0.0,65284322210,1.61,Infrastruktur,Buy,Buy,Buy,2026-09-25,Tunggu pullback,"RSI 75,1 sudah panas. Tunggu harga turun ke area entry",394-440,350,555
+ANJT,1590.0,0.63,37.5,False,False,,54.0,0.2,157862350,0.61,Konsumen Primer,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ASMI,16.0,-5.88,37.0,False,False,,50.2,4.29,231091725,1.04,Keuangan,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BISI,705.0,3.68,37.0,False,False,,47.2,6.11,228926000,0.5,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+GWSA,158.0,-14.13,37.0,False,False,,47.5,6.21,991722080,0.89,Konsumen Non-Primer,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",152-158,142,182
+IGAR,472.0,-8.35,37.0,False,False,,51.2,3.03,66964200,0.27,Barang Baku,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PNGO,3400.0,-5.03,37.0,False,False,,42.5,1.54,11608350,0.34,Konsumen Primer,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TRIS,173.0,0.0,37.0,False,False,,51.6,1.51,225208575,0.78,Konsumen Non-Primer,Buy,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ULTJ,2060.0,0.0,37.0,True,False,,83.3,0.7,40166945000,0.42,Konsumen Primer,Buy,Buy,Neutral,2026-09-25,Tunggu pullback,"RSI 83,3 sudah panas. Tunggu harga turun ke area entry",1895-1975,1815,2190
+BAYU,1320.0,0.0,36.2,False,False,,53.9,0.21,274089550,0.31,Konsumen Non-Primer,Neutral,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BEST,121.0,0.0,36.2,False,False,,47.4,0.54,8421322035,0.96,Properti & Real Estat,Sell,Strong Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",117-121,111,136
+DPUM,129.0,-5.15,36.2,False,False,,51.7,0.76,15862663765,0.92,Konsumen Primer,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,127-129,112,160
+GDYR,1110.0,1.83,36.2,False,False,,49.8,0.19,8639575,0.19,Konsumen Non-Primer,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HYGN,180.0,0.0,36.2,False,False,,48.6,0.76,794793485,0.42,Perindustrian,Neutral,Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,176-180,170,194
+MLBI,6825.0,-0.36,36.2,False,False,,49.6,0.77,700616250,0.19,Konsumen Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,6750-6825,6650,7075
+RANC,555.0,0.0,36.2,False,False,,57.3,0.17,25167875,0.56,Konsumen Primer,Buy,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SONA,2390.0,0.0,36.2,False,False,,49.4,0.93,19464750,0.36,Konsumen Non-Primer,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TAPG,2030.0,0.5,36.2,False,False,,45.0,0.26,64948650850,0.82,Konsumen Primer,Neutral,Strong Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,1980-2030,1880,2260
+MASB,3290.0,0.0,36.0,False,False,,42.6,1.47,29568650,0.09,Keuangan,Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BVIC,90.0,-2.17,35.5,False,False,Hammer,38.2,1.09,305292190,1.02,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+RICY,72.0,-4.0,35.5,False,False,Hammer,22.3,1.66,313113435,1.01,Konsumen Non-Primer,Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMKM,89.0,-2.2,35.5,False,False,Hammer,36.8,1.23,344064645,1.31,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ATLA,50.0,0.0,34.8,False,False,,45.3,5.14,17326750,0.56,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DADA,50.0,0.0,34.8,False,False,,43.1,3.52,8321750,0.05,Properti & Real Estat,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IBST,8475.0,0.0,34.8,False,False,,90.4,0.0,0,-0.01,Infrastruktur,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KUAS,88.0,-12.87,34.0,False,False,,35.9,3.27,4812425705,1.35,Perindustrian,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LABS,151.0,-14.2,34.0,False,False,,38.6,1.62,1233694035,0.37,Kesehatan,Sell,Neutral,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",146-151,136,173
+MICE,496.0,-0.4,34.0,False,False,,38.3,2.58,116221035,0.28,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SATU,238.0,0.0,34.0,False,False,Hammer,34.8,2.4,268640440,0.15,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PTPW,1135.0,-0.44,33.2,False,False,,34.7,0.4,36604550,0.01,Infrastruktur,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HEXA,3970.0,1.02,33.0,False,False,,22.7,2.47,4684430500,0.34,Perindustrian,Sell,Sell,Neutral,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AIMS,472.0,-3.28,32.5,False,False,,50.8,0.71,622459190,1.1,Energi,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,450-472,406,570
+AMAR,228.0,-2.56,32.5,False,False,,45.8,0.66,132366820,0.47,Keuangan,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AMMN,4720.0,-0.21,32.5,False,False,,53.0,0.27,412551430950,1.88,Barang Baku,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,4700-4720,4500,5125
+AMOR,360.0,-1.1,32.5,False,False,,46.3,0.41,74553130,0.5,Keuangan,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ANTM,3230.0,-1.22,32.5,False,False,,53.0,0.59,365914432950,1.19,Barang Baku,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,3190-3230,3080,3470
+ASJT,162.0,-0.61,32.5,False,False,,53.1,0.37,92043765,0.57,Keuangan,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AVIA,344.0,1.18,32.5,False,False,Hammer,48.4,0.48,4690656960,0.62,Barang Baku,Sell,Sell,Buy,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
+BLUE,2940.0,0.34,32.5,False,False,,53.6,0.47,1375878250,1.11,Perindustrian,Neutral,Buy,Neutral,2026-09-25,Pantau,Belum ada arah yang jelas,2830-2940,2620,3420
+BOGA,1550.0,-0.32,32.5,False,False,,45.9,0.18,20199625,0.49,Konsumen Non-Primer,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BOLA,172.0,-1.15,32.5,False,False,,52.0,0.62,514664095,0.99,Konsumen Non-Primer,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,166-172,156,195
+BRNA,645.0,-0.77,32.5,False,False,,52.2,0.56,356486750,-0.0,Barang Baku,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BUDI,222.0,-1.77,32.5,False,False,,43.9,0.4,90806290,0.28,Konsumen Primer,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CFIN,358.0,-1.1,32.5,False,False,,43.5,0.17,1203430770,0.52,Keuangan,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",352-358,344,378
+CLPI,1595.0,0.0,32.5,False,False,,45.3,0.49,171393175,0.46,Barang Baku,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+COIN,810.0,-7.43,32.5,False,False,,52.5,0.76,59589325775,2.52,Financial Services,Buy,Buy,Neutral,2026-09-25,Kandidat kuat,"Tren harian dan mingguan naik, RSI 52,5 sehat",800-810,730,955
+CRSN,124.0,-3.12,32.5,False,False,,44.4,0.26,511896245,0.85,Perindustrian,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,118-124,106,151
+CUAN,935.0,-0.53,32.5,False,False,,57.7,0.4,439679429675,2.17,Energi,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,925-935,875,1045
+DAYA,1100.0,-2.65,32.5,False,False,,55.2,0.89,25422950,0.29,Konsumen Primer,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DFAM,89.0,-3.26,32.5,False,False,,51.1,0.33,5835435175,0.95,Konsumen Non-Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,87-89,80,105
+DLTA,1780.0,-0.56,32.5,False,False,,42.0,1.04,99514050,0.23,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DSFI,91.0,-8.08,32.5,False,False,,50.7,0.44,3796674120,1.41,Konsumen Primer,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",87-91,79,109
+ELIT,246.0,-7.52,32.5,False,False,,47.4,0.46,10059930500,1.49,Teknologi,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,234-246,210,300
+FAST,426.0,-2.74,32.5,False,False,,48.3,0.68,10190994300,1.53,Konsumen Non-Primer,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",408-426,376,500
+GDST,109.0,-9.17,32.5,False,False,,44.9,0.56,3131722730,0.66,Barang Baku,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",104-109,95,130
+GOLF,172.0,-1.71,32.5,False,False,,53.2,0.53,1186999695,1.05,Konsumen Non-Primer,Neutral,Neutral,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,170-172,161,191
+GTRA,256.0,-2.29,32.5,False,False,,55.8,0.58,548226820,1.16,Transportasi & Logistik,Buy,Strong Buy,Sell,2026-09-25,Tunggu pantulan,"Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy",254-256,236,292
+IBOS,90.0,-3.23,32.5,False,False,,50.6,0.49,2611513425,1.3,Konsumen Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,86-90,78,108
+IKBI,535.0,0.94,32.5,False,False,Bullish Engulfing,47.5,0.42,430428000,0.42,Perindustrian,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IMAS,865.0,0.58,32.5,False,False,Hammer,45.2,0.32,455191625,0.87,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+INPC,148.0,-0.67,32.5,False,False,Hammer,43.6,0.18,4139032680,1.61,Keuangan,Sell,Neutral,Sell,2026-09-25,Tunggu konfirmasi,Hammer baru muncul. Tunggu candle berikutnya hijau dan tutup di atas 149,144-148,136,166
+INPP,710.0,0.0,32.5,False,False,Bullish Marubozu,40.0,0.15,57812000,0.29,Properti & Real Estat,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ISAT,2350.0,-2.08,32.5,False,False,,48.1,0.57,167091074100,0.87,Infrastruktur,Sell,Strong Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",2290-2350,2190,2590
+JATI,112.0,-4.27,32.5,False,False,,51.6,0.96,3189306270,1.14,Teknologi,Neutral,Strong Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,109-112,104,124
+JAYA,152.0,-6.17,32.5,False,False,,49.9,0.17,4463562285,1.07,Transportasi & Logistik,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,145-152,133,180
+KEJU,595.0,-0.83,32.5,False,False,,48.5,0.72,104606875,0.42,Konsumen Primer,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KINO,1330.0,-3.97,32.5,False,False,,44.6,0.57,71436475,0.34,Konsumen Primer,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KOTA,170.0,-5.03,32.5,False,False,,43.4,0.2,152181013175,2.07,Konsumen Non-Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,161-170,145,208
+LIFE,10125.0,-10.0,32.5,False,False,,44.5,0.28,399212250,0.6,Keuangan,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+LSIP,1530.0,-1.29,32.5,False,False,,42.3,0.45,28121704225,0.64,Konsumen Primer,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,1500-1530,1440,1660
+MBAP,1700.0,-0.87,32.5,False,False,,55.8,0.22,402174950,0.48,Energi,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MSIE,143.0,-9.49,32.5,False,False,,49.8,0.8,2093522880,0.86,Properti & Real Estat,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,135-143,120,177
+MUTU,120.0,-6.98,32.5,False,False,,45.5,0.58,9319182530,0.48,Perindustrian,Sell,Buy,Strong Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",114-120,104,144
+PGLI,216.0,-3.57,32.5,False,False,,54.7,0.28,304752540,0.67,Konsumen Non-Primer,Buy,Strong Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PSAB,535.0,0.0,32.5,False,False,,44.3,0.85,38706692425,0.81,Barang Baku,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",520-535,496,595
+RONY,1475.0,-9.23,32.5,False,False,,54.1,0.12,312185025,1.57,Infrastruktur,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SIPD,845.0,0.0,32.5,False,False,Bullish Marubozu,46.3,0.06,31693550,0.68,Konsumen Primer,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SKRN,410.0,-5.53,32.5,False,False,,51.8,0.87,181923670,0.71,Perindustrian,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SQMI,86.0,-8.51,32.5,False,False,,48.4,0.79,70149480975,0.27,Barang Baku,Neutral,Buy,Sell,2026-09-25,Pantau,Belum ada arah yang jelas,79-86,67,114
+SRTG,1765.0,-0.84,32.5,False,False,,44.1,0.21,6785521075,0.92,Keuangan,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1740-1765,1690,1875
+SSIA,1680.0,-4.0,32.5,False,False,,44.8,0.52,42053451325,1.07,Infrastruktur,Sell,Buy,Strong Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1645-1680,1575,1840
+SURI,81.0,-4.71,32.5,False,False,,46.1,0.59,849663660,1.12,Kesehatan,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",79-81,76,88
+TAMA,195.0,-2.5,32.5,False,False,,44.2,0.33,1002691550,1.22,Infrastruktur,Sell,Buy,Strong Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",188-195,176,224
+VAST,115.0,-0.86,32.5,False,False,Hammer,48.1,0.76,1984470025,1.11,Properti & Real Estat,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
+WINR,26.0,-7.14,32.5,False,False,,53.3,0.8,1192944665,1.4,Properti & Real Estat,Neutral,Buy,Buy,2026-09-25,Pantau,Belum ada arah yang jelas,25-26,23,30
+COAL,31.0,0.0,31.8,False,False,,74.1,0.0,0,0.47,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TLKM,2410.0,0.0,31.5,False,False,,30.3,1.52,290128331650,0.98,Infrastruktur,Sell,Sell,Neutral,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BLTA,32.0,3.23,31.0,False,False,Bullish Marubozu,47.2,1.43,135961290,1.3,Transportasi & Logistik,Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CYBR,520.0,4.0,31.0,False,False,Bullish Marubozu,45.2,1.11,14414069225,0.56,Teknologi,Sell,Sell,Buy,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Bullish Marubozu belum terkonfirmasi,,,
+ENRG,1325.0,1.15,31.0,False,False,,50.0,1.04,123281956375,1.94,Energi,Sell,Sell,Buy,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ALMI,74.0,0.0,30.2,False,False,,52.1,0.0,0,0.0,Barang Baku,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BIKA,55.0,0.0,30.2,False,False,,51.0,0.0,0,0.0,Properti & Real Estat,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BIMA,82.0,0.0,30.2,False,False,,60.9,0.0,0,0.11,Konsumen Non-Primer,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DPNS,310.0,0.0,30.2,False,False,,54.3,0.0,0,-0.03,Barang Baku,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+FOOD,176.0,0.0,30.2,False,False,,51.4,0.0,0,0.28,Konsumen Primer,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IPPE,14.0,0.0,30.2,False,False,,59.0,0.0,0,0.0,Konsumen Primer,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KIAS,21.0,0.0,30.2,False,False,,56.2,0.0,0,0.0,Perindustrian,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KOIN,78.0,0.0,30.2,False,False,,53.6,0.0,0,0.34,Perindustrian,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MTPS,81.0,0.0,30.2,False,False,,62.0,0.0,0,0.01,Infrastruktur,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMCB,775.0,0.0,30.2,False,False,,64.8,0.0,0,0.0,Barang Baku,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BBRI,3150.0,0.32,30.0,False,False,,41.9,0.44,660560550350,0.83,Keuangan,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LPPF,1585.0,0.32,30.0,False,False,,47.1,0.54,3459165175,0.46,Konsumen Non-Primer,Sell,Sell,Neutral,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MCOL,3680.0,3.08,30.0,False,False,,50.2,0.34,130470350,0.07,Energi,Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MKTR,123.0,0.0,30.0,False,False,,49.7,0.78,99774245,0.7,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MTWI,262.0,-3.68,30.0,False,False,,47.4,0.1,40586100,0.27,Keuangan,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SRAJ,13000.0,0.0,30.0,False,False,,46.6,0.38,44442125,0.4,Kesehatan,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ADMG,238.0,-3.25,29.5,False,False,,39.0,0.32,474924400,0.46,Barang Baku,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BELI,270.0,-3.57,29.5,False,False,,42.9,4.39,1097592020,0.53,Teknologi,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CMNP,1375.0,-1.43,29.5,False,False,,44.5,3.23,171716400,0.3,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ELSA,665.0,-2.92,29.5,False,False,,37.2,0.98,15510793425,0.59,Energi,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",650-665,625,725
+GJTL,1250.0,-2.34,29.5,False,False,,33.2,0.85,6635516975,0.61,Konsumen Non-Primer,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1230-1250,1200,1325
+HAIS,179.0,0.0,29.5,False,False,Hammer,39.5,0.68,169388015,0.67,Transportasi & Logistik,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IPOL,112.0,-4.27,29.5,False,False,,42.9,2.49,179499690,0.52,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IRSX,374.0,-14.61,29.5,False,False,,43.5,2.22,28801025330,2.02,Teknologi,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",358-374,330,440
+JKON,79.0,-1.25,29.5,False,False,,38.4,0.49,1568410330,0.76,Infrastruktur,Sell,Neutral,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",77-79,74,86
+KKES,71.0,-14.46,29.5,False,False,,39.9,0.22,15066141090,1.18,Barang Baku,Sell,Buy,Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",66-71,58,91
+LAND,65.0,-14.47,29.5,False,False,,40.7,1.92,3039092795,1.85,Properti & Real Estat,Sell,Sell,Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MDIA,165.0,-5.71,29.5,False,False,,37.5,0.74,74327212105,1.93,Konsumen Non-Primer,Sell,Buy,Strong Sell,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",154-165,132,214
+MDKI,191.0,-1.55,29.5,False,False,,46.5,5.62,53919205,0.48,Barang Baku,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MKPI,21525.0,0.23,29.5,False,False,Hammer,33.8,0.98,889216125,0.1,Properti & Real Estat,Strong Sell,Sell,Sell,2026-09-25,Pantau pembalikan,"Tren masih turun, tapi Hammer sudah terkonfirmasi. Tunggu Daily minimal Neutral",21425-21525,21225,21950
+NANO,30.0,-6.25,29.5,False,False,,40.4,1.74,1025099920,1.09,Konsumen Primer,Sell,Sell,Strong Sell,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+OMED,208.0,0.97,29.5,False,False,Bullish Engulfing,37.4,0.21,7654842610,0.48,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Bullish Engulfing belum terkonfirmasi,,,
+PTIS,258.0,0.0,29.5,False,False,,48.6,23.24,70396700,0.55,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SGRO,4420.0,-3.28,29.5,False,False,Hammer,38.5,0.34,270648275,0.83,Konsumen Primer,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SPMA,165.0,-1.79,29.5,False,False,,41.0,1.99,94111065,0.58,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TAXI,14.0,-6.67,29.5,False,False,,48.4,1.53,767226670,1.5,Transportasi & Logistik,Strong Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",13-14,12,16
+TMAS,134.0,-4.29,29.5,False,False,,39.2,0.92,1182013630,0.74,Transportasi & Logistik,Neutral,Buy,,2026-09-25,Pantau,Belum ada arah yang jelas,131-134,125,147
+YPAS,1040.0,-14.4,29.5,False,False,,36.4,0.49,288167950,1.06,Barang Baku,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BBLD,660.0,0.0,28.8,False,False,,50.1,0.23,82202875,0.27,Keuangan,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CASA,1800.0,0.0,28.8,False,False,,47.0,0.01,70677000,0.45,Keuangan,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+GEMS,7225.0,0.0,28.8,False,False,,51.5,0.14,1122782125,0.59,Energi,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",7100-7225,6900,7725
+KJEN,158.0,0.0,28.8,False,False,,48.9,0.27,4146461175,1.32,Transportasi & Logistik,Neutral,Buy,,2026-09-25,Pantau,Belum ada arah yang jelas,151-158,139,186
+MAPA,650.0,0.78,28.8,False,False,,43.8,0.65,9721124675,0.69,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RDTX,13475.0,0.0,28.8,False,False,,51.1,0.0,75704375,0.25,Properti & Real Estat,Buy,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TGKA,4890.0,0.0,28.8,False,False,,42.5,0.2,7390400,0.04,Konsumen Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MRAT,366.0,1.67,28.0,False,False,Bullish Engulfing,33.4,1.32,170463520,0.26,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+RBMS,50.0,-10.71,28.0,False,False,,27.2,1.8,961081410,1.31,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SDMU,68.0,-10.53,28.0,False,False,,28.2,4.56,6727919180,1.74,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SWID,103.0,-13.45,28.0,False,False,,33.7,1.37,1069571000,0.79,Konsumen Non-Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",98-103,89,124
+BBSI,4520.0,0.0,27.2,False,False,,27.6,0.19,7509400,0.23,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MEGA,1940.0,-0.26,27.0,False,False,,37.0,0.16,113497700,0.44,Keuangan,Strong Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PANR,410.0,0.0,27.0,False,False,,39.5,0.06,36088530,0.41,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ASLC,61.0,-14.08,26.5,False,False,,38.3,4.8,1219980820,1.08,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DVLA,1580.0,-0.32,26.5,False,False,,44.5,0.44,99994275,0.17,Kesehatan,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ELTY,30.0,-9.09,26.5,False,False,,37.4,2.26,2523705310,1.75,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+EMDE,69.0,-10.39,26.5,False,False,,34.7,4.42,888989295,0.74,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+GMFI,54.0,-3.57,26.5,False,False,,38.0,2.18,5364371500,0.92,Infrastruktur,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+JIHD,406.0,-0.98,26.5,False,False,,30.9,3.4,237863090,0.91,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NAIK,86.0,-5.49,26.5,False,False,,37.1,2.4,641790920,1.06,Basic Materials,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+NINE,77.0,-9.41,26.5,False,False,,39.7,1.98,1068329620,1.47,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+TRIN,278.0,-14.72,26.5,False,False,,35.8,1.51,20335699790,1.8,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BBSS,92.0,4.55,25.8,False,False,,48.9,2.35,8579429085,1.32,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BBCA,6250.0,0.4,25.0,False,False,,43.6,0.71,815215956875,0.84,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BINA,4030.0,0.5,25.0,False,False,Hammer,44.7,0.7,1804640800,-0.11,Keuangan,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
+BSIM,940.0,-4.08,25.0,False,False,,46.7,0.05,914823075,0.66,Keuangan,Neutral,Strong Buy,,2026-09-25,Pantau,Belum ada arah yang jelas,890-940,800,1150
+BTON,364.0,1.68,25.0,False,False,,49.6,0.18,32276750,0.05,Barang Baku,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CBRE,735.0,-2.0,25.0,False,False,,51.9,0.42,16100250800,1.93,Energi,Neutral,Buy,,2026-09-25,Pantau,Belum ada arah yang jelas,715-735,675,820
+CBUT,905.0,-4.23,25.0,False,False,,44.9,0.03,783600650,0.88,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",870-905,800,1065
+CITA,3430.0,-0.87,25.0,False,False,,51.6,0.29,479345350,0.68,Barang Baku,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CLEO,408.0,0.49,25.0,False,False,,48.4,0.69,5938263580,0.64,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",400-408,388,438
+CMNT,750.0,0.0,25.0,False,False,Hammer,46.1,0.56,17580934325,0.15,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
+DGNS,252.0,-0.79,25.0,False,False,,46.7,0.07,695227360,0.6,Kesehatan,Neutral,Buy,,2026-09-25,Pantau,Belum ada arah yang jelas,242-252,222,296
+DYAN,82.0,-6.82,25.0,False,False,,42.4,0.72,4924758590,0.61,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ENZO,68.0,-13.92,25.0,False,False,,41.0,0.92,3985518070,1.36,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",64-68,58,82
+FITT,430.0,-6.11,25.0,False,False,,50.9,0.78,1255125300,1.24,Konsumen Non-Primer,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",410-430,372,515
+GOLD,276.0,0.0,25.0,False,False,,50.3,0.56,51602540,0.44,Infrastruktur,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HGII,139.0,-2.8,25.0,False,False,,53.0,0.31,805629230,0.69,Utilities,Neutral,Buy,,2026-09-25,Pantau,Belum ada arah yang jelas,135-139,129,153
+HOMI,234.0,-4.1,25.0,False,False,,51.7,0.47,673585110,0.44,Properti & Real Estat,Neutral,Neutral,,2026-09-25,Pantau,Belum ada arah yang jelas,224-234,208,272
+IFII,216.0,-0.92,25.0,False,False,,55.8,0.14,461806390,0.4,Barang Baku,Buy,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KBLM,338.0,-4.52,25.0,False,False,,47.3,0.36,480613030,0.36,Perindustrian,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KLBF,735.0,0.0,25.0,False,False,Hammer,40.6,0.34,58161561625,0.53,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
+KMTR,250.0,0.0,25.0,False,False,,52.1,0.7,26849510,0.63,Barang Baku,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+LAPD,76.0,-7.32,25.0,False,False,,50.4,0.41,17950496490,1.32,Konsumen Primer,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",72-76,64,94
+MEDC,1450.0,-2.68,25.0,False,False,,48.3,0.71,100216262250,0.57,Energi,Neutral,Strong Buy,,2026-09-25,Pantau,Belum ada arah yang jelas,1415-1450,1350,1600
+MERK,3830.0,-0.52,25.0,False,False,,40.1,0.83,134099550,0.48,Kesehatan,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NICE,340.0,-3.95,25.0,False,False,,49.3,0.33,1934025170,1.05,Barang Baku,Buy,Buy,,2026-09-25,Pantau,"Teknikal bagus, tapi transaksi baru Rp 1,9 M/hari (di bawah Rp 5 M). Gunakan lot kecil",328-340,306,390
+OLIV,53.0,1.92,25.0,False,False,,47.5,0.53,1641776225,0.49,Konsumen Non-Primer,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",50-53,45,65
+OMRE,950.0,-1.55,25.0,False,False,,46.4,0.15,31579800,0.58,Properti & Real Estat,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PEHA,288.0,-1.37,25.0,False,False,,48.4,0.08,572056570,0.51,Kesehatan,Neutral,Neutral,,2026-09-25,Pantau,Belum ada arah yang jelas,276-288,254,338
+PICO,165.0,-2.94,25.0,False,False,,45.0,0.1,920077050,1.27,Barang Baku,Neutral,Buy,,2026-09-25,Pantau,Belum ada arah yang jelas,159-165,148,190
+PTRO,5300.0,-1.4,25.0,False,False,,52.6,0.43,240278712625,2.28,Energi,Sell,Strong Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",5150-5300,4910,5900
+SHIP,2570.0,-2.28,25.0,False,False,,54.3,0.44,392106350,0.64,Energi,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMGR,1580.0,0.64,25.0,False,False,,47.1,0.28,52851741600,0.98,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+STAA,1185.0,-0.84,25.0,False,False,,49.9,0.52,7074301800,0.52,Konsumen Primer,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1165-1185,1125,1270
+TALF,680.0,-0.73,25.0,False,False,,44.0,0.21,100174225,0.82,Barang Baku,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TBIG,1465.0,-0.34,25.0,False,False,,51.0,0.33,752500075,0.44,Infrastruktur,Neutral,Sell,,2026-09-25,Pantau,Belum ada arah yang jelas,1440-1465,1390,1580
+TGUK,108.0,-9.24,25.0,False,False,,56.0,0.94,616555880,-0.08,Konsumen Primer,Buy,Sell,,2026-09-25,Pantau,Belum ada arah yang jelas,99-108,91,129
+TYRE,109.0,0.0,25.0,False,False,Hammer,41.2,0.12,194247420,0.35,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+VKTR,780.0,-3.11,25.0,False,False,,45.4,0.61,78121363100,2.47,Konsumen Non-Primer,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",750-780,695,905
+FORU,360.0,22.45,24.2,False,False,,31.0,1.21,17889267363,1.0,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+GLOB,155.0,0.0,24.2,False,False,,77.8,0.0,0,0.1,Konsumen Non-Primer,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IPTV,24.0,-7.69,24.2,False,False,,22.8,5.37,130491700,0.86,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AEGS,47.0,-2.08,23.5,False,False,,48.1,1.01,327217375,1.29,Konsumen Non-Primer,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AMRT,1305.0,1.95,23.5,False,False,,47.0,1.02,46275545200,0.89,Konsumen Primer,Neutral,Sell,,2026-09-25,Pantau,Belum ada arah yang jelas,1285-1305,1245,1395
+BTEK,11.0,-8.33,23.5,False,False,,49.5,1.36,1400198075,1.41,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",10-11,9,13
+CARE,378.0,-0.53,23.5,False,False,Hammer,24.6,0.01,25578104080,0.52,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
+GHON,1620.0,-1.22,23.5,False,False,,41.8,1.05,25443425,0.57,Infrastruktur,Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HRME,42.0,-4.55,23.5,False,False,,45.9,1.12,105737210,0.88,Konsumen Non-Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+INDF,6750.0,-2.88,23.5,False,False,,29.9,0.46,43844458125,0.37,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+INTP,5075.0,-1.46,23.5,False,False,,41.8,1.28,6725640125,0.48,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KOBX,168.0,-5.62,23.5,False,False,,41.5,1.36,990063040,0.77,Perindustrian,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",164-168,156,186
+MMLP,296.0,-5.13,23.5,False,False,,43.7,1.36,464877730,0.72,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NRCA,530.0,-3.64,23.5,False,False,,43.8,1.03,4235859300,2.0,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PGEO,1020.0,-4.67,23.5,False,False,,44.5,1.12,13516986650,0.9,Infrastruktur,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1000-1020,965,1100
+PJAA,458.0,-0.87,23.5,False,False,,43.1,1.17,43529540,0.56,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PURA,32.0,-5.88,23.5,False,False,,49.1,1.28,167096875,0.98,Transportasi & Logistik,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SICO,110.0,-4.35,23.5,False,False,,42.0,1.21,462666235,0.55,Energi,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TFAS,182.0,-4.71,23.5,False,False,,42.7,1.24,334422580,0.81,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+WEHA,106.0,-7.83,23.5,False,False,,40.6,1.11,1127692175,0.65,Transportasi & Logistik,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ZYRX,128.0,-1.54,23.5,False,False,,47.5,1.24,97119050,0.73,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ADCP,50.0,0.0,22.8,False,False,,43.9,0.0,0,0.24,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ALTO,18.0,0.0,22.8,False,False,,49.1,0.0,0,0.0,Konsumen Primer,Buy,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BABP,50.0,0.0,22.8,False,False,,43.6,0.46,24413250,0.43,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BATA,59.0,0.0,22.8,False,False,,44.5,0.0,0,0.48,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BCAP,50.0,0.0,22.8,False,False,,45.6,0.09,5487500,0.34,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BEBS,5.0,0.0,22.8,False,False,,44.1,0.0,0,0.0,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CANI,135.0,0.0,22.8,False,False,,48.8,0.0,0,1.2,Energi,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CMPP,69.0,0.0,22.8,False,False,,41.0,0.0,0,0.09,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CNKO,37.0,0.0,22.8,False,False,,42.3,0.0,0,1.36,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CPRO,50.0,0.0,22.8,False,False,,44.8,0.05,146209000,0.77,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DIGI,29.0,0.0,22.8,False,False,,44.1,0.0,0,0.65,Konsumen Non-Primer,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+FASW,5312.0,0.0,22.8,False,False,,44.9,0.0,0,0.0,Barang Baku,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HILL,16.0,0.0,22.8,False,False,,44.3,0.0,0,1.03,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IBFN,63.0,0.0,22.8,False,False,,45.1,0.0,0,1.17,Perindustrian,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+INTA,61.0,0.0,22.8,False,False,,42.9,0.0,0,1.07,Perindustrian,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+LCKM,109.0,0.0,22.8,False,False,,48.1,0.0,0,0.69,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MARI,23.0,0.0,22.8,False,False,,40.7,0.0,0,0.81,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MAXI,50.0,0.0,22.8,False,False,,45.7,0.05,11170750,0.07,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MDLN,50.0,0.0,22.8,False,False,,47.3,0.44,12517750,0.49,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MENN,53.0,0.0,22.8,False,False,,46.2,0.0,0,0.06,Teknologi,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MKNT,1.0,0.0,22.8,False,False,,44.8,0.0,0,0.0,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MTSM,500.0,0.0,22.8,False,False,,50.0,0.0,0,0.0,Properti & Real Estat,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MYTX,41.0,0.0,22.8,False,False,,44.2,0.0,0,0.36,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NETV,50.0,0.0,22.8,False,False,,41.8,0.57,53046750,1.45,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PLIN,2510.0,0.0,22.8,False,False,,47.4,0.0,0,0.0,Properti & Real Estat,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PNBS,50.0,0.0,22.8,False,False,,46.6,0.06,9641500,0.29,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+POLL,112.0,0.0,22.8,False,False,,41.8,0.0,0,0.0,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+POLY,32.0,0.0,22.8,False,False,,42.0,0.0,0,0.62,Konsumen Non-Primer,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+RAFI,36.0,0.0,22.8,False,False,,40.4,0.0,0,0.33,Konsumen Non-Primer,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+REAL,50.0,0.0,22.8,False,False,,41.3,0.04,39488000,0.76,Properti & Real Estat,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SBAT,1.0,0.0,22.8,False,False,,45.3,0.0,0,0.0,Konsumen Non-Primer,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SOUL,37.0,0.0,22.8,False,False,,42.9,0.0,0,0.88,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SUNI,675.0,0.0,22.8,False,False,,39.6,3.24,263216525,0.29,Energi,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TOPS,1.0,0.0,22.8,False,False,,43.0,0.0,0,0.0,Infrastruktur,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+WSBP,14.0,0.0,22.8,False,False,,44.3,0.0,0,0.93,Barang Baku,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ZINC,30.0,0.0,22.8,False,False,,42.0,0.0,0,0.75,Barang Baku,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ACRO,55.0,-11.29,22.0,False,False,,29.2,1.23,1720890790,1.07,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AMFG,3180.0,0.0,22.0,False,False,,38.1,0.8,28162200,0.26,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BATR,90.0,-3.23,22.0,False,False,,43.7,3.85,108076330,0.98,Barang Baku,Strong Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BRRC,58.0,-13.43,22.0,False,False,,29.7,1.32,1411927780,1.03,Consumer Defensive,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BTPS,960.0,1.05,22.0,False,False,,39.7,0.31,7935774525,0.5,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ESTA,154.0,-4.35,22.0,False,False,Hammer,32.0,0.78,1145383405,1.08,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
+ESTI,145.0,-10.49,22.0,False,False,,38.5,0.36,5314070100,1.92,Konsumen Non-Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",137-145,121,181
+GGRM,17150.0,-1.15,22.0,False,False,,30.7,0.62,21759622625,0.66,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+IATA,91.0,-11.65,22.0,False,False,,33.9,0.96,129280664795,1.4,Energi,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",86-91,76,113
+JGLE,54.0,-14.29,22.0,False,False,,27.8,1.18,40526773435,1.42,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KBLV,103.0,-11.21,22.0,False,False,,25.9,1.28,1464236050,2.22,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KIOS,80.0,-14.89,22.0,False,False,,25.2,1.15,3098749330,2.01,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KRYA,53.0,-14.52,22.0,False,False,,25.1,1.02,4523946070,1.27,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LPCK,520.0,-2.8,22.0,False,False,,25.5,1.09,294882150,0.82,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PADA,158.0,-11.73,22.0,False,False,,34.7,0.79,9190631405,2.73,Perindustrian,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",149-158,133,196
+PPRO,15.0,-6.25,22.0,False,False,,44.5,5.88,407120520,0.72,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TCID,2450.0,-2.78,22.0,False,False,Hammer,33.2,0.81,30661250,0.41,Konsumen Primer,Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TOOL,61.0,-14.08,22.0,False,False,,35.0,0.56,9648885125,1.21,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+TSPC,2650.0,-0.38,22.0,False,False,,34.0,0.96,1416516650,0.26,Kesehatan,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",2620-2650,2580,2760
+UNVR,1630.0,0.62,22.0,False,False,Hammer,39.3,0.28,34485905475,0.55,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan turun. Hammer belum terkonfirmasi,,,
+ADHI,133.0,0.0,21.2,False,False,,18.8,0.0,0,0.84,Infrastruktur,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ASDM,505.0,-0.98,21.2,False,False,,40.2,0.11,10868850,0.26,Keuangan,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ATAP,545.0,0.93,21.2,False,False,,44.8,0.59,560735175,1.47,Properti & Real Estat,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",525-545,490,630
+BGTG,115.0,1.77,21.2,False,False,,48.0,0.15,1897624080,0.87,Keuangan,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",112-115,107,127
+BLTZ,2000.0,0.0,21.2,False,False,,1.1,0.0,20000,0.13,Konsumen Non-Primer,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BPII,460.0,0.0,21.2,False,False,,45.8,0.12,8123530,0.21,Keuangan,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CSAP,288.0,-1.37,21.2,False,False,,46.2,0.46,49869310,0.37,Konsumen Non-Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DKFT,650.0,0.0,21.2,False,False,,43.8,0.31,4512852275,1.29,Barang Baku,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ETWA,70.0,0.0,21.2,False,False,,25.9,0.0,0,0.0,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+FISH,625.0,0.0,21.2,False,False,,47.0,0.15,237262875,0.98,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HITS,116.0,0.0,21.2,False,False,,15.0,0.0,0,0.0,Energi,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HRUM,875.0,0.0,21.2,False,False,,45.3,0.34,13439137975,1.41,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+INAF,126.0,0.0,21.2,False,False,,24.6,0.0,0,0.0,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+JSPT,1390.0,-0.36,21.2,False,False,,44.3,0.46,59612875,1.03,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KAYU,18.0,0.0,21.2,False,False,,2.3,0.0,0,0.0,Barang Baku,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KRAS,224.0,0.0,21.2,False,False,,44.3,0.44,1340220410,1.18,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LMSH,256.0,0.0,21.2,False,False,,16.1,0.0,0,0.0,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MTMH,945.0,-0.53,21.2,False,False,,48.5,0.4,15386775,0.35,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SUPR,43850.0,0.0,21.2,False,False,,0.2,0.0,0,0.0,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TAYS,50.0,0.0,21.2,False,False,,23.9,0.0,0,0.73,Konsumen Primer,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TGRA,27.0,0.0,21.2,False,False,,28.0,0.0,0,0.0,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TOYS,8.0,0.0,21.2,False,False,,29.9,0.0,0,0.0,Konsumen Non-Primer,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+WIDI,27.0,0.0,21.2,False,False,,49.7,0.19,517743435,1.21,Perindustrian,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",25-27,23,32
+IPCM,284.0,0.71,21.0,False,False,,28.4,0.37,497374620,0.43,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TIRA,372.0,-0.53,21.0,False,False,,17.4,0.26,194759710,0.25,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ABMM,2630.0,-2.59,20.5,False,False,,39.3,1.33,1906520850,0.61,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ARKO,3660.0,-6.15,20.5,False,False,,28.0,2.74,16335242850,2.37,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BABY,185.0,-6.57,20.5,False,False,,34.9,1.08,404540980,1.86,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BCIP,56.0,-6.67,20.5,False,False,,29.9,1.89,337975000,0.98,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BHIT,21.0,-8.7,20.5,False,False,,28.3,2.7,275466875,0.99,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BMTR,86.0,-8.51,20.5,False,False,,20.9,2.41,8466971275,1.05,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BNBR,75.0,-7.41,20.5,False,False,,23.9,2.09,84722729055,2.42,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BNII,189.0,-1.05,20.5,False,False,,39.7,1.35,363918395,0.56,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CHEM,57.0,-13.64,20.5,False,False,,33.5,1.26,1621645880,1.56,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CHIP,685.0,-2.84,20.5,False,False,,11.9,1.77,81872400,0.34,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CTTH,108.0,-14.96,20.5,False,False,,32.1,1.24,2848218750,1.62,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DILD,111.0,-0.89,20.5,False,False,,32.5,1.15,1634286820,0.72,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+FWCT,77.0,-12.5,20.5,False,False,,28.6,4.53,670438545,1.09,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+INDO,170.0,-2.86,20.5,False,False,,31.1,1.11,5091378170,1.02,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+INOV,131.0,-2.96,20.5,False,False,,31.5,1.19,509953810,1.46,Konsumen Non-Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",127-131,121,145
+IOTF,55.0,-14.06,20.5,False,False,,37.1,1.39,2031195660,1.05,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+JAST,82.0,-10.87,20.5,False,False,,39.4,1.42,1709214045,0.99,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LPPS,67.0,-14.1,20.5,False,False,,21.8,1.97,165094375,1.43,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MINA,210.0,-9.48,20.5,False,False,,21.8,1.96,11543767470,2.54,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MLPL,75.0,-7.41,20.5,False,False,,22.4,1.91,1604524300,1.54,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MNCN,136.0,-3.55,20.5,False,False,,12.8,2.52,15947126460,0.77,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MPPA,36.0,-7.69,20.5,False,False,,28.7,3.37,451061920,0.84,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+OKAS,109.0,-3.54,20.5,False,False,,35.7,1.45,520520785,1.38,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+OPMS,93.0,-8.82,20.5,False,False,,23.5,2.15,513485610,1.78,Barang Baku,Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PADI,50.0,-13.79,20.5,False,False,,22.2,3.29,16589630975,2.37,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PPRE,90.0,-13.46,20.5,False,False,,25.3,2.58,3179222070,1.63,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PSDN,124.0,-14.48,20.5,False,False,,40.0,1.16,1318317485,0.44,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",119-124,109,146
+PTMP,52.0,-14.75,20.5,False,False,,24.7,3.66,1020696125,1.48,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RODA,52.0,-14.75,20.5,False,False,,33.3,1.23,2596479745,1.32,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SOLA,73.0,-13.1,20.5,False,False,,20.7,1.81,569140065,1.39,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+STRK,53.0,-14.52,20.5,False,False,,29.5,2.87,934641660,1.69,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+UDNG,500.0,-4.76,20.5,False,False,,26.6,2.22,7897774025,1.22,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+UNIQ,109.0,-9.17,20.5,False,False,,31.6,1.15,316193970,0.89,Energi,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+UNTD,75.0,-6.25,20.5,False,False,,32.6,1.27,1383119450,1.17,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+VIVA,36.0,-10.0,20.5,False,False,,33.3,1.48,1136930795,1.75,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+VTNY,66.0,-9.59,20.5,False,False,,37.4,1.18,2175731960,1.1,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ABBA,30.0,0.0,19.8,False,False,,32.5,0.0,0,0.9,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ARKA,22.0,0.0,19.8,False,False,,35.0,0.0,0,0.92,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ARTI,2.0,0.0,19.8,False,False,,39.6,0.0,0,0.0,Energi,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BOSS,50.0,0.0,19.8,False,False,,34.6,0.0,0,0.0,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BSBK,50.0,0.0,19.8,False,False,,36.5,0.02,106573000,0.9,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DEAL,6.0,0.0,19.8,False,False,,33.6,0.0,0,0.0,Transportasi & Logistik,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+FIMP,69.0,0.0,19.8,False,False,,38.0,0.0,0,0.0,Infrastruktur,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+GOTO,50.0,0.0,19.8,False,False,,38.4,0.37,601743000,0.38,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+INCF,50.0,0.0,19.8,False,False,,34.6,0.0,0,0.87,Barang Baku,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+INDX,60.0,0.0,19.8,False,False,,32.7,0.0,0,1.26,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+INRU,590.0,0.0,19.8,False,False,,30.7,0.0,0,0.0,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+JMAS,228.0,0.0,19.8,False,False,,39.7,0.0,0,1.08,Keuangan,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KARW,212.0,0.0,19.8,False,False,,30.6,0.0,0,0.57,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KMDS,520.0,0.0,19.8,False,False,,45.0,1.28,93351200,0.38,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MDRN,26.0,0.0,19.8,False,False,,34.1,0.0,0,1.22,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MFMI,1300.0,0.0,19.8,False,False,,85.5,0.0,0,0.0,Perindustrian,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MREI,920.0,0.0,19.8,False,False,,32.4,0.0,0,0.5,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MTFN,13.0,0.0,19.8,False,False,,36.7,0.0,0,1.28,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PEVE,310.0,0.0,19.8,False,False,,44.7,1.04,371860830,0.86,Kesehatan,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PMMP,50.0,0.0,19.8,False,False,,31.3,0.0,0,0.0,Konsumen Primer,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PTDU,70.0,0.0,19.8,False,False,,38.2,0.0,0,0.29,Infrastruktur,Neutral,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PTMR,374.0,0.0,19.8,False,False,,97.3,0.0,0,0.0,Consumer Cyclical,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ROTI,580.0,0.0,19.8,False,False,,42.3,1.4,309681900,0.27,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SWAT,16.0,0.0,19.8,False,False,,32.3,0.0,0,0.0,Barang Baku,Neutral,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TELE,9.0,0.0,19.8,False,False,,39.6,0.0,0,0.0,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+WICO,123.0,0.0,19.8,False,False,,31.9,0.0,0,0.0,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+WIKA,204.0,0.0,19.8,False,False,,40.0,0.0,0,0.0,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+WMUU,50.0,0.0,19.8,False,False,,39.8,0.04,122623000,1.37,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ZBRA,50.0,0.0,19.8,False,False,,36.3,0.0,0,0.0,Perindustrian,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ARTA,2070.0,-4.61,19.0,False,False,,38.0,9.62,11647900,0.84,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ATIC,436.0,-1.8,19.0,False,False,,33.6,1.88,37337960,0.82,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KBAG,38.0,-7.32,19.0,False,False,,33.5,1.82,105020480,1.53,Properti & Real Estat,Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+LPLI,224.0,-4.27,19.0,False,False,,31.1,2.43,49299850,0.62,Properti & Real Estat,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NPGF,52.0,-3.7,19.0,False,False,,30.3,3.79,949033465,0.77,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RMKE,380.0,-5.47,19.0,False,False,,35.5,1.53,31825467900,1.35,Energi,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SKBM,498.0,-5.14,19.0,False,False,,31.6,1.51,146577550,0.75,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMDM,496.0,-5.52,19.0,False,False,,31.0,3.83,29929375,0.75,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BINO,110.0,0.0,18.2,False,False,,35.5,0.89,130865695,0.76,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BKSW,50.0,0.0,18.2,False,False,,35.1,0.05,254329680,0.43,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BMRI,4080.0,0.25,18.2,False,False,,38.1,0.5,611497932850,0.88,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CTRA,570.0,0.88,18.2,False,False,,37.8,0.47,7158568950,0.78,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+EPAC,50.0,0.0,18.2,False,False,,33.6,0.16,2947092535,0.86,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+TPMA,458.0,-0.87,18.2,False,False,,39.4,0.4,671275340,0.74,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ACST,99.0,-3.88,17.5,False,False,,50.0,0.08,216438935,0.77,Infrastruktur,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ADMR,1525.0,-0.65,17.5,False,False,,42.5,0.27,60713488450,1.13,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AHAP,84.0,-11.58,17.5,False,False,,42.9,0.78,8399494729,2.41,Keuangan,Strong Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AISA,116.0,-3.33,17.5,False,False,,46.0,0.37,3375740660,1.06,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AKPI,510.0,-0.97,17.5,False,False,,44.9,0.52,319599250,0.34,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+APII,191.0,-5.45,17.5,False,False,,46.7,0.96,350178510,0.43,Perindustrian,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+APLI,268.0,-1.47,17.5,False,False,,43.0,0.13,123854560,0.32,Barang Baku,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ARCI,1300.0,-0.38,17.5,False,False,,49.1,0.2,56703084325,1.44,Barang Baku,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1270-1300,1210,1430
+AREA,314.0,-1.26,17.5,False,False,,48.2,0.83,922038290,1.02,Teknologi,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",302-314,278,368
+ASRI,119.0,-3.25,17.5,False,False,,41.1,0.76,1008255010,1.05,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ASRM,274.0,-2.14,17.5,False,False,,41.8,0.32,54471850,0.39,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AWAN,155.0,-2.52,17.5,False,False,,40.1,0.25,86518140,0.52,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BCIC,132.0,-1.49,17.5,False,False,,48.7,0.23,181951845,1.04,Keuangan,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BEKS,22.0,-4.35,17.5,False,False,,45.4,0.61,225143755,1.06,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BMAS,490.0,-2.0,17.5,False,False,,43.1,0.54,321307600,0.18,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BOAT,138.0,-2.13,17.5,False,False,,49.7,0.28,659331190,1.92,Energy,Neutral,Buy,,2026-09-25,Pantau,Belum ada arah yang jelas,134-138,128,153
+BOLT,775.0,-2.52,17.5,False,False,,42.3,0.35,29312725,0.32,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BPTR,71.0,-10.13,17.5,False,False,,44.2,0.82,1848139410,0.47,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BRMS,660.0,-2.94,17.5,False,False,,43.8,0.4,228355835175,2.08,Barang Baku,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",640-660,610,735
+BUMI,182.0,-1.62,17.5,False,False,,40.2,0.46,694225271985,2.03,Energi,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",177-182,167,204
+BWPT,112.0,-5.88,17.5,False,False,,47.5,0.29,61062600610,1.73,Konsumen Primer,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",107-112,99,132
+CAMP,169.0,-2.31,17.5,False,False,,44.8,0.3,1530877310,0.66,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CENT,92.0,-10.68,17.5,False,False,,41.5,0.5,4855224120,1.5,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CITY,178.0,0.56,17.5,False,False,,49.9,0.64,385744290,1.86,Properti & Real Estat,Neutral,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CPIN,3010.0,-0.33,17.5,False,False,,41.6,0.2,193064344600,0.5,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DCII,198000.0,-1.49,17.5,False,False,,47.5,0.93,128544250,0.51,Teknologi,Strong Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DGWG,318.0,-1.85,17.5,False,False,,41.1,0.9,3445439080,0.71,Basic Materials,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DIVA,133.0,-6.99,17.5,False,False,,45.5,0.34,1341338715,1.59,Teknologi,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DMMX,179.0,-3.24,17.5,False,False,,40.2,0.61,365060300,1.14,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DMND,605.0,-4.72,17.5,False,False,,43.4,0.52,70560750,0.38,Konsumen Primer,Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DSSA,1055.0,-3.21,17.5,False,False,,49.0,0.73,467158970025,1.85,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ERAL,312.0,-1.27,17.5,False,False,,48.6,0.34,2786968760,0.92,Konsumen Non-Primer,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",304-312,292,342
+EURO,1400.0,-4.44,17.5,False,False,,40.5,0.05,3804826150,0.78,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+FOLK,192.0,-12.73,17.5,False,False,,41.9,0.68,12072068925,1.86,Perindustrian,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+FPNI,500.0,-4.76,17.5,False,False,,44.9,0.36,9058949975,1.72,Barang Baku,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",474-500,424,615
+GSMF,90.0,-6.25,17.5,False,False,,41.9,0.19,4493050310,1.16,Keuangan,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",85-90,77,110
+GZCO,174.0,-5.95,17.5,False,False,,42.6,0.32,9001970130,1.65,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",168-174,157,199
+HAJJ,107.0,0.0,17.5,False,False,,45.1,0.63,876207480,0.9,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+IMJS,175.0,-3.31,17.5,False,False,,46.1,0.21,1796111880,1.37,Transportasi & Logistik,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",170-175,162,194
+IMPC,1415.0,-4.39,17.5,False,False,,40.3,0.51,40873092875,2.02,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+INDY,2690.0,-3.24,17.5,False,False,,48.5,0.41,72926335100,1.13,Energi,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",2610-2690,2470,3020
+INET,290.0,-8.23,17.5,False,False,,41.4,0.91,183501501090,2.42,Infrastruktur,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",278-290,254,342
+ISAP,23.0,0.0,17.5,False,False,,43.4,0.32,1365525555,1.55,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+JECC,745.0,-3.25,17.5,False,False,,49.8,0.1,386900275,0.46,Perindustrian,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KDTN,376.0,1.62,17.5,False,False,,43.5,0.77,2702589130,0.94,Konsumen Non-Primer,Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KIJA,170.0,-3.41,17.5,False,False,,44.2,0.48,77612983925,1.27,Properti & Real Estat,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",162-170,148,204
+KKGI,300.0,-1.32,17.5,False,False,,47.9,0.94,2347620470,0.83,Energi,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",294-300,282,326
+KLIN,117.0,-4.1,17.5,False,False,,47.4,0.63,58556335,0.59,Konsumen Non-Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KOPI,197.0,0.0,17.5,False,False,,41.5,0.33,819293225,0.9,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LABA,107.0,-8.55,17.5,False,False,,42.1,0.4,10147345620,1.7,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LEAD,100.0,-3.85,17.5,False,False,,41.8,0.65,4470841725,2.1,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LINK,1550.0,-2.21,17.5,False,False,,45.9,0.24,87442675,1.24,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+LION,366.0,-1.08,17.5,False,False,,49.6,0.22,132166520,0.64,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MEDS,74.0,-6.33,17.5,False,False,,43.9,0.25,20661174630,0.97,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MSTI,1345.0,-0.74,17.5,False,False,,48.8,0.39,2260396100,0.47,Teknologi,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1325-1345,1295,1420
+MTEL,466.0,-3.32,17.5,False,False,,43.7,0.42,16455645960,0.11,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+NCKL,905.0,-1.09,17.5,False,False,,44.8,0.53,47640081900,1.17,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+NIKL,195.0,-7.14,17.5,False,False,,40.4,0.41,3278356680,1.74,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+NIRO,163.0,-3.55,17.5,False,False,,45.3,0.4,384104245,0.95,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NISP,1255.0,0.0,17.5,False,False,,47.5,0.93,7847946300,0.42,Keuangan,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+NZIA,149.0,-10.78,17.5,False,False,,41.9,0.14,10385935870,0.9,Properti & Real Estat,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",139-149,121,191
+OBMD,192.0,-3.03,17.5,False,False,,47.6,0.18,471051785,0.69,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PDES,374.0,-1.58,17.5,False,False,,43.7,0.02,197928720,0.02,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+POLU,16200.0,-4.85,17.5,False,False,,49.2,0.51,464046250,1.31,Konsumen Non-Primer,Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PPRI,147.0,-7.55,17.5,False,False,,41.6,0.18,3249147095,1.35,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PTPS,154.0,-2.53,17.5,False,False,,44.7,0.24,656116765,1.04,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",150-154,143,170
+PWON,266.0,-0.75,17.5,False,False,,46.3,0.45,10071593370,0.58,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RALS,382.0,-0.52,17.5,False,False,,42.2,0.72,949145430,0.44,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RCCC,107.0,-1.83,17.5,False,False,,42.3,0.64,111421975,0.5,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+RUNS,64.0,-4.48,17.5,False,False,,40.7,0.19,258125360,0.56,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SAME,292.0,0.0,17.5,False,False,,41.9,0.47,385912410,0.48,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SBMA,110.0,-4.35,17.5,False,False,,48.1,0.5,289438830,0.72,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMGA,81.0,-4.71,17.5,False,False,,42.2,0.68,1480014150,1.46,Barang Baku,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",78-81,74,92
+SMKL,149.0,-4.49,17.5,False,False,,44.0,0.46,116383030,0.56,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SOFA,304.0,-4.4,17.5,False,False,,44.5,0.77,2177014150,1.58,Konsumen Non-Primer,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",286-304,250,384
+SOHO,1385.0,-3.15,17.5,False,False,,46.5,0.18,791077950,1.02,Kesehatan,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",1325-1385,1215,1640
+SPRE,90.0,-4.26,17.5,False,False,,45.1,0.7,549123375,0.91,Konsumen Non-Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SPTO,600.0,-0.83,17.5,False,False,,42.3,0.32,382688725,0.27,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SSTM,452.0,-1.74,17.5,False,False,,49.8,0.11,400742070,1.49,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+STAR,374.0,-8.33,17.5,False,False,,46.9,0.6,184892430,0.52,Keuangan,Strong Sell,Buy,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TIFA,294.0,-2.0,17.5,False,False,,40.8,0.09,170207860,0.4,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TLDN,585.0,0.0,17.5,False,False,,44.3,0.25,1100681900,0.78,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",570-585,550,640
+TNCA,166.0,-8.79,17.5,False,False,,42.8,0.19,889729735,1.01,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+TOBA,496.0,-1.78,17.5,False,False,,40.6,0.53,8072804200,2.03,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+TRGU,170.0,-2.3,17.5,False,False,,48.1,0.04,85288695,0.08,Konsumen Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TRJA,125.0,-4.58,17.5,False,False,,48.6,0.27,1078550300,0.79,Transportasi & Logistik,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",119-125,108,150
+UNTR,24225.0,0.31,17.5,False,False,,41.1,0.49,109376561750,0.66,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+VINS,142.0,-2.07,17.5,False,False,,46.8,0.44,219743485,0.96,Keuangan,Strong Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+WIIM,1545.0,0.98,17.5,False,False,,46.4,0.73,5165352675,1.0,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+WOMF,276.0,-0.72,17.5,False,False,,48.9,0.22,160118300,0.51,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+FMII,236.0,0.0,16.8,False,False,,36.1,1.06,7647510,0.36,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HERO,322.0,-0.62,16.8,False,False,,35.4,1.33,51589430,0.59,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MTDL,498.0,0.0,16.8,False,False,,39.8,1.02,1110546520,0.4,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RISE,700.0,0.0,16.8,False,False,,31.2,1.35,1998460175,1.14,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AMAG,386.0,-0.52,16.0,False,False,,40.0,0.14,37171610,0.21,Keuangan,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BEER,65.0,-9.72,16.0,False,False,,24.5,0.57,3154281590,1.04,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CGAS,145.0,-3.33,16.0,False,False,,40.3,1.02,583630570,1.1,Energi,Strong Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ESIP,97.0,-13.39,16.0,False,False,,27.3,0.76,4466154285,1.34,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+IKAI,20.0,-4.76,16.0,False,False,,48.5,1.49,339978615,1.2,Perindustrian,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MIRA,24.0,0.0,16.0,False,False,,47.1,1.4,155156780,1.29,Transportasi & Logistik,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MSIN,200.0,-2.91,16.0,False,False,,13.7,0.92,20593312590,0.73,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RGAS,95.0,-8.65,16.0,False,False,,26.9,0.39,13304233350,0.62,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+WTON,72.0,-2.7,16.0,False,False,,26.6,0.83,381024670,0.76,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+AGRO,140.0,0.0,14.5,False,False,,34.7,0.51,1224109575,1.14,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+APEX,172.0,-4.44,14.5,False,False,,36.3,0.56,4345622885,1.49,Energi,Sell,Buy,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",166-172,156,195
+BACA,113.0,-2.59,14.5,False,False,,38.8,0.86,262711360,0.93,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BAIK,250.0,-9.42,14.5,False,False,,32.3,0.94,6995277290,0.28,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BBNI,3500.0,-0.57,14.5,False,False,,34.6,0.99,152679770550,0.76,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BBRM,107.0,-6.14,14.5,False,False,,36.3,0.57,1485869055,1.9,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BJTM,510.0,-0.97,14.5,False,False,,36.5,0.92,2668098025,0.43,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BRIS,1510.0,-3.21,14.5,False,False,,21.7,1.5,35092831125,0.87,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BSDE,560.0,-1.75,14.5,False,False,,32.0,0.61,19721673175,0.81,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CBDK,3550.0,-2.2,14.5,False,False,,37.9,0.63,11716348250,1.35,Real Estate,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+COCO,102.0,-6.42,14.5,False,False,,36.0,0.26,134440858170,2.81,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DART,148.0,-4.52,14.5,False,False,,38.2,0.51,291859180,0.69,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DEFI,89.0,-14.42,14.5,False,False,,36.2,0.54,10517948470,1.36,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DEPO,222.0,-3.48,14.5,False,False,,27.8,1.11,80974850,0.8,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DGIK,128.0,-5.19,14.5,False,False,,39.3,0.56,1347225910,0.73,Infrastruktur,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DNAR,123.0,-2.38,14.5,False,False,,35.4,0.52,237228080,1.32,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DOID,214.0,-2.73,14.5,False,False,,37.9,0.72,1269050060,0.85,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DRMA,925.0,-2.63,14.5,False,False,,31.8,0.7,868590075,0.34,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DWGL,216.0,-5.26,14.5,False,False,,33.8,0.51,2635741470,0.49,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ECII,150.0,-11.24,14.5,False,False,,38.9,0.63,1039072525,1.1,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ESSA,580.0,-2.52,14.5,False,False,,35.7,0.63,79029070175,0.92,Barang Baku,Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+EXCL,2330.0,-2.92,14.5,False,False,,30.0,0.76,18851991850,1.32,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+FIRE,108.0,-10.0,14.5,False,False,,39.7,0.67,3864829745,1.9,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+GEMA,81.0,-7.95,14.5,False,False,,35.8,0.85,902048715,0.73,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+GIAA,56.0,-5.08,14.5,False,False,,33.6,0.8,6126430170,1.1,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+GOOD,302.0,-2.58,14.5,False,False,,38.9,0.84,65942820,0.21,Konsumen Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+GRPM,136.0,-9.93,14.5,False,False,,28.5,1.02,1682012655,0.75,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+HALO,62.0,-10.14,14.5,False,False,,35.7,0.36,3249319870,1.02,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+HDFA,90.0,-11.76,14.5,False,False,,31.4,0.55,372108130,0.78,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IKAN,81.0,-10.0,14.5,False,False,,36.0,0.57,2089423130,1.26,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+INAI,158.0,-9.2,14.5,False,False,,31.7,0.42,665798175,0.29,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+INKP,8225.0,0.92,14.5,False,False,,39.3,0.69,42516732250,1.11,Barang Baku,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",8075-8225,7825,8825
+ISEA,77.0,-10.47,14.5,False,False,,31.4,0.45,1467040365,1.11,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ISSP,398.0,-1.97,14.5,False,False,,33.5,0.41,1406350370,0.53,Barang Baku,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ITMA,1355.0,-2.52,14.5,False,False,,37.8,0.18,211622150,1.14,Energi,Sell,Neutral,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+JPFA,2130.0,-2.29,14.5,False,False,,38.4,0.49,31378177450,0.8,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",2090-2130,2010,2310
+JSMR,2720.0,-0.37,14.5,False,False,,36.8,0.23,9574183350,0.53,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KEEN,835.0,-1.76,14.5,False,False,,35.3,0.9,7814105750,0.89,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KLAS,76.0,-5.0,14.5,False,False,,35.5,0.84,840828775,1.39,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KOCI,102.0,-8.93,14.5,False,False,,38.5,0.39,5764243300,1.57,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KONI,2050.0,-1.91,14.5,False,False,,38.1,0.21,73199350,1.11,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+LAJU,63.0,-7.35,14.5,False,False,,36.0,0.6,5145749615,1.65,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LUCK,105.0,-9.48,14.5,False,False,,35.2,0.77,804414375,0.88,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LUCY,286.0,-9.49,14.5,False,False,,35.8,0.5,55751522200,0.9,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MAHA,140.0,-0.71,14.5,False,False,,38.6,0.74,2334842520,0.7,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MANG,36.0,-5.26,14.5,False,False,,36.4,0.59,818310070,0.76,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MCAS,242.0,-9.7,14.5,False,False,,36.9,0.51,587032290,0.77,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MCOR,66.0,-1.49,14.5,False,False,,35.0,0.37,355540540,0.53,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MIKA,1720.0,-0.58,14.5,False,False,,36.8,0.16,7160010525,0.44,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MLPT,1005.0,-2.43,14.5,False,False,,32.7,0.78,3227643800,1.97,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MPOW,100.0,-9.09,14.5,False,False,,31.1,0.36,2211366265,0.93,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MSKY,53.0,-14.52,14.5,False,False,,33.3,0.49,4794359600,1.02,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MYOH,1025.0,-0.97,14.5,False,False,,37.9,0.46,188821325,0.35,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NELY,195.0,-1.02,14.5,False,False,,36.0,0.3,374565080,1.05,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+NSSS,720.0,-6.49,14.5,False,False,,37.5,0.55,4378476600,1.51,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+NTBK,68.0,-13.92,14.5,False,False,,30.0,1.35,2443136260,1.58,Perindustrian,Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PGJO,790.0,-3.66,14.5,False,False,,39.5,0.89,1293245675,1.08,Teknologi,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",760-790,705,920
+PIPA,141.0,-11.88,14.5,False,False,,37.2,0.49,39094297285,2.01,Perindustrian,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",132-141,114,182
+PNIN,690.0,0.0,14.5,False,False,,33.9,0.51,275912125,0.53,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PUDP,266.0,-0.75,14.5,False,False,,31.4,0.44,48819620,0.66,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PURI,144.0,-7.69,14.5,False,False,,39.0,0.89,1785676505,1.1,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PYFA,210.0,-5.41,14.5,False,False,,37.7,0.57,9079468290,1.72,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PZZA,179.0,-1.65,14.5,False,False,,39.5,0.15,654619720,0.55,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RMKO,278.0,-6.71,14.5,False,False,,33.6,0.4,3916764910,1.88,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RUIS,196.0,-2.0,14.5,False,False,,39.1,0.31,265854010,1.05,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SDRA,206.0,0.0,14.5,False,False,,31.7,0.27,233756670,0.25,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SIMP,575.0,-3.36,14.5,False,False,,36.5,0.85,9058047375,0.95,Konsumen Primer,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",560-575,540,625
+SKLT,197.0,-3.43,14.5,False,False,,32.4,0.87,42801940,0.71,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SLIS,72.0,-12.2,14.5,False,False,,35.9,0.96,6189213310,1.7,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SMBR,154.0,-5.52,14.5,False,False,,35.7,0.26,3685591040,1.21,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+TKIM,7125.0,-1.04,14.5,False,False,,36.7,0.34,23857043750,1.21,Barang Baku,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",6975-7125,6675,7775
+TOWR,390.0,-1.52,14.5,False,False,,33.1,0.65,28005789920,0.79,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+UFOE,137.0,-0.72,14.5,False,False,,38.5,0.29,370433870,0.76,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+VRNA,75.0,-6.25,14.5,False,False,,35.7,0.23,1279675725,0.79,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+WGSH,113.0,-9.6,14.5,False,False,,31.9,0.71,4293291785,0.62,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+WIRG,61.0,-7.58,14.5,False,False,,35.8,0.94,19354405845,1.45,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+YELO,74.0,-12.94,14.5,False,False,,32.2,0.54,13663603620,2.2,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BMBL,29.0,-3.33,13.8,False,False,,46.7,0.61,815359165,0.95,Konsumen Non-Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CNMA,90.0,0.0,13.8,False,False,,41.3,0.67,1876057725,0.64,Konsumen Non-Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+EAST,89.0,0.0,13.8,False,False,,43.6,0.44,143877550,0.3,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HDIT,50.0,0.0,13.8,False,False,,45.0,0.0,917112000,0.89,Teknologi,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",,,
+PSGO,194.0,0.52,13.8,False,False,,48.5,0.28,90956795,0.31,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BULL,356.0,-6.32,13.0,False,False,,31.3,1.26,184924888870,2.41,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KOKA,156.0,-14.75,13.0,False,False,,35.5,1.2,4708246280,1.86,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MAIN,640.0,-2.29,13.0,False,False,,36.0,1.25,1291958725,0.8,Konsumen Primer,Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PALM,286.0,-0.69,13.0,False,False,,37.9,1.47,72276380,0.67,Keuangan,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SOTS,565.0,-2.59,13.0,False,False,,39.3,1.09,162396500,1.48,Konsumen Non-Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+TRON,88.0,-11.11,13.0,False,False,,30.1,1.29,2785369600,2.45,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+YOII,74.0,-7.5,13.0,False,False,,31.7,1.09,916986745,0.98,Financial Services,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CTBN,3000.0,0.0,12.2,False,False,,18.1,0.51,124639950,-0.0,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+GTBO,133.0,-2.21,12.2,False,False,,20.8,0.22,10331055,0.46,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ITIC,202.0,0.0,12.2,False,False,,27.4,0.48,83910340,1.1,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+KPIG,50.0,0.0,12.2,False,False,,28.6,0.08,55442335410,1.18,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LPKR,50.0,0.0,12.2,False,False,,19.0,0.06,10714226445,1.2,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AGRS,57.0,-1.72,10.8,False,False,,34.0,0.65,549916375,0.82,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ASHA,50.0,0.0,10.8,False,False,,33.0,0.04,1703025390,1.33,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BBKP,50.0,0.0,10.8,False,False,,30.9,0.05,3340836330,0.85,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BESS,830.0,0.0,10.8,False,False,,35.9,0.4,302758125,0.74,Energi,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+HOKI,50.0,0.0,10.8,False,False,,34.0,0.02,2816299040,0.73,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PNSE,480.0,-0.41,10.8,False,False,,39.1,0.05,10741825,0.43,Konsumen Non-Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SMSM,1685.0,0.3,10.8,False,False,,39.5,0.4,5938886875,0.29,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+STTP,9200.0,0.0,10.8,False,False,,35.0,0.07,28174125,0.16,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+WEGE,50.0,0.0,10.8,False,False,,38.3,0.0,752622220,0.34,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AMMS,206.0,-0.96,10.0,False,False,,44.5,0.29,227885750,0.71,Konsumen Primer,Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ASSA,590.0,-0.84,10.0,False,False,,40.2,0.3,8093197750,1.26,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BIPI,137.0,-3.52,10.0,False,False,,41.5,0.39,92791467450,2.4,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BUKA,104.0,-0.95,10.0,False,False,,40.4,0.25,22193944390,0.81,Teknologi,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BUKK,970.0,-4.9,10.0,False,False,,41.1,0.16,88433125,1.3,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BYAN,12100.0,-2.22,10.0,False,False,,45.6,0.44,37706987000,0.51,Energi,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CASS,1825.0,-0.82,10.0,False,False,,43.6,0.76,400744175,0.23,Infrastruktur,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CEKA,2170.0,-0.46,10.0,False,False,,43.5,0.22,78496150,0.29,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+FUTR,268.0,-3.6,10.0,False,False,,42.1,0.38,18457744800,2.64,Konsumen Non-Primer,Strong Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",254-268,230,324
+IFSH,1000.0,-0.99,10.0,False,False,,41.9,0.38,10187275,0.71,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IKPM,180.0,-2.7,10.0,False,False,,43.1,0.23,145591315,0.65,Kesehatan,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+INCO,4680.0,-0.85,10.0,False,False,,42.3,0.36,80306842600,1.39,Barang Baku,Strong Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LMAX,103.0,-3.74,10.0,False,False,,42.2,0.24,119325215,1.13,Konsumen Non-Primer,Strong Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MBMA,500.0,-0.99,10.0,False,False,,44.5,0.43,73860730750,1.57,Barang Baku,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SIDO,350.0,0.0,10.0,False,False,,45.1,0.68,8306207910,0.45,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+AMAN,206.0,-4.63,8.5,False,False,,23.9,0.35,84397690,1.09,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+APIC,400.0,-0.5,8.5,False,False,,28.8,0.18,2004264305,0.98,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ARTO,850.0,-1.16,8.5,False,False,,28.5,0.36,27249519975,1.34,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BANK,234.0,-2.5,8.5,False,False,,21.7,0.28,2068507220,0.92,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BBHI,820.0,-4.09,8.5,False,False,,16.9,0.02,12580104625,0.76,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BBYB,206.0,-3.74,8.5,False,False,,27.7,0.93,14116727860,1.63,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BNLI,2000.0,-2.91,8.5,False,False,,23.7,0.77,129647900,1.04,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BOBA,195.0,-2.5,8.5,False,False,,29.7,0.5,245987575,0.03,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BRPT,1510.0,-3.21,8.5,False,False,,29.7,0.58,115297731600,2.36,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BUAH,484.0,-0.82,8.5,False,False,,28.7,0.73,158071140,0.19,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+CSRA,700.0,-1.41,8.5,False,False,,27.6,0.35,330859700,0.65,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+DATA,1600.0,-1.54,8.5,False,False,,29.5,0.71,4202345600,1.35,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+EMTK,420.0,-2.33,8.5,False,False,,25.0,0.66,20508023735,1.54,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ENAK,195.0,-4.41,8.5,False,False,,20.5,0.16,222654020,0.63,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+GMTD,1115.0,-3.88,8.5,False,False,,28.6,0.29,62491150,0.57,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+GPSO,226.0,-10.32,8.5,False,False,,22.4,0.49,9388421750,0.9,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+HEAL,620.0,-1.59,8.5,False,False,,27.7,0.41,16886801700,0.43,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+HMSP,635.0,0.0,8.5,False,False,,24.0,0.36,15113771225,0.71,Konsumen Primer,Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+INDS,240.0,-1.64,8.5,False,False,,28.6,0.92,334795520,1.17,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IPCC,1080.0,-0.46,8.5,False,False,,30.0,0.65,904514025,0.65,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LIVE,161.0,-1.23,8.5,False,False,,23.6,0.2,792499835,0.98,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MLIA,210.0,0.0,8.5,False,False,,24.1,0.53,25586560,0.13,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+MYOR,1435.0,-1.03,8.5,False,False,,27.4,0.42,30696237175,0.34,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+NICL,416.0,-4.15,8.5,False,False,,29.8,0.85,22102095205,1.77,Barang Baku,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PANI,4840.0,-2.42,8.5,False,False,,23.1,0.7,39001423575,1.41,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PNLF,202.0,-0.98,8.5,False,False,,27.3,0.68,8667768120,0.84,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RAJA,665.0,-3.62,8.5,False,False,,25.5,0.77,51905477950,2.37,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SCMA,171.0,-1.16,8.5,False,False,,24.1,0.49,12252955245,1.49,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SMRA,254.0,-2.31,8.5,False,False,,24.4,0.42,15483763670,0.84,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+TCPI,1540.0,-4.94,8.5,False,False,,27.4,0.35,12710124775,0.61,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ACES,342.0,-0.58,7.0,False,False,,39.7,0.33,6769682750,0.6,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ALII,685.0,-4.2,7.0,False,False,,31.3,0.56,522903825,1.43,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+APLN,117.0,-4.1,7.0,False,False,,33.5,0.47,3035011520,1.1,Properti & Real Estat,Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ASBI,392.0,0.0,7.0,False,False,,39.9,0.01,86715540,0.26,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+ASII,4690.0,-1.68,7.0,False,False,,38.5,0.68,221136058900,0.83,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BAPA,108.0,-14.29,7.0,False,False,,30.7,0.78,5790513025,0.8,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BBTN,1105.0,-0.45,7.0,False,False,,30.9,0.38,21038941725,0.98,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BELL,94.0,-12.15,7.0,False,False,,30.8,0.59,7243025075,1.48,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BIRD,1570.0,-0.95,7.0,False,False,,32.6,0.65,1119596225,0.52,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BJBR,755.0,-1.31,7.0,False,False,,33.0,0.45,5848726075,0.39,Keuangan,Sell,Strong Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BKSL,64.0,-3.03,7.0,False,False,,35.5,0.72,10080400800,1.72,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BPFI,238.0,-3.25,7.0,False,False,,35.5,0.42,40948250,0.29,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+BREN,3050.0,-1.61,7.0,False,False,,39.1,0.38,44645097650,1.45,Infrastruktur,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+BUVA,620.0,-6.77,7.0,False,False,,31.3,1.0,57715606075,2.87,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+CMRY,4370.0,-1.8,7.0,False,False,,39.9,0.59,19351075800,0.46,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+DEWA,356.0,-2.2,7.0,False,False,,35.8,0.52,193064713990,2.46,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ELPI,605.0,-1.63,7.0,False,False,,38.0,0.28,1491679950,1.25,Transportasi & Logistik,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ERTX,169.0,-0.59,7.0,False,False,,35.5,0.34,342614540,1.44,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+FILM,655.0,-5.76,7.0,False,False,,34.8,0.48,37095695500,1.6,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+GPRA,99.0,-2.94,7.0,False,False,,35.8,0.71,12107267300,0.79,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+GTSI,147.0,-3.29,7.0,False,False,,39.9,0.48,4666736225,2.64,Energi,Sell,Neutral,,2026-09-25,Pantau,"Tren harian melemah, mingguan masih bertahan",141-147,131,170
+HUMI,120.0,-6.98,7.0,False,False,,37.2,0.85,6253954575,2.46,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ICBP,6650.0,-4.66,7.0,False,False,,34.5,0.72,42502895125,0.54,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+IDPR,256.0,-0.78,7.0,False,False,,35.7,0.02,35861630,0.16,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+IRRA,352.0,-2.22,7.0,False,False,,35.5,0.23,892860800,0.36,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+KAEF,422.0,-1.4,7.0,False,False,,38.7,0.18,2631608010,0.57,Kesehatan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+LOPI,58.0,-9.38,7.0,False,False,,35.4,0.78,1381944945,1.29,Transportasi & Logistik,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MHKI,121.0,-4.72,7.0,False,False,,31.1,0.5,630224015,2.21,Perindustrian,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MIDI,260.0,-1.52,7.0,False,False,,35.0,0.23,2546898230,0.71,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+MORA,4790.0,-4.2,7.0,False,False,,34.4,0.3,2261239750,1.77,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+OASA,260.0,-3.7,7.0,False,False,,31.6,0.48,8542477370,2.37,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+OBAT,228.0,-5.0,7.0,False,False,,38.6,0.68,207101960,0.49,Consumer Defensive,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PAMG,50.0,-3.85,7.0,False,False,,31.8,0.52,1809845415,1.08,Properti & Real Estat,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PBRX,24.0,-4.0,7.0,False,False,,38.0,0.96,183574725,1.47,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+PGAS,1430.0,-0.69,7.0,False,False,,34.7,0.36,55404864250,0.73,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PNBN,850.0,0.0,7.0,False,False,,32.0,0.37,2603704825,0.63,Keuangan,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+PTPP,189.0,-2.07,7.0,False,False,,35.9,0.58,1776586120,0.95,Infrastruktur,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RAAM,169.0,-3.43,7.0,False,False,,35.7,0.23,674534990,1.43,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RATU,3990.0,-2.44,7.0,False,False,,33.0,0.65,45582069150,2.35,Energy,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+RIGS,625.0,1.63,7.0,False,False,,38.9,0.19,418943050,0.36,Energi,Strong Sell,Strong Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+SILO,1945.0,-5.12,7.0,False,False,,35.8,0.73,3139156150,-0.15,Kesehatan,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+SULI,78.0,-8.24,7.0,False,False,,32.7,0.92,891178290,0.8,Barang Baku,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+TBLA,610.0,-0.81,7.0,False,False,,36.8,0.64,1350308175,0.68,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+TPIA,1800.0,-1.1,7.0,False,False,,38.6,0.39,294110061500,1.6,Barang Baku,Strong Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+WIFI,1725.0,-4.43,7.0,False,False,,30.0,0.74,41988118475,1.76,Teknologi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+WINE,127.0,-3.05,7.0,False,False,,37.1,0.16,296203445,0.62,Konsumen Primer,Sell,Sell,,2026-09-25,Hindari dulu,"Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi",,,
+WOOD,190.0,-2.06,7.0,False,False,,33.8,0.88,781781450,0.89,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+WOWS,50.0,-3.85,7.0,False,False,,30.6,0.68,2345381140,1.3,Energi,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
+ZATA,55.0,-9.84,7.0,False,False,,36.2,0.86,9564531040,1.85,Konsumen Non-Primer,Sell,Sell,,2026-09-25,Hindari dulu,Tren harian dan mingguan masih turun,,,
