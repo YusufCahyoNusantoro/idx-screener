@@ -49,6 +49,9 @@ OUT_CSV = BASE / "hasil_screener.csv"
 ARSIP = BASE / "arsip"
 CACHE_SEKTOR = BASE / "cache_sektor.json"
 RIWAYAT = BASE / "riwayat_top10.json"
+DAFTAR = BASE / "daftar_saham.csv"          # semua emiten BEI: kode, nama, sektor
+TAMBAHAN = BASE / "tambahan_tickers.txt"    # opsional: IPO baru yang belum ada di daftar
+DAFTAR_INFO = BASE / "daftar_saham_info.json"  # kapan daftar terakhir diperbarui dari BEI
 
 # Daftar default: saham-saham likuid IDX. Edit sesukamu, atau pakai --tickers file.txt
 DEFAULT_TICKERS = """
@@ -148,27 +151,145 @@ def ke_tanggal(df):
     return df[~df.index.duplicated(keep="last")]
 
 
-def ambil_sektor(tickers):
+def muat_daftar():
+    """Baca daftar_saham.csv -> ({kode: nama}, {kode: sektor})."""
+    nama, sektor = {}, {}
+    if DAFTAR.exists():
+        df = pd.read_csv(DAFTAR, keep_default_na=False, dtype=str)
+        for r in df.itertuples():
+            k = r.kode.strip().upper()
+            nama[k] = r.nama.strip()
+            if r.sektor.strip() and r.sektor.strip() != "-":
+                sektor[k] = r.sektor.strip()
+    return nama, sektor
+
+
+SEKTOR_BEI = {
+    "barang konsumen primer": "Konsumen Primer", "consumer non-cyclicals": "Konsumen Primer",
+    "barang konsumen non-primer": "Konsumen Non-Primer", "consumer cyclicals": "Konsumen Non-Primer",
+    "energi": "Energi", "energy": "Energi", "barang baku": "Barang Baku", "basic materials": "Barang Baku",
+    "keuangan": "Keuangan", "financials": "Keuangan", "kesehatan": "Kesehatan", "healthcare": "Kesehatan",
+    "perindustrian": "Perindustrian", "industrials": "Perindustrian", "infrastruktur": "Infrastruktur",
+    "infrastructures": "Infrastruktur", "teknologi": "Teknologi", "technology": "Teknologi",
+    "properti & real estat": "Properti & Real Estat", "properties & real estate": "Properti & Real Estat",
+    "transportasi & logistik": "Transportasi & Logistik", "transportation & logistic": "Transportasi & Logistik",
+}
+
+
+def _ambil_json(url):
+    """GET JSON dari situs BEI. Pakai curl_cffi (ikut terpasang bersama yfinance) agar mirip browser."""
+    headers = {"Accept": "application/json, text/plain, */*", "Referer": "https://www.idx.co.id/",
+               "Accept-Language": "id-ID,id;q=0.9,en;q=0.8"}
+    try:
+        from curl_cffi import requests as creq
+        r = creq.get(url, headers=headers, impersonate="chrome", timeout=40)
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}")
+        return r.json()
+    except ImportError:
+        import urllib.request
+        req = urllib.request.Request(url, headers={**headers, "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"})
+        with urllib.request.urlopen(req, timeout=40) as f:
+            return json.loads(f.read().decode("utf-8"))
+
+
+def _ambil_field(row, *keys):
+    low = {str(k).lower(): v for k, v in row.items()}
+    for k in keys:
+        v = low.get(k.lower())
+        if v not in (None, ""):
+            return str(v).strip()
+    return ""
+
+
+def perbarui_daftar(paksa=False, hari=7):
+    """Perbarui daftar_saham.csv dari situs resmi BEI (maks. sekali per `hari` hari).
+    Kalau gagal atau hasilnya janggal, daftar lama tetap dipakai."""
+    info = {}
+    if DAFTAR_INFO.exists():
+        try:
+            info = json.loads(DAFTAR_INFO.read_text(encoding="utf-8"))
+        except Exception:
+            info = {}
+    hari_ini = datetime.now(WIB).date()
+    terakhir = info.get("dicoba") or info.get("diperbarui")
+    if not paksa and terakhir:
+        try:
+            jeda = hari if info.get("status") == "ok" else 1   # gagal -> coba lagi besok
+            if (hari_ini - datetime.strptime(terakhir, "%Y-%m-%d").date()).days < jeda:
+                return
+        except ValueError:
+            pass
+
+    print("  Memeriksa daftar emiten terbaru di situs BEI...")
+    lama_nama, lama_sektor = muat_daftar()
+    baru, sumber, err = {}, "", ""
+    sumber_url = [
+        "https://www.idx.co.id/primary/ListedCompany/GetCompanyProfiles?emitenType=s&start=0&length=9999",
+        "https://www.idx.co.id/primary/StockData/GetSecuritiesStock?start=0&length=9999&code=&sector=&board=&language=id-id",
+    ]
+    for url in sumber_url:
+        try:
+            js = _ambil_json(url)
+            rows = (js.get("data") or js.get("Data") or []) if isinstance(js, dict) else js
+            for row in rows or []:
+                kode = _ambil_field(row, "KodeEmiten", "Kode_Emiten", "Code", "Kode").upper()
+                if not kode or not kode.isalnum() or len(kode) > 5:
+                    continue
+                nama = _ambil_field(row, "NamaEmiten", "Nama_Emiten", "Name", "Nama")
+                sek = SEKTOR_BEI.get(_ambil_field(row, "Sektor", "Sector").lower(), "")
+                baru[kode] = (nama, sek)
+            if len(baru) >= 600:
+                sumber = url.split("/primary/")[1].split("?")[0]
+                break
+            err = f"hanya {len(baru)} emiten"
+        except Exception as e:
+            err = str(e)[:120]
+        baru = {}
+
+    info["dicoba"] = hari_ini.isoformat()
+    if not baru:
+        print(f"  ! Tidak bisa ambil daftar dari BEI ({err}). Memakai daftar yang ada ({len(lama_nama)} emiten).")
+        info["status"] = f"gagal: {err}"
+        DAFTAR_INFO.write_text(json.dumps(info, indent=1, ensure_ascii=False), encoding="utf-8")
+        return
+
+    rows = []
+    for kode in sorted(baru):
+        nama, sek = baru[kode]
+        rows.append({"kode": kode, "nama": nama or lama_nama.get(kode, ""),
+                     "sektor": sek or lama_sektor.get(kode, "-") or "-"})
+    tambah = sorted(set(baru) - set(lama_nama))
+    hilang = sorted(set(lama_nama) - set(baru))
+    pd.DataFrame(rows).to_csv(DAFTAR, index=False)
+    info.update({"diperbarui": hari_ini.isoformat(), "status": "ok", "sumber": sumber, "jumlah": len(rows),
+                 "baru": tambah[:50], "hilang": hilang[:50]})
+    DAFTAR_INFO.write_text(json.dumps(info, indent=1, ensure_ascii=False), encoding="utf-8")
+    print(f"  Daftar emiten diperbarui dari BEI: {len(rows)} emiten"
+          + (f", {len(tambah)} baru ({', '.join(tambah[:8])}{'...' if len(tambah) > 8 else ''})" if tambah else "")
+          + (f", {len(hilang)} tidak ada lagi" if hilang else "") + ".")
+
+
+def ambil_sektor(tickers, sektor_daftar, maks_baru=30):
+    """Sektor dari daftar resmi; yang belum ada dilengkapi dari Yahoo (maks 30 per run, disimpan)."""
     cache = {}
     if CACHE_SEKTOR.exists():
         try:
             cache = json.loads(CACHE_SEKTOR.read_text(encoding="utf-8"))
         except Exception:
             cache = {}
-    kurang = [t for t in tickers if t not in cache]
-    if kurang:
-        print(f"  Mengambil sektor untuk {len(kurang)} saham (sekali saja, lalu disimpan)...")
+    kurang = [t for t in tickers if t not in sektor_daftar and t not in cache][:maks_baru]
     for t in kurang:
         try:
             info = yf.Ticker(t + ".JK").info or {}
             cache[t] = info.get("sector") or "-"
         except Exception:
-            pass   # gagal (mis. rate limit) -> tidak disimpan, dicoba lagi di run berikutnya
+            pass   # gagal (mis. rate limit) -> dicoba lagi di run berikutnya
     CACHE_SEKTOR.write_text(json.dumps(cache, indent=1), encoding="utf-8")
-    return {t: cache.get(t, "-") for t in tickers}
+    return {t: sektor_daftar.get(t) or cache.get(t, "-") for t in tickers}
 
 
-# ─────────────────────────── indikator ───────────────────────────
 def sma(s, n):
     return s.rolling(n).mean()
 
@@ -206,6 +327,7 @@ def rating(df):
     """Ringkasan teknikal ala 'technical summary': Moving Averages + 6 oscillator."""
     if df is None or len(df) < 20:
         return None
+    df = df.iloc[-320:]
     c, h, l = df["Close"], df["High"], df["Low"]
     last = c.iloc[-1]
 
@@ -230,9 +352,11 @@ def rating(df):
     sig = macd.ewm(span=9, adjust=False).mean()
     if fin(macd.iloc[-1]) and fin(sig.iloc[-1]):
         votes.append(1 if macd.iloc[-1] > sig.iloc[-1] else -1)
-    tp = (h + l + c) / 3
-    mad = tp.rolling(20).apply(lambda x: np.mean(np.abs(x - x.mean())), raw=True)
-    cci = ((tp - tp.rolling(20).mean()) / (0.015 * mad.replace(0, np.nan))).iloc[-1]
+    tp = ((h + l + c) / 3).iloc[-20:]
+    cci = np.nan
+    if len(tp) == 20:
+        mad = float(np.mean(np.abs(tp - tp.mean())))
+        cci = (tp.iloc[-1] - tp.mean()) / (0.015 * mad) if mad > 0 else np.nan
     if fin(cci):
         votes.append(1 if cci < -100 else -1 if cci > 100 else 0)
     wr = (-100 * (hh - c) / (hh - ll).replace(0, np.nan)).iloc[-1]
@@ -280,6 +404,7 @@ def gabung_jam(df, n):
 
 
 def pola_candle(df):
+    """Pola bullish pada candle TERAKHIR df (Bullish Engulfing / Hammer / Bullish Marubozu) atau None."""
     if len(df) < 7:
         return None
     o, h, l, c = (df[k].iloc[-1] for k in ("Open", "High", "Low", "Close"))
@@ -297,13 +422,62 @@ def pola_candle(df):
     return None
 
 
-# ─────────────────────────── analisa per saham ───────────────────────────
-def analisa(t, d, jam, ihsg_ret, sektor, frac_hari, hari_ini):
+def pola_dengan_konfirmasi(d):
+    """(nama_pola, status, high_pola). status 'tunggu' = baru muncul hari ini,
+    'ok' = muncul kemarin dan hari ini candle hijau tutup di atas high pola."""
+    p_now = pola_candle(d)
+    if p_now:
+        return p_now, "tunggu", float(d["High"].iloc[-1])
+    p_prev = pola_candle(d.iloc[:-1])
+    if p_prev:
+        hi_prev = float(d["High"].iloc[-2])
+        o, c = d["Open"].iloc[-1], d["Close"].iloc[-1]
+        if c > o and c > hi_prev:
+            return p_prev, "ok", hi_prev
+    return None, None, None
+
+
+def atr(d, n=14):
+    h, l, c = d["High"], d["Low"], d["Close"]
+    tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
+    return float(tr.ewm(alpha=1 / n, adjust=False, min_periods=n).mean().iloc[-1])
+
+
+def fraksi(harga):
+    """Fraksi harga (tick) saham BEI."""
+    if harga < 200:
+        return 1
+    if harga < 500:
+        return 2
+    if harga < 2000:
+        return 5
+    if harga < 5000:
+        return 10
+    return 25
+
+
+def bulat_bawah(x):
+    t = fraksi(x)
+    return int(math.floor(x / t) * t)
+
+
+def bulat_atas(x):
+    t = fraksi(x)
+    return int(math.ceil(x / t) * t)
+
+
+def rupiah(x):
+    return f"{int(round(x)):,}".replace(",", ".")
+
+
+def analisa(t, d, ihsg_ret, sektor, nama, frac_hari, hari_ini):
     c, v = d["Close"], d["Volume"]
     if len(d) < 30:
         return None
     last = float(c.iloc[-1])
     prev = float(c.iloc[-2])
+    if last <= 0 or prev <= 0:
+        return None
     parsial = d.index[-1].date() == hari_ini and frac_hari < 1.0
 
     ma20, ma50, ma200 = sma(c, 20).iloc[-1], sma(c, 50).iloc[-1], sma(c, 200).iloc[-1]
@@ -323,11 +497,13 @@ def analisa(t, d, jam, ihsg_ret, sektor, frac_hari, hari_ini):
     brk += 40 if vr >= 1.5 else 20 if vr >= 1.0 else 0
     brk_ok = bool(last > hi20 and vr >= 1.5)
 
-    pattern = pola_candle(d)
+    pattern, pk, ph = pola_dengan_konfirmasi(d)
     o, hh, ll = d["Open"].iloc[-1], d["High"].iloc[-1], d["Low"].iloc[-1]
     posisi = (last - ll) / ((hh - ll) or 1e-9)
-    if pattern:
+    if pattern and pk == "ok":
         pa = 100
+    elif pattern:
+        pa = 70          # pola baru muncul, belum terkonfirmasi
     elif last > o and posisi >= 0.7:
         pa = 60
     elif last > o:
@@ -362,24 +538,115 @@ def analisa(t, d, jam, ihsg_ret, sektor, frac_hari, hari_ini):
             beta = round(float(j.iloc[:, 0].cov(j.iloc[:, 1]) / j.iloc[:, 1].var()), 2)
 
     tf = {"daily": rating(d), "weekly": rating(resample(d, "W-FRI")), "monthly": rating(bulanan(d))}
-    if jam is not None and len(jam) >= 20:
-        tf["h1"] = rating(jam)
-        tf["h2"] = rating(gabung_jam(jam, 2))
-        tf["h4"] = rating(gabung_jam(jam, 4))
     tf = {k: x for k, x in tf.items() if x}
 
     tail = d.iloc[-30:]
     return {
-        "t": t, "p": round(last, 2), "chg": round((last / prev - 1) * 100, 2),
+        "t": t, "nm": nama.get(t, ""), "p": round(last, 0 if last >= 50 else 2), "chg": round((last / prev - 1) * 100, 2),
         "val": float(nilai) if fin(nilai) else 0.0,
         "trend": trend, "brk": brk, "pa": pa, "mom": mom,
-        "trendOk": trend_ok, "brkOk": brk_ok, "pattern": pattern,
+        "trendOk": trend_ok, "brkOk": brk_ok, "pattern": pattern, "pk": pk,
         "rsi": round(r, 1), "vr": round(vr, 2), "tf": tf,
-        "c": [round(float(x), 2) for x in tail["Close"]],
-        "ohlc": [[round(float(a), 2) for a in row] for row in tail[["Open", "High", "Low", "Close"]].values],
+        "ohlc": [[round(float(a), 0 if last >= 50 else 2) for a in row] for row in tail[["Open", "High", "Low", "Close"]].values],
         "sector": sektor.get(t, "-"), "beta": beta,
         "tgl": d.index[-1].strftime("%Y-%m-%d"),
+        "x": {"m20": [None if not fin(v) else round(float(v), 1) for v in sma(c, 20).iloc[-30:]],
+              "m50": [None if not fin(v) else round(float(v), 1) for v in sma(c, 50).iloc[-30:]],
+              "ma200": round(float(ma200), 1) if fin(ma200) else None, "hi20": round(hi20, 1)},
+        "_ma20": float(ma20) if fin(ma20) else None, "_atr": atr(d), "_ph": ph,
     }
+
+
+def konteks_pasar(ihsg, rows):
+    """Ringkasan IHSG + napas pasar (persentase saham likuid di atas MA20)."""
+    m = {"ihsg": None, "breadth": None}
+    if ihsg is not None and len(ihsg) > 60:
+        c = ihsg["Close"]
+        rt = rating(ihsg) or {}
+        m20, m50, m200 = sma(c, 20).iloc[-1], sma(c, 50).iloc[-1], sma(c, 200).iloc[-1]
+        r = rsi(c).iloc[-1]
+        m["ihsg"] = {"p": round(float(c.iloc[-1]), 2), "chg": round((c.iloc[-1] / c.iloc[-2] - 1) * 100, 2),
+                     "ma20": round(float(m20), 2), "ma50": round(float(m50), 2),
+                     "ma200": round(float(m200), 2) if fin(m200) else None,
+                     "rsi": round(float(r), 1) if fin(r) else None, "d": rt.get("summary", "Neutral"),
+                     "ohlc": [[round(float(a), 2) for a in row] for row in ihsg[["Open", "High", "Low", "Close"]].iloc[-30:].values]}
+    likuid = [r for r in rows if r["val"] >= 1e9 and r["x"]["m20"][-1]]
+    if likuid:
+        naik = sum(1 for r in likuid if r["p"] > r["x"]["m20"][-1])
+        m["breadth"] = {"pct": round(naik / len(likuid) * 100), "n": len(likuid)}
+    return m
+
+
+def tambah_intraday(r, jam):
+    if jam is not None and len(jam) >= 20:
+        for k, x in (("h1", rating(jam)), ("h2", rating(gabung_jam(jam, 2))), ("h4", rating(gabung_jam(jam, 4)))):
+            if x:
+                r["tf"][k] = x
+
+
+def kondisi(r):
+    """Label kondisi + alasan singkat. c: ok / wait / hot / rev / n / bad."""
+    tf = r["tf"]
+    d = tf.get("daily", {}).get("summary", "Neutral")
+    w = tf.get("weekly", {}).get("summary", "Neutral")
+    h1 = tf.get("h1", {}).get("summary")
+    h2 = tf.get("h2", {}).get("summary")
+    naik = lambda x: x in ("Buy", "Strong Buy")
+    turun = lambda x: x in ("Sell", "Strong Sell")
+    rs, pat, pk = r["rsi"], r["pattern"], r["pk"]
+    rs_txt = f"{rs:g}".replace(".", ",")
+    ma20, a = r["_ma20"], r["_atr"]
+
+    if r["val"] < 5e8:
+        return "bad", "Hindari dulu", "Transaksi rata-rata di bawah Rp 500 juta/hari, terlalu sepi"
+    if turun(d) and turun(w):
+        if pat and pk == "ok":
+            return "rev", "Pantau pembalikan", f"Tren masih turun, tapi {pat} sudah terkonfirmasi. Tunggu Daily minimal Neutral"
+        if pat:
+            return "bad", "Hindari dulu", f"Tren harian dan mingguan turun. {pat} belum terkonfirmasi"
+        return "bad", "Hindari dulu", "Tren harian dan mingguan masih turun"
+    if rs > 75:
+        return "hot", "Tunggu pullback", f"RSI {rs_txt} sudah panas. Tunggu harga turun ke area entry"
+    if ma20 and a and (r["p"] - ma20) > 2.5 * a:
+        return "hot", "Tunggu pullback", "Harga sudah jauh di atas MA20. Tunggu turun ke area entry"
+    if pat and pk == "tunggu":
+        return "wait", "Tunggu konfirmasi", f"{pat} baru muncul. Tunggu candle berikutnya hijau dan tutup di atas {rupiah(bulat_atas(r['_ph']))}"
+    if naik(d) and naik(w):
+        if h1 and (turun(h1) or turun(h2 or "")):
+            return "wait", "Tunggu pantulan", "Tren naik, tapi 1H/2H sedang koreksi. Tunggu berbalik Buy"
+        if 45 <= rs <= 70 and r["val"] < 5e9:
+            return "n", "Pantau", f"Teknikal bagus, tapi transaksi baru Rp {r['val'] / 1e9:.1f} M/hari (di bawah Rp 5 M). Gunakan lot kecil".replace(".", ",", 1)
+        if 45 <= rs <= 70:
+            extra = f", {pat} terkonfirmasi" if pat and pk == "ok" else ""
+            return "ok", "Kandidat kuat", f"Tren harian dan mingguan naik, RSI {rs_txt} sehat{extra}"
+        return "n", "Pantau", f"Tren naik, tapi RSI {rs_txt} belum di zona ideal 45-70"
+    if turun(d):
+        return "n", "Pantau", "Tren harian melemah, mingguan masih bertahan"
+    return "n", "Pantau", "Belum ada arah yang jelas"
+
+
+def rencana(r, kd):
+    """Contoh rencana berbasis ATR: area entry, stop loss (1 ATR di bawah area), target 2x risiko."""
+    p, ma20, a = r["p"], r["_ma20"], r["_atr"]
+    if kd == "bad" or not a or not ma20 or a <= 0:
+        return None
+    if kd == "hot":                      # tunggu pullback: area entry di bawah harga sekarang
+        e2 = p - a
+        e1 = max(ma20, p - 2 * a) if ma20 < e2 else p - 2 * a
+    elif p > ma20:
+        e1, e2 = max(ma20, p - a), p
+    else:
+        e1, e2 = p - 0.5 * a, p
+    sl = e1 - a
+    if sl <= 0:
+        return None
+    mid = (e1 + e2) / 2
+    tp = mid + 2 * (mid - sl)
+    e1r, e2r, slr, tpr = bulat_bawah(e1), bulat_bawah(e2), bulat_bawah(sl), bulat_atas(tp)
+    if slr >= e1r or e1r <= 0:
+        return None
+    risk = (mid - slr) / mid * 100
+    return {"e1": e1r, "e2": max(e1r, e2r), "sl": slr, "tp": tpr, "risk": round(risk, 1)}
 
 
 def skor(r, w=W_DEFAULT):
@@ -394,7 +661,7 @@ def update_konsistensi(rows, tanggal):
             riw = json.loads(RIWAYAT.read_text(encoding="utf-8"))
         except Exception:
             riw = {}
-    top = sorted(rows, key=skor, reverse=True)[:10]
+    top = sorted([r for r in rows if r["val"] >= 5e9], key=skor, reverse=True)[:10]
     riw[tanggal] = [r["t"] for r in top]          # run berulang di hari sama = ditimpa
     tgl = sorted(riw)[-10:]
     riw = {k: riw[k] for k in tgl}
@@ -428,25 +695,27 @@ BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli",
          "Agustus", "September", "Oktober", "November", "Desember"]
 
 
-def tulis_html(rows, now, status, n_gagal, pakai_intraday, out_html=OUT_HTML, arsip=True):
+def tulis_html(rows, now, status, n_gagal, pakai_intraday, out_html=OUT_HTML, arsip=True, pasar=None):
     tgl_data = max((r["tgl"] for r in rows), default="-")
     waktu = f"{now.day} {BULAN[now.month - 1]} {now.year}, {now:%H:%M} WIB"
-    sub = (f"Data diambil: {waktu} • {status} • {len(rows)} saham"
-           + (f" ({n_gagal} gagal diambil)" if n_gagal else "")
-           + f" • Candle terakhir: {tgl_data}")
+    sub = (f"Data diambil {waktu}, {len(rows)} saham"
+           + (f" ({n_gagal} tidak aktif atau gagal diambil)" if n_gagal else "")
+           + f". Candle terakhir {tgl_data}.")
     parsial = "berjalan" in status or "Sesi 1" in status or status == "Pre-closing"
     disc = ("📡 Data asli dari Yahoo Finance — biasanya tertunda ±10–15 menit dari harga bursa."
             + (" Candle hari ini <b>belum final</b> (sesi masih/baru berjalan); rasio volume "
                "diproyeksikan ke satu hari penuh." if parsial else "")
-            + ("" if pakai_intraday else " Kolom 1H/2H/4H dimatikan (--no-intraday).")
-            + " Halaman ini reload otomatis tiap 5 menit.<br><br>⚠️ Bukan rekomendasi/nasihat keuangan. "
+            + (" Kolom 1H/2H/4H dihitung untuk 200 saham skor tertinggi (yang lain tampil -)." if pakai_intraday
+               else " Kolom 1H/2H/4H dimatikan (--no-intraday).")
+            + " Halaman akan memberi tahu kalau ada data baru.<br><br>⚠️ Bukan rekomendasi/nasihat keuangan. "
               "Alat bantu penyaringan teknikal saja — tetap lakukan riset &amp; manajemen risiko "
               "sendiri sebelum trading.")
     html = (TEMPLATE
             .replace("__DATA__", json.dumps(bersih(rows), ensure_ascii=False, allow_nan=False))
             .replace("__TITLE__", f"{now:%Y-%m-%d %H:%M}")
-            .replace("__REFRESH__", '<meta http-equiv="refresh" content="300">')
-            .replace("__BADGE__", f"DATA ASLI • {status.upper()}")
+            .replace("__MARKET__", json.dumps(bersih(pasar or {}), ensure_ascii=False, allow_nan=False))
+            .replace("__GEN__", now.strftime("%Y-%m-%d %H:%M"))
+            .replace("__BADGE__", status)
             .replace("__SUB__", sub)
             .replace("__DISCLAIMER__", disc))
     out_html.parent.mkdir(parents=True, exist_ok=True)
@@ -462,49 +731,63 @@ def tulis_html(rows, now, status, n_gagal, pakai_intraday, out_html=OUT_HTML, ar
         "sektor": r["sector"], "daily": r["tf"].get("daily", {}).get("summary", ""),
         "weekly": r["tf"].get("weekly", {}).get("summary", ""),
         "h1": r["tf"].get("h1", {}).get("summary", ""), "candle": r["tgl"],
+        "kondisi": (r.get("kd") or {}).get("l", ""), "alasan": (r.get("kd") or {}).get("why", ""),
+        "entry": f'{r["plan"]["e1"]}-{r["plan"]["e2"]}' if r.get("plan") else "",
+        "stop_loss": r["plan"]["sl"] if r.get("plan") else "", "target": r["plan"]["tp"] if r.get("plan") else "",
     } for r in sorted(rows, key=skor, reverse=True)]
     pd.DataFrame(flat).to_csv(out_html.parent / "hasil_screener.csv", index=False)
 
 
 def main():
     ap = argparse.ArgumentParser(description="Screener saham IDX (data asli Yahoo Finance)")
-    ap.add_argument("--tickers", help="file teks berisi ticker (tanpa .JK), dipisah spasi/baris")
+    ap.add_argument("--tickers", help="file teks berisi ticker (tanpa .JK); default: semua emiten di daftar_saham.csv")
     ap.add_argument("--no-intraday", action="store_true", help="lewati data 1 jam (lebih cepat)")
-    ap.add_argument("--no-sektor", action="store_true", help="lewati pengambilan sektor")
+    ap.add_argument("--intraday-top", type=int, default=200, help="1H/2H/4H dihitung untuk N saham skor tertinggi (default 200)")
+    ap.add_argument("--no-sektor", action="store_true", help="jangan lengkapi sektor dari Yahoo")
     ap.add_argument("--buka", action="store_true", help="buka hasil di browser")
     ap.add_argument("--output", default=str(OUT_HTML), help="lokasi file HTML hasil (default hasil_screener.html)")
     ap.add_argument("--no-arsip", action="store_true", help="jangan simpan salinan ke folder arsip/")
+    ap.add_argument("--perbarui-daftar", action="store_true", help="paksa ambil daftar emiten terbaru dari BEI sekarang")
+    ap.add_argument("--tanpa-cek-bei", action="store_true", help="jangan cek daftar emiten di situs BEI")
     args = ap.parse_args()
 
-    tickers = DEFAULT_TICKERS
+    if not args.tickers and not args.tanpa_cek_bei:
+        try:
+            perbarui_daftar(paksa=args.perbarui_daftar)
+        except Exception as e:
+            print(f"  ! Cek daftar BEI dilewati: {e}")
+    nama, sektor_daftar = muat_daftar()
     if args.tickers:
         tickers = Path(args.tickers).read_text(encoding="utf-8").replace(",", " ").split()
+    elif nama:
+        tickers = list(nama)
+        if TAMBAHAN.exists():
+            tickers += TAMBAHAN.read_text(encoding="utf-8").replace(",", " ").split()
+    else:
+        tickers = DEFAULT_TICKERS
     tickers = sorted({t.strip().upper().removesuffix(".JK") for t in tickers if t.strip()})
 
     now = datetime.now(WIB)
     status, frac = status_pasar(now)
-    print(f"[{now:%H:%M} WIB] {status} — screening {len(tickers)} saham...")
+    print(f"[{now:%H:%M} WIB] {status} - screening {len(tickers)} saham...")
 
     print("  Unduh data harian (5 tahun)...")
     harian = {t: ke_tanggal(df) for t, df in unduh(tickers, "5y", "1d").items()}
     ihsg = unduh(["^JKSE"], "2y", "1d").get("^JKSE")
     ihsg_ret = ke_tanggal(ihsg)["Close"].pct_change() if ihsg is not None else None
 
-    jam = {}
-    if not args.no_intraday:
-        print("  Unduh data 1 jam (60 hari)...")
-        jam = unduh(list(harian), "60d", "60m")
-
-    sektor = {} if args.no_sektor else ambil_sektor(list(harian))
+    sektor = ({t: sektor_daftar.get(t, "-") for t in harian} if args.no_sektor
+              else ambil_sektor(list(harian), sektor_daftar))
 
     hari_ini = now.date()
     rows, gagal = [], [t for t in tickers if t not in harian]
+    print(f"  Menghitung indikator {len(harian)} saham...")
     for t, d in harian.items():
         if (pd.Timestamp(hari_ini) - d.index[-1]).days > 10:   # suspend / tidak aktif
             gagal.append(t)
             continue
         try:
-            r = analisa(t, d, jam.get(t), ihsg_ret, sektor, frac, hari_ini)
+            r = analisa(t, d, ihsg_ret, sektor, nama, frac, hari_ini)
         except Exception as e:
             print(f"  ! {t}: {e}")
             r = None
@@ -516,12 +799,31 @@ def main():
     if not rows:
         sys.exit("Tidak ada data yang berhasil diambil. Cek koneksi internet atau coba lagi beberapa menit lagi.")
 
+    if not args.no_intraday:
+        calon = [r["t"] for r in sorted(rows, key=skor, reverse=True) if r["val"] >= 5e8][:args.intraday_top]
+        print(f"  Unduh data 1 jam (60 hari) untuk {len(calon)} saham skor tertinggi...")
+        jam = unduh(calon, "60d", "60m")
+        per_t = {r["t"]: r for r in rows}
+        for t, df in jam.items():
+            try:
+                tambah_intraday(per_t[t], df)
+            except Exception as e:
+                print(f"  ! intraday {t}: {e}")
+
+    for r in rows:
+        c, l, why = kondisi(r)
+        r["kd"] = {"c": c, "l": l, "why": why}
+        r["plan"] = rencana(r, c)
+        for k in ("_ma20", "_atr", "_ph"):
+            r.pop(k, None)
+
     update_konsistensi(rows, now.strftime("%Y-%m-%d"))
     out_html = Path(args.output).resolve()
-    tulis_html(rows, now, status, len(gagal), not args.no_intraday, out_html, not args.no_arsip)
+    pasar = konteks_pasar(ke_tanggal(ihsg) if ihsg is not None else None, rows)
+    tulis_html(rows, now, status, len(gagal), not args.no_intraday, out_html, not args.no_arsip, pasar)
 
     top = sorted(rows, key=skor, reverse=True)[:5]
-    print(f"  Selesai: {len(rows)} saham, {len(gagal)} gagal" + (f" ({', '.join(sorted(gagal)[:10])}{'...' if len(gagal) > 10 else ''})" if gagal else ""))
+    print(f"  Selesai: {len(rows)} saham, {len(gagal)} gagal/tidak aktif")
     print("  Top 5 skor: " + ", ".join(f"{r['t']} {skor(r):.0f}" for r in top))
     print(f"  -> {out_html}")
     if args.buka:
@@ -534,259 +836,359 @@ TEMPLATE = r'''<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>IDX Screener - __TITLE__</title>
-__REFRESH__
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:#f4f6f9; --panel:#ffffff; --panel2:#f8f9fb; --border:#e3e7ed; --text:#1a2233;
-    --muted:#6b7688; --accent:#2563eb; --accent2:#1d4ed8; --green:#16a34a; --green-lt:#22c55e;
-    --red:#dc2626; --red-lt:#f87171;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --bg:#F5F6F3; --panel:#FFFFFF; --panel2:#F0F2F5; --ink:#14213D; --ink2:#34405A; --muted:#667085;
+    --line:#E1E4E8; --accent:#2E3A87; --accent-soft:#E8EAF7; --up:#0E9F6E; --up-soft:#E3F6EE;
+    --down:#D64545; --down-soft:#FBE9E9; --amber:#9A6212; --amber-soft:#FBF1DE; --orange:#B8430E;
+    --orange-soft:#FDEBDD; --blue:#2952C9; --blue-soft:#E4ECFD; --row-hover:#F7F8FB;
+    --shadow:0 1px 2px rgba(20,33,61,.06);
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg:#f4f6f9; --panel:#ffffff; --panel2:#f8f9fb; --border:#e3e7ed; --text:#1a2233; --muted:#6b7688;
+      --bg:#0F1522; --panel:#161E2E; --panel2:#1C2638; --ink:#E6E9EF; --ink2:#C3C9D6; --muted:#8E98AD;
+      --line:#263041; --accent:#9AA8FF; --accent-soft:#232C4D; --up:#34C38F; --up-soft:#15302A;
+      --down:#F07171; --down-soft:#3A1E24; --amber:#E7B45A; --amber-soft:#35291A; --orange:#F29A63;
+      --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none;
     }
   }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
+  :root[data-theme="dark"] {
+    --bg:#0F1522; --panel:#161E2E; --panel2:#1C2638; --ink:#E6E9EF; --ink2:#C3C9D6; --muted:#8E98AD;
+    --line:#263041; --accent:#9AA8FF; --accent-soft:#232C4D; --up:#34C38F; --up-soft:#15302A;
+    --down:#F07171; --down-soft:#3A1E24; --amber:#E7B45A; --amber-soft:#35291A; --orange:#F29A63;
+    --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none;
+  }
+  html { scroll-padding-top:env(safe-area-inset-top,0px); }
+  *, *::before, *::after { box-sizing:border-box; }
   body {
-    margin:0; padding: 20px; background: var(--bg); color: var(--text);
-    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size:15px; line-height:1.5; font-feature-settings:"tnum" 1, "lnum" 1;
   }
-  h1 { font-size: 1.4rem; margin: 0 0 4px; color:#0f172a; }
-  .sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 16px; }
-  .disclaimer {
-    background:#fff7e6; border:1px solid #ffe1a8; color:#92660a;
-    padding:10px 14px; border-radius:8px; font-size:0.8rem; margin-bottom:18px;
-  }
-  .panel {
-    background: var(--panel); border:1px solid var(--border); border-radius:12px;
-    padding:16px 18px; margin-bottom:16px; box-shadow: 0 1px 3px rgba(16,24,40,0.04);
-  }
-  .panel h2 { font-size: 0.85rem; margin: 0 0 12px; color: #334155; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; }
+  a { color:var(--accent); }
+  button, input, select { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
+  .wrap { max-width:1500px; margin:0 auto; padding:20px clamp(12px,3vw,28px) 48px; }
 
-  .presets { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:4px; }
-  .preset-btn {
-    background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px;
-    padding:7px 14px; font-size:0.82rem; font-weight:600; cursor:pointer; white-space:nowrap;
-    transition: background 0.15s;
-  }
-  .preset-btn:hover { background:#e0e7ff; }
-  .preset-btn.active { background:#4338ca; color:#fff; border-color:#4338ca; }
-  .preset-btn.reset { background:#f1f5f9; color:#475569; border-color:#e2e8f0; }
+  /* header */
+  .top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand h1 { font-size:1.55rem; font-weight:800; letter-spacing:-0.02em; margin:0; }
+  .brand .meta { color:var(--muted); font-size:0.86rem; margin-top:2px; }
+  .status { display:inline-block; margin-left:8px; vertical-align:4px; font-size:0.72rem; font-weight:700;
+    padding:3px 10px; border-radius:999px; background:var(--up-soft); color:var(--up); letter-spacing:0; }
+  .top-actions { display:flex; gap:8px; align-items:center; }
+  .icon-btn { border:1px solid var(--line); background:var(--panel); border-radius:10px; padding:7px 12px;
+    cursor:pointer; font-size:0.85rem; font-weight:600; color:var(--ink2); }
+  .icon-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .update-bar { display:none; align-items:center; justify-content:space-between; gap:12px; background:var(--accent);
+    color:#fff; padding:10px 16px; border-radius:12px; margin-bottom:14px; font-weight:600; font-size:0.9rem; }
+  .update-bar button { background:#fff; color:#2E3A87; border:0; border-radius:8px; padding:6px 14px; font-weight:700; cursor:pointer; }
+  .notice { font-size:0.8rem; color:var(--muted); margin:0 0 16px; }
+  .notice summary { cursor:pointer; color:var(--ink2); font-weight:600; }
+  .notice div { margin-top:6px; }
 
-  .weights-grid {
-    display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 14px 20px;
-  }
-  .weight-row label { display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:4px; color:#334155;}
-  .weight-row .val { color: var(--accent); font-weight:700; }
-  input[type=range] { width:100%; accent-color: var(--accent); }
+  /* market strip: the one bold element */
+  .market { display:grid; grid-template-columns:minmax(260px,1.4fr) minmax(220px,1fr) minmax(260px,1.3fr); gap:0;
+    background:var(--ink); color:#fff; border-radius:16px; overflow:hidden; margin-bottom:18px; }
+  :root[data-theme="dark"] .market { background:#1E2A44; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .market { background:#1E2A44; } }
+  .market > div { padding:16px 20px; border-right:1px solid rgba(255,255,255,.12); min-width:0; }
+  .market > div:last-child { border-right:0; }
+  .m-label { font-size:0.78rem; color:rgba(255,255,255,.66); font-weight:600; }
+  .m-big { font-size:1.7rem; font-weight:800; letter-spacing:-0.02em; line-height:1.15; }
+  .m-chg { font-size:0.95rem; font-weight:700; margin-left:6px; }
+  .m-chg.up { color:#5EE0AE; } .m-chg.down { color:#FF9A9A; }
+  .m-say { font-size:0.9rem; margin-top:6px; color:rgba(255,255,255,.9); }
+  .m-row { display:flex; align-items:center; gap:14px; }
+  .breadth-bar { height:10px; border-radius:99px; background:rgba(255,255,255,.18); overflow:hidden; margin:10px 0 6px; }
+  .breadth-bar i { display:block; height:100%; background:#5EE0AE; border-radius:99px; }
+  .kd-counts { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .kd-count { border:1px solid rgba(255,255,255,.22); background:transparent; color:#fff; border-radius:999px;
+    padding:4px 10px; font-size:0.8rem; font-weight:600; cursor:pointer; }
+  .kd-count b { font-weight:800; margin-left:4px; }
+  .kd-count:hover, .kd-count.on { background:#fff; color:#14213D; }
+  @media (max-width:900px) { .market { grid-template-columns:1fr; } .market > div { border-right:0; border-bottom:1px solid rgba(255,255,255,.12); } }
 
-  .filters-grid {
-    display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 14px 22px;
-    margin-top: 14px; padding-top:14px; border-top:1px solid var(--border);
-  }
-  .filter-item label { display:block; font-size:0.78rem; color:#64748b; margin-bottom:5px; font-weight:600; text-transform:uppercase; letter-spacing:0.02em;}
-  .range-pair { display:flex; align-items:center; gap:6px; }
-  .range-pair input[type=number] {
-    width:100%; padding:7px 9px; border:1px solid var(--border); border-radius:7px;
-    font-size:0.85rem; background:#fff; color:var(--text);
-  }
-  .filter-chip { display:flex; align-items:center; gap:6px; font-size:0.85rem; color:#334155; }
-  .filter-chip input { accent-color: var(--accent); width:16px; height:16px; }
-  .chips-row { display:flex; flex-wrap:wrap; gap:14px 22px; align-items:center; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
-  .minscore { display:flex; align-items:center; gap:10px; flex:1; min-width:220px; }
-  .minscore label { font-size:0.85rem; white-space:nowrap; color:#334155;}
-  .minscore .val { color: var(--accent); font-weight:700; min-width:34px; }
-  .search-box {
-    background:#fff; border:1px solid var(--border); color:var(--text);
-    border-radius:8px; padding:8px 12px; font-size:0.85rem; min-width:160px;
-  }
-  .count-info { color: var(--muted); font-size:0.85rem; margin: 4px 2px 10px; }
+  /* controls */
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; box-shadow:var(--shadow); }
+  .card h2 { font-size:1rem; font-weight:700; margin:0 0 10px; }
+  .presets { display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; scrollbar-width:thin; }
+  .preset-btn { flex:0 0 auto; background:var(--panel2); color:var(--ink2); border:1px solid var(--line); border-radius:999px;
+    padding:8px 14px; font-size:0.86rem; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .preset-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .preset-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  :root[data-theme="dark"] .preset-btn.active { color:#0F1522; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .preset-btn.active { color:#0F1522; } }
+  .preset-desc { font-size:0.84rem; color:var(--muted); margin:10px 2px 0; min-height:1.3em; }
+  .filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px 18px; }
+  .f label { display:block; font-size:0.8rem; color:var(--muted); font-weight:600; margin-bottom:4px; }
+  .f input, .f select { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); font-size:0.88rem; }
+  .pair { display:flex; gap:6px; align-items:center; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }
+  .chip { display:flex; align-items:center; gap:6px; font-size:0.86rem; color:var(--ink2); cursor:pointer; }
+  .chip input { accent-color:var(--accent); width:16px; height:16px; }
+  .minscore { display:flex; align-items:center; gap:10px; flex:1 1 260px; }
+  .minscore label { font-size:0.86rem; white-space:nowrap; color:var(--ink2); }
+  .minscore b { color:var(--accent); min-width:28px; }
+  input[type=range] { accent-color:var(--accent); width:100%; }
+  .adv { margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
+  .adv summary { cursor:pointer; font-size:0.86rem; font-weight:600; color:var(--ink2); }
+  .adv .hint { font-size:0.82rem; color:var(--amber); background:var(--amber-soft); border-radius:9px; padding:8px 12px; margin:10px 0 12px; }
+  .weights { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px 20px; }
+  .weights label { display:flex; justify-content:space-between; font-size:0.84rem; color:var(--ink2); }
+  .weights b { color:var(--accent); }
 
-  table { width:100%; border-collapse:collapse; background: var(--panel); border-radius:10px; overflow:hidden; }
-  thead th {
-    background: var(--panel2); color:#475569; text-align:left; padding:10px 12px;
-    font-size:0.74rem; text-transform:uppercase; letter-spacing:0.04em; cursor:pointer;
-    border-bottom:1px solid var(--border); user-select:none; white-space:nowrap;
-  }
-  thead th:hover { color: var(--accent); }
-  thead th.active::after { content: " BE"; color: var(--accent); }
-  tbody td { padding:9px 12px; border-bottom:1px solid var(--border); font-size:0.86rem; vertical-align:middle; }
-  tbody tr:hover { background:#f8fafc; }
-  .tk { font-weight:700; letter-spacing:0.3px; color:#0f172a; }
-  .pos { color: var(--green); font-weight:600; }
-  .neg { color: var(--red); font-weight:600; }
-  .muted { color: var(--muted); }
-  .badge {
-    display:inline-block; font-size:0.7rem; padding:2px 8px; border-radius:999px;
-    margin:1px 2px; border:1px solid var(--border); white-space:nowrap; font-weight:600;
-  }
-  .badge.trend { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
-  .badge.breakout { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; }
-  .badge.pattern { background:#fffbeb; color:#92400e; border-color:#fde68a; }
-  .score-bar { position:relative; width:84px; height:18px; background:#eef1f5; border-radius:6px; overflow:hidden; }
-  .score-fill { position:absolute; left:0; top:0; bottom:0; background: linear-gradient(90deg,#2563eb,#38bdf8); }
-  .score-bar span {
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-size:0.72rem; font-weight:700; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35);
-  }
+  /* table */
+  .count-info { color:var(--muted); font-size:0.86rem; margin:6px 2px 8px; }
+  .table-wrap { overflow:auto; max-height:78vh; border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); }
+  table { border-collapse:separate; border-spacing:0; width:100%; }
+  thead th { position:sticky; top:0; z-index:3; background:var(--panel2); color:var(--muted); text-align:left;
+    padding:10px 12px; font-size:0.78rem; font-weight:700; border-bottom:1px solid var(--line); white-space:nowrap; cursor:pointer; user-select:none; }
+  thead th.nosort { cursor:default; }
+  thead th:hover:not(.nosort) { color:var(--accent); }
+  thead th.active { color:var(--accent); }
+  thead th.active::after { content:" \25BE"; }
+  thead th.active.asc::after { content:" \25B4"; }
+  tbody td { padding:9px 12px; border-bottom:1px solid var(--line); font-size:0.88rem; vertical-align:middle; white-space:nowrap; background:var(--panel); }
+  tbody tr { cursor:pointer; }
+  tbody tr:hover td { background:var(--row-hover); }
+  .sticky1 { position:sticky; left:0; z-index:2; width:38px; min-width:38px; padding-left:10px !important; padding-right:0 !important; }
+  .sticky2 { position:sticky; left:38px; z-index:2; box-shadow:1px 0 0 var(--line); }
+  thead .sticky1, thead .sticky2 { z-index:4; }
+  .star { background:none; border:0; cursor:pointer; font-size:1.05rem; color:var(--line); padding:2px; line-height:1; }
+  .star.on { color:#E2A400; }
+  .tk { font-weight:800; letter-spacing:0.01em; }
+  .tk-name { font-size:0.72rem; color:var(--muted); font-weight:500; max-width:150px; overflow:hidden; text-overflow:ellipsis; }
+  .num { text-align:right; }
+  .pos { color:var(--up); font-weight:700; } .neg { color:var(--down); font-weight:700; }
+  .muted { color:var(--muted); }
+  .score { display:inline-flex; align-items:center; gap:8px; }
+  .score-bar { width:56px; height:6px; border-radius:9px; background:var(--panel2); overflow:hidden; }
+  .score-bar i { display:block; height:100%; background:var(--accent); }
+  .score b { min-width:30px; }
+  .ck { font-weight:700; font-size:0.84rem; }
+  .ck.hi { color:var(--up); } .ck.mid { color:var(--amber); } .ck.lo { color:var(--down); }
+  .kd { display:inline-block; font-size:0.76rem; font-weight:700; padding:3px 10px; border-radius:999px; white-space:nowrap; }
+  .kd.ok { background:var(--up-soft); color:var(--up); }
+  .kd.wait { background:var(--amber-soft); color:var(--amber); }
+  .kd.hot { background:var(--orange-soft); color:var(--orange); }
+  .kd.bad { background:var(--down-soft); color:var(--down); }
+  .kd.rev { background:var(--blue-soft); color:var(--blue); }
+  .kd.n { background:var(--panel2); color:var(--muted); }
+  .plan { font-size:0.8rem; line-height:1.45; }
+  .plan .sl { color:var(--down); font-weight:600; } .plan .tp { color:var(--up); font-weight:600; }
+  .badge { display:inline-block; font-size:0.72rem; padding:2px 8px; border-radius:999px; margin:1px 2px 1px 0; font-weight:600; border:1px solid var(--line); color:var(--ink2); }
+  .badge.trend { color:var(--blue); border-color:var(--blue-soft); background:var(--blue-soft); }
+  .badge.breakout { color:var(--up); border-color:var(--up-soft); background:var(--up-soft); }
+  .badge.pattern { color:var(--amber); border-color:var(--amber-soft); background:var(--amber-soft); }
+  .badge.pattern.ok { color:var(--up); border-color:var(--up); background:var(--up-soft); }
+  .v { font-weight:700; font-size:0.8rem; }
+  .v.sb { color:var(--up); } .v.b { color:var(--up); font-weight:600; opacity:.85; }
+  .v.n { color:var(--muted); font-weight:600; } .v.s { color:var(--down); font-weight:600; opacity:.85; } .v.ss { color:var(--down); }
   svg.spark { display:block; }
-  .verdict { font-weight:700; font-size:0.78rem; white-space:nowrap; cursor:default; }
-  .verdict.sb { color:#15803d; }
-  .verdict.b { color:#22c55e; font-weight:600; }
-  .verdict.n { color:#94a3b8; font-weight:600; }
-  .verdict.s { color:#f87171; font-weight:600; }
-  .verdict.ss { color:#dc2626; }
-  .table-wrap { overflow-x:auto; border-radius:10px; border:1px solid var(--border); }
-  .pager { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-  .pager button {
-    background: var(--panel); color:var(--text); border:1px solid var(--border);
-    border-radius:6px; padding:6px 12px; cursor:pointer; font-size:0.82rem;
-  }
-  .pager button:disabled { opacity:0.4; cursor:default; }
-  .pager button:not(:disabled):hover { border-color: var(--accent); }
+  .pager { display:flex; gap:8px; justify-content:flex-end; align-items:center; margin-top:10px; }
+  .pager button { border:1px solid var(--line); background:var(--panel); border-radius:9px; padding:6px 14px; cursor:pointer; font-weight:600; }
+  .pager button:disabled { opacity:.4; cursor:default; }
+  .empty { padding:40px 20px; text-align:center; color:var(--muted); }
+  .empty button { margin-top:10px; }
 
-  .guide-item {
-    border:1px solid var(--border); border-radius:10px; margin-bottom:10px; padding:0; overflow:hidden;
-  }
-  .guide-item summary {
-    padding:12px 16px; cursor:pointer; font-weight:700; font-size:0.9rem; color:#1e293b;
-    background:var(--panel2); list-style:none; display:flex; align-items:center; gap:8px;
-  }
+  /* drawer */
+  .scrim { position:fixed; inset:0; background:rgba(15,21,34,.45); opacity:0; pointer-events:none; transition:opacity .2s; z-index:20; }
+  .scrim.open { opacity:1; pointer-events:auto; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:min(560px,100%); background:var(--panel); z-index:21;
+    transform:translateX(100%); visibility:hidden; transition:transform .22s ease, visibility 0s linear .22s; overflow-y:auto; box-shadow:-8px 0 24px rgba(0,0,0,.18);
+    padding:calc(18px + env(safe-area-inset-top,0px)) 22px calc(28px + env(safe-area-inset-bottom,0px)); }
+  .drawer.open { transform:none; visibility:visible; transition:transform .22s ease; }
+  @media (prefers-reduced-motion: reduce) { .drawer, .scrim { transition:none; } }
+  .d-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+  .d-tk { font-size:1.6rem; font-weight:800; letter-spacing:-0.01em; line-height:1.1; }
+  .d-name { color:var(--muted); font-size:0.88rem; }
+  .d-price { font-size:1.4rem; font-weight:800; margin-top:10px; }
+  .d-sec { margin-top:18px; }
+  .d-sec h3 { font-size:0.95rem; font-weight:700; margin:0 0 8px; }
+  .d-why { font-size:0.9rem; color:var(--ink2); margin-top:6px; }
+  .d-chart { width:100%; height:auto; display:block; background:var(--panel2); border-radius:12px; }
+  .legend { display:flex; flex-wrap:wrap; gap:12px; font-size:0.76rem; color:var(--muted); margin-top:6px; }
+  .legend i { display:inline-block; width:14px; height:3px; border-radius:2px; vertical-align:middle; margin-right:5px; }
+  .checklist { list-style:none; padding:0; margin:0; }
+  .checklist li { display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:0.88rem; }
+  .checklist li:last-child { border-bottom:0; }
+  .ci { width:20px; flex:0 0 20px; font-weight:800; text-align:center; }
+  .ci.y { color:var(--up); } .ci.x { color:var(--down); } .ci.na { color:var(--muted); }
+  .bars { display:grid; gap:8px; }
+  .bar-row { display:grid; grid-template-columns:110px 1fr 70px; gap:10px; align-items:center; font-size:0.85rem; }
+  .bar-row .track { height:8px; background:var(--panel2); border-radius:9px; overflow:hidden; }
+  .bar-row .track i { display:block; height:100%; background:var(--accent); }
+  .bar-row span:last-child { color:var(--muted); font-size:0.78rem; text-align:right; }
+  .tf-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .tf-cell { background:var(--panel2); border-radius:10px; padding:8px 10px; }
+  .tf-cell small { display:block; color:var(--muted); font-size:0.74rem; }
+  .plan-box { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .plan-box div { background:var(--panel2); border-radius:10px; padding:8px 10px; }
+  .plan-box small { display:block; color:var(--muted); font-size:0.74rem; }
+  .plan-box b { font-size:0.98rem; }
+  .calc { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .calc input { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); }
+  .calc-out { margin-top:10px; background:var(--accent-soft); border-radius:10px; padding:10px 12px; font-size:0.9rem; }
+  .d-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .d-foot { font-size:0.78rem; color:var(--muted); margin-top:18px; }
+
+  /* guide */
+  .guide-item { border:1px solid var(--line); border-radius:10px; margin-bottom:8px; overflow:hidden; background:var(--panel); }
+  .guide-item summary { cursor:pointer; padding:11px 14px; font-weight:700; font-size:0.9rem; list-style:none; display:flex; gap:8px; align-items:center; }
   .guide-item summary::-webkit-details-marker { display:none; }
-  .guide-item summary::before { content:"\25B8"; color:var(--accent); font-size:0.75rem; transition:transform 0.15s; }
+  .guide-item summary::before { content:"\25B8"; color:var(--accent); font-size:0.75rem; transition:transform .15s; }
   .guide-item[open] summary::before { transform:rotate(90deg); }
-  .guide-item summary:hover { background:#eef2ff; }
-  .guide-body { padding:14px 18px 16px; font-size:0.85rem; line-height:1.6; color:#334155; }
-  .guide-body p { margin:0 0 10px; }
-  .guide-body p:last-child { margin-bottom:0; }
+  .guide-item summary:hover { background:var(--panel2); }
+  .guide-body { padding:2px 16px 12px 30px; font-size:0.88rem; color:var(--ink2); line-height:1.6; max-width:80ch; }
+  .guide-body p { margin:8px 0; }
 </style>
 </head>
 <body>
-  <h1>📈 IDX Screener — Teknikal &amp; Price Action <span style="font-size:0.6rem;background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;vertical-align:middle;">__BADGE__</span></h1>
-  <div class="sub">__SUB__</div>
-  <div class="disclaimer">__DISCLAIMER__</div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>IDX Screener <span class="status" id="status-chip">__BADGE__</span></h1>
+      <div class="meta">__SUB__</div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="theme-btn" type="button" aria-label="Ganti tema terang atau gelap">Tema gelap</button>
+      <a class="icon-btn" href="#panduan" style="text-decoration:none">Panduan</a>
+    </div>
+  </header>
 
-  <div class="panel">
-    <h2>⚡ Screen Populer</h2>
+  <div class="update-bar" id="update-bar" role="status">
+    <span id="update-text">Data baru sudah tersedia.</span>
+    <button type="button" id="update-btn">Muat data baru</button>
+  </div>
+
+  <section class="market" id="market" aria-label="Kondisi pasar"></section>
+
+  <section class="card" aria-label="Preset">
+    <h2>Pilih gaya screening</h2>
     <div class="presets" id="presets">
-      <button class="preset-btn reset" data-preset="reset" title="Kembalikan semua bobot &amp; filter ke pengaturan awal">↻ Reset</button>
-      <button class="preset-btn" data-preset="breakout" title="Harga tembus level tertinggi 20 hari + volume melonjak &#8805;1.5x rata-rata">🚀 Breakout Momentum</button>
-      <button class="preset-btn" data-preset="golden" title="Struktur uptrend rapi: MA20 &gt; MA50 &gt; MA200 dan harga di atas MA20">📈 Golden Cross Uptrend</button>
-      <button class="preset-btn" data-preset="reversal" title="RSI rendah (oversold) + pola candle bullish reversal muncul">🔄 Oversold Reversal</button>
-      <button class="preset-btn" data-preset="allgreen" title="Rating Strong Buy kompak di Daily, Mingguan, DAN Bulanan sekaligus">✅ Strong Buy Semua Timeframe</button>
-      <button class="preset-btn" data-preset="pattern" title="Candle terakhir membentuk pola bullish (engulfing/hammer/marubozu)">🕯️ Ada Pola Candle</button>
-      <button class="preset-btn" data-preset="quality" title="Nilai transaksi &#8805; Rp 5M/hari DAN konsisten masuk Top-10 skor &#8805;3 dari 10 hari terakhir">🏆 Likuid &amp; Konsisten Top10</button>
+      <button class="preset-btn" data-preset="golden">Tren naik rapi</button>
+      <button class="preset-btn" data-preset="quality">Likuid &amp; konsisten</button>
+      <button class="preset-btn" data-preset="breakout">Breakout</button>
+      <button class="preset-btn" data-preset="allgreen">Kuat di semua timeframe</button>
+      <button class="preset-btn" data-preset="reversal">Pantulan dari bawah</button>
+      <button class="preset-btn" data-preset="pattern">Ada pola candle</button>
+      <button class="preset-btn" data-preset="reset">Tampilkan semua</button>
     </div>
-    <p style="font-size:0.8rem;color:#64748b;margin:10px 2px 0;">Bingung istilahnya? Lihat <a href="#panduan" style="color:#2563eb;font-weight:600;">Panduan Screen &amp; Istilah</a> di bagian bawah halaman ini.</p>
-  </div>
+    <p class="preset-desc" id="preset-desc"></p>
+  </section>
 
-  <div class="panel">
-    <h2>⚖️ Bobot Skor</h2>
-    <div class="weights-grid">
-      <div class="weight-row">
-        <label>Trend <span class="val" id="w-trend-val">30</span></label>
-        <input type="range" id="w-trend" min="0" max="100" value="30">
-      </div>
-      <div class="weight-row">
-        <label>Breakout <span class="val" id="w-brk-val">30</span></label>
-        <input type="range" id="w-brk" min="0" max="100" value="30">
-      </div>
-      <div class="weight-row">
-        <label>Price Action <span class="val" id="w-pa-val">25</span></label>
-        <input type="range" id="w-pa" min="0" max="100" value="25">
-      </div>
-      <div class="weight-row">
-        <label>Momentum (RSI) <span class="val" id="w-mom-val">15</span></label>
-        <input type="range" id="w-mom" min="0" max="100" value="15">
-      </div>
+  <section class="card" aria-label="Filter">
+    <div class="filters">
+      <div class="f"><label for="search">Cari kode atau nama</label><input type="text" id="search" placeholder="mis. BBCA atau Astra"></div>
+      <div class="f"><label for="kd-filter">Kondisi</label>
+        <select id="kd-filter">
+          <option value="">Semua kondisi</option>
+          <option value="nobad">Kecuali Hindari dulu</option>
+          <option value="ok">Kandidat kuat</option>
+          <option value="wait">Tunggu konfirmasi atau pantulan</option>
+          <option value="hot">Tunggu pullback</option>
+          <option value="rev">Pantau pembalikan</option>
+          <option value="n">Pantau</option>
+          <option value="bad">Hindari dulu</option>
+        </select></div>
+      <div class="f"><label>Harga (Rp)</label><div class="pair"><input type="number" id="price-min" placeholder="Min" min="0"><input type="number" id="price-max" placeholder="Maks" min="0"></div></div>
+      <div class="f"><label>RSI</label><div class="pair"><input type="number" id="rsi-min" placeholder="0" min="0" max="100"><input type="number" id="rsi-max" placeholder="100" min="0" max="100"></div></div>
+      <div class="f"><label for="val-min">Min. nilai transaksi (Rp miliar/hari)</label><input type="number" id="val-min" placeholder="mis. 5" min="0" step="0.5"></div>
+      <div class="f"><label for="streak-min">Min. hari di Top 10 (dari 10)</label><input type="number" id="streak-min" placeholder="mis. 3" min="0"></div>
     </div>
-
-    <div class="filters-grid">
-      <div class="filter-item">
-        <label>Rentang Harga (Rp)</label>
-        <div class="range-pair">
-          <input type="number" id="price-min" placeholder="Min" min="0">
-          <span>–</span>
-          <input type="number" id="price-max" placeholder="Max" min="0">
-        </div>
-      </div>
-      <div class="filter-item">
-        <label>Rentang RSI</label>
-        <div class="range-pair">
-          <input type="number" id="rsi-min" placeholder="0" min="0" max="100">
-          <span>–</span>
-          <input type="number" id="rsi-max" placeholder="100" min="0" max="100">
-        </div>
-      </div>
-      <div class="filter-item">
-        <label>Min. Nilai Transaksi 20H (Rp Miliar)</label>
-        <input type="number" id="val-min" placeholder="mis. 5" min="0" step="0.5" style="width:100%">
-      </div>
-      <div class="filter-item">
-        <label>Min. Konsisten Top10 (hari, dari 10 hari terakhir)</label>
-        <input type="number" id="streak-min" placeholder="mis. 3" min="0" style="width:100%">
-      </div>
-      <div class="filter-item">
-        <label>Cari Ticker</label>
-        <input type="text" id="search" class="search-box" placeholder="mis. BBCA" style="width:100%">
-      </div>
+    <div class="chips">
+      <div class="minscore"><label for="min-score">Skor minimum</label><input type="range" id="min-score" min="0" max="100" value="40"><b id="min-score-val">40</b></div>
+      <label class="chip"><input type="checkbox" id="f-watch"> Hanya watchlist</label>
+      <label class="chip"><input type="checkbox" id="f-trend"> Hanya uptrend</label>
+      <label class="chip"><input type="checkbox" id="f-breakout"> Hanya breakout</label>
+      <label class="chip"><input type="checkbox" id="f-pattern"> Ada pola candle</label>
+      <label class="chip"><input type="checkbox" id="f-confirmed"> Pola terkonfirmasi</label>
+      <label class="chip"><input type="checkbox" id="f-allgreen"> Strong Buy D/W/M</label>
     </div>
-
-    <div class="chips-row">
-      <div class="minscore">
-        <label>Skor minimum</label>
-        <input type="range" id="min-score" min="0" max="100" value="40" style="flex:1">
-        <span class="val" id="min-score-val">40</span>
+    <details class="adv" id="adv">
+      <summary>Pengaturan lanjutan: bobot skor manual</summary>
+      <div class="hint">Cukup pakai preset di atas. Geser slider hanya kalau kamu sudah paham cara skor dihitung, bukan untuk mencari hasil yang terasa cocok.</div>
+      <div class="weights">
+        <div><label for="w-trend">Trend <b id="w-trend-val">30</b></label><input type="range" id="w-trend" min="0" max="100" value="30"></div>
+        <div><label for="w-brk">Breakout <b id="w-brk-val">30</b></label><input type="range" id="w-brk" min="0" max="100" value="30"></div>
+        <div><label for="w-pa">Price action <b id="w-pa-val">25</b></label><input type="range" id="w-pa" min="0" max="100" value="25"></div>
+        <div><label for="w-mom">Momentum (RSI) <b id="w-mom-val">15</b></label><input type="range" id="w-mom" min="0" max="100" value="15"></div>
       </div>
-      <label class="filter-chip"><input type="checkbox" id="f-trend"> Hanya Uptrend</label>
-      <label class="filter-chip"><input type="checkbox" id="f-breakout"> Hanya Breakout</label>
-      <label class="filter-chip"><input type="checkbox" id="f-pattern"> Hanya ada Pola Candle</label>
-      <label class="filter-chip"><input type="checkbox" id="f-allgreen"> Strong Buy di semua Timeframe</label>
-    </div>
-  </div>
+    </details>
+  </section>
 
-  <div class="count-info" id="count-info"></div>
+  <div class="count-info" id="count-info" aria-live="polite"></div>
   <div class="table-wrap">
     <table id="tbl">
       <thead>
         <tr>
-          <th data-key="_chart">Chart</th>
-          <th data-key="t">Ticker</th>
-          <th data-key="p">Harga</th>
-          <th data-key="chg">Chg%</th>
-          <th data-key="sector">Sektor</th>
-          <th data-key="val">Nilai Transaksi 20H</th>
+          <th class="sticky1 nosort" aria-label="Watchlist">★</th>
+          <th class="sticky2" data-key="t">Saham</th>
+          <th class="nosort">Chart 30 hari</th>
+          <th class="num" data-key="p">Harga</th>
+          <th class="num" data-key="chg">Chg%</th>
           <th data-key="score" class="active">Skor</th>
-          <th data-key="_sinyal">Sinyal</th>
-          <th data-key="rsi">RSI</th>
-          <th data-key="beta" title="Beta terhadap IHSG (^JKSE) - volatilitas relatif ke pasar">Beta</th>
-          <th data-key="_h1" title="Sinyal intraday 1 Jam (dari candle 1 jam Yahoo, bisa kosong)">1H</th>
-          <th data-key="_h2" title="Sinyal intraday 2 Jam (dari candle 1 jam Yahoo, bisa kosong)">2H</th>
-          <th data-key="_h4" title="Sinyal intraday 4 Jam (dari candle 1 jam Yahoo, bisa kosong)">4H</th>
-          <th data-key="_tfd" title="Ringkasan teknikal Daily (Moving Averages + Indikator)">Daily</th>
-          <th data-key="_tfw" title="Ringkasan teknikal Mingguan">Mingguan</th>
-          <th data-key="_tfm" title="Ringkasan teknikal Bulanan">Bulanan</th>
-          <th data-key="_streak" title="Berapa hari (dari beberapa hari run terakhir) saham ini masuk Top-10 skor">Konsisten Top10</th>
+          <th data-key="ck" title="Berapa syarat checklist yang terpenuhi">Checklist</th>
+          <th data-key="kdo" title="Label kondisi; klik baris untuk alasannya">Kondisi</th>
+          <th class="nosort" title="Contoh rencana berbasis ATR, bukan rekomendasi">Rencana (contoh)</th>
+          <th class="nosort">Sinyal</th>
+          <th class="num" data-key="rsi">RSI</th>
+          <th class="num" data-key="val">Transaksi/hari</th>
+          <th data-key="sector">Sektor</th>
+          <th class="num" data-key="beta" title="Seberapa liar dibanding IHSG">Beta</th>
+          <th class="nosort">1H</th><th class="nosort">2H</th><th class="nosort">4H</th>
+          <th class="nosort">Daily</th><th class="nosort">Mingguan</th><th class="nosort">Bulanan</th>
+          <th data-key="streak" title="Hari masuk Top 10 (saham transaksi ≥ Rp 5 M) dari 10 hari terakhir">Top 10</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
     </table>
   </div>
   <div class="pager">
-    <button id="prev-page">‹ Prev</button>
-    <span id="page-info" style="align-self:center;color:var(--muted);font-size:0.82rem;"></span>
-    <button id="next-page">Next ›</button>
+    <span class="muted" id="page-info" style="font-size:0.84rem"></span>
+    <button id="prev-page" type="button">Sebelumnya</button>
+    <button id="next-page" type="button">Berikutnya</button>
   </div>
 
-  <div class="panel" id="panduan" style="margin-top:18px;">
-    <h2>📖 Panduan Screen &amp; Istilah</h2>
-    <p style="font-size:0.85rem;color:#475569;margin-top:0;">Klik tiap judul untuk buka penjelasannya — apa artinya, kenapa dipakai, dan biasanya muncul di kondisi seperti apa.</p>
+  <details class="notice" style="margin-top:18px">
+    <summary>Tentang data dan batasan</summary>
+    <div>__DISCLAIMER__</div>
+  </details>
 
+  <section class="card" id="panduan" style="margin-top:18px">
+    <h2>Panduan</h2>
+    <p style="font-size:0.88rem;color:var(--muted);margin-top:0">Klik judul untuk membuka penjelasan.</p>
+    <details class="guide-item" open>
+      <summary>Cara pakai dalam 1 menit</summary>
+      <div class="guide-body">
+        <p>1. Lihat strip biru tua di atas. Kalau IHSG sedang turun, kurangi agresivitas atau tunggu dulu.</p>
+        <p>2. Pilih satu gaya screening, misalnya "Tren naik rapi".</p>
+        <p>3. Klik baris saham untuk membuka detailnya: chart dengan garis entry, stop loss, dan target, checklist syarat, serta kalkulator lot.</p>
+        <p>4. Tandai saham incaran dengan bintang, lalu centang "Hanya watchlist" untuk memantaunya.</p>
+        <p>5. Cocokkan dengan chart di aplikasi trading-mu sebelum entry. Checklist yang banyak terpenuhi menambah keyakinan, tapi tidak menjamin harga naik.</p>
+      </div>
+    </details>
     <details class="guide-item">
-      <summary>🚀 Breakout Momentum</summary>
+      <summary>Checklist syarat</summary>
+      <div class="guide-body">
+        <p>Setiap saham diperiksa terhadap 9 syarat: tren tersusun naik, harga di atas MA200, Daily dan Mingguan Buy, RSI 45–70, volume di atas rata-rata, transaksi ≥ Rp 5 M/hari, 1H tidak Sell, risiko ke stop loss ≤ 7%, dan IHSG tidak sedang turun.</p>
+        <p>Angka seperti 7/9 berarti 7 dari 9 syarat terpenuhi. Syarat yang datanya tidak ada (misal 1H di luar 200 saham teratas) tidak dihitung. Hijau = minimal 7, kuning = 5–6, merah = di bawah 5.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Kalkulator lot</summary>
+      <div class="guide-body">
+        <p>Di panel detail, isi modal dan risiko per transaksi (umumnya 1–2% modal). Kalkulator menghitung jumlah lot supaya kerugian kalau kena stop loss tidak melebihi batas itu. 1 lot = 100 lembar. Isianmu tersimpan di browser ini.</p>
+      </div>
+    </details>
+<details class="guide-item">
+      <summary>Preset: Breakout (Breakout Momentum)</summary>
       <div class="guide-body">
         <p><b>Apa itu:</b> Saham yang harganya menembus (breakout) level harga tertinggi dalam 20 hari terakhir, DAN volume hari itu minimal 1.5x lipat rata-rata volume 20 hari.</p>
         <p><b>Kenapa dipakai:</b> Breakout yang disertai volume tinggi biasanya menandakan ada tekanan beli baru yang cukup kuat (bisa dari investor besar, berita, atau sentimen positif) — ini sering jadi awal dari pergerakan harga yang lebih besar.</p>
@@ -796,7 +1198,7 @@ __REFRESH__
     </details>
 
     <details class="guide-item">
-      <summary>📈 Golden Cross Uptrend</summary>
+      <summary>Preset: Tren naik rapi (Golden Cross Uptrend)</summary>
       <div class="guide-body">
         <p><b>Apa itu:</b> Kondisi dimana Moving Average jangka pendek (MA20) berada di atas MA menengah (MA50), yang juga berada di atas MA jangka panjang (MA200) — dan harga saat ini di atas MA20. Susunan MA yang rapi dari pendek ke panjang ini menandakan struktur uptrend yang sehat.</p>
         <p><b>Kenapa dipakai:</b> Ini menyaring saham yang trennya benar-benar naik secara berkelanjutan (bukan cuma lonjakan satu-dua hari). Istilah "Golden Cross" sendiri klasik dipakai saat MA50 memotong ke atas MA200 pertama kali — sering dianggap sinyal bullish jangka menengah-panjang.</p>
@@ -806,7 +1208,7 @@ __REFRESH__
     </details>
 
     <details class="guide-item">
-      <summary>🔄 Oversold Reversal</summary>
+      <summary>Preset: Pantulan dari bawah (Oversold Reversal)</summary>
       <div class="guide-body">
         <p><b>Apa itu:</b> Kombinasi RSI yang rendah (kondisi oversold/jenuh jual) DENGAN munculnya pola candlestick bullish reversal (Bullish Engulfing, Hammer/Pin Bar, dsb) di candle terakhir.</p>
         <p><b>Kenapa dipakai:</b> RSI rendah menandakan tekanan jual sudah cukup ekstrem, dan pola candle bullish memberi "konfirmasi visual" bahwa pembeli mulai masuk kembali — kombinasi ini sering dipakai untuk menangkap potensi pembalikan arah (rebound).</p>
@@ -816,7 +1218,7 @@ __REFRESH__
     </details>
 
     <details class="guide-item">
-      <summary>✅ Strong Buy Semua Timeframe</summary>
+      <summary>Preset: Kuat di semua timeframe</summary>
       <div class="guide-body">
         <p><b>Apa itu:</b> Saham yang mendapat rating "Strong Buy" secara bersamaan di ketiga timeframe: Daily, Mingguan, DAN Bulanan (dihitung dari gabungan sinyal Moving Average + indikator oscillator di tiap timeframe).</p>
         <p><b>Kenapa dipakai:</b> Kalau sinyal bullish-nya kompak di berbagai skala waktu (jangka pendek, menengah, dan panjang), itu menandakan momentum yang jauh lebih solid dibanding cuma bagus di satu timeframe saja.</p>
@@ -825,7 +1227,7 @@ __REFRESH__
     </details>
 
     <details class="guide-item">
-      <summary>🕯️ Ada Pola Candle</summary>
+      <summary>Preset: Ada pola candle</summary>
       <div class="guide-body">
         <p><b>Apa itu:</b> Saham yang candle (batang harga) terakhirnya membentuk salah satu dari 3 pola price action bullish berikut:</p>
         <ul style="margin:4px 0 8px 20px;padding:0;">
@@ -839,7 +1241,7 @@ __REFRESH__
     </details>
 
     <details class="guide-item">
-      <summary>🏆 Likuid &amp; Konsisten Top10</summary>
+      <summary>Preset: Likuid &amp; konsisten (Top 10)</summary>
       <div class="guide-body">
         <p><b>Apa itu:</b> Kombinasi dua filter: (1) nilai transaksi rata-rata 20 hari minimal Rp 5 Miliar/hari, dan (2) saham yang konsisten masuk ranking Top-10 skor selama minimal 3 dari 10 hari run terakhir.</p>
         <p><b>Kenapa dipakai:</b> Nilai transaksi tinggi = saham cukup likuid, gampang masuk/keluar posisi tanpa bikin harga bergerak sendiri (slippage kecil). Konsistensi Top-10 menyaring sinyal yang memang bertahan dari waktu ke waktu, bukan cuma breakout sesaat sehari yang belum tentu berlanjut.</p>
@@ -849,7 +1251,7 @@ __REFRESH__
     </details>
 
     <details class="guide-item">
-      <summary>📊 Istilah Indikator (RSI, MACD, Stochastic, dll)</summary>
+      <summary>Istilah indikator (RSI, MACD, Stochastic, dan lainnya)</summary>
       <div class="guide-body">
         <p><b>RSI (Relative Strength Index):</b> Mengukur kecepatan & besar perubahan harga, skala 0-100. RSI di bawah 30 biasa dianggap "oversold" (jenuh jual, harga sudah turun banyak), di atas 70 dianggap "overbought" (jenuh beli).</p>
         <p><b>MACD:</b> Membandingkan dua rata-rata bergerak (12 &amp; 26 hari) untuk melihat arah &amp; kekuatan tren. Kalau garis MACD di atas garis sinyalnya, dianggap momentum naik.</p>
@@ -859,254 +1261,435 @@ __REFRESH__
         <p><b>Beta:</b> Mengukur seberapa volatil suatu saham dibanding IHSG. Beta &gt; 1 = secara historis bergerak lebih liar dari IHSG (naik/turunnya lebih besar), Beta &lt; 1 = lebih stabil/kalem dibanding IHSG.</p>
       </div>
     </details>
-  </div>
+
+    <details class="guide-item">
+      <summary>Kolom Kondisi</summary>
+      <div class="guide-body">
+        <p><b>Apa itu:</b> Ringkasan otomatis "sebaiknya diapakan dulu" saham ini, dibaca dari tren harian &amp; mingguan, RSI, jarak harga ke MA20, pola candle, dan timeframe 1H/2H. Alasannya tertulis di bawah label.</p>
+        <p><b>Kandidat kuat</b> (hijau): tren harian dan mingguan naik, RSI 45–70, transaksi minimal Rp 5 M/hari, dan jangka pendek tidak sedang koreksi.<br>
+        <b>Tunggu konfirmasi</b> (kuning): pola candle baru muncul hari ini; tunggu candle berikutnya hijau dan tutup di atas high pola.<br>
+        <b>Tunggu pantulan</b> (kuning): tren naik, tapi 1H/2H sedang Sell; tunggu berbalik Buy.<br>
+        <b>Tunggu pullback</b> (oranye): RSI di atas 75 atau harga lebih dari 2,5 ATR di atas MA20; rawan koreksi, tunggu turun ke area entry.<br>
+        <b>Pantau pembalikan</b> (biru): tren masih turun, tapi pola pembalikan sudah terkonfirmasi.<br>
+        <b>Pantau</b> (abu-abu): belum ada arah yang jelas.<br>
+        <b>Hindari dulu</b> (merah): tren harian dan mingguan turun, atau transaksi di bawah Rp 500 juta/hari.</p>
+        <p><b>Catatan:</b> Kondisi hanya aturan teknikal sederhana, tidak membaca berita atau laporan keuangan.</p>
+      </div>
+    </details>
+
+    <details class="guide-item">
+      <summary>Kolom Rencana (contoh)</summary>
+      <div class="guide-body">
+        <p><b>Apa itu:</b> Contoh rencana trading yang dihitung dari ATR (Average True Range = rata-rata jarak gerak harga per hari, 14 hari).</p>
+        <p><b>Area entry:</b> dari MA20 (atau harga − 1 ATR, mana yang lebih tinggi) sampai harga sekarang. Untuk kondisi "Tunggu pullback", area entry diletakkan di bawah harga sekarang.<br>
+        <b>Stop loss (SL):</b> batas bawah area entry dikurangi 1 ATR.<br>
+        <b>Target (TP):</b> 2 kali jarak risiko dari tengah area entry (risk:reward 1:2).<br>
+        <b>Risiko %:</b> jarak dari tengah area entry ke SL. Semua harga sudah dibulatkan ke fraksi harga BEI.</p>
+        <p><b>Catatan:</b> Ini contoh perhitungan, bukan rekomendasi. Cocokkan dengan support/resistance di chart-mu sebelum dipakai, dan sesuaikan jumlah lot supaya kerugian kalau kena SL tetap kecil dibanding modalmu.</p>
+      </div>
+    </details>
+
+    <details class="guide-item">
+      <summary>Pola "tunggu" dan "✓ terkonfirmasi"</summary>
+      <div class="guide-body">
+        <p><b>· tunggu:</b> pola baru terbentuk di candle terakhir. Pola sendirian sering gagal, jadi skor Price Action-nya 70.</p>
+        <p><b>✓ terkonfirmasi:</b> pola muncul kemarin, lalu hari ini candle hijau tutup di atas high pola. Skor Price Action 100. Centang "Hanya pola terkonfirmasi" untuk menyaring yang ini saja.</p>
+      </div>
+    </details>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" tabindex="-1"></aside>
 
 <script>
 const DATA = __DATA__;
+const MARKET = __MARKET__;
+const GEN = "__GEN__";
 const PAGE_SIZE = 25;
-let page = 0;
-let sortKey = "score";
-let sortDir = -1;
-
+const KD_ORDER = { ok: 0, rev: 1, wait: 2, hot: 3, n: 4, bad: 5 };
+const KD_NAME = { ok: "Kandidat kuat", wait: "Tunggu", hot: "Tunggu pullback", rev: "Pantau pembalikan", n: "Pantau", bad: "Hindari dulu" };
 const PRESETS = {
-  breakout:  { weights:{trend:20,brk:50,pa:20,mom:10}, minScore:50, filters:{trend:false,breakout:true,pattern:false,allgreen:false} },
-  golden:    { weights:{trend:60,brk:10,pa:10,mom:20}, minScore:55, filters:{trend:true,breakout:false,pattern:false,allgreen:false} },
-  reversal:  { weights:{trend:10,brk:10,pa:40,mom:40}, minScore:35, filters:{trend:false,breakout:false,pattern:true,allgreen:false}, rsiMax:45 },
-  allgreen:  { weights:{trend:25,brk:25,pa:25,mom:25}, minScore:0,  filters:{trend:false,breakout:false,pattern:false,allgreen:true} },
-  pattern:   { weights:{trend:15,brk:15,pa:55,mom:15}, minScore:40, filters:{trend:false,breakout:false,pattern:true,allgreen:false} },
-  quality:   { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:40, filters:{trend:false,breakout:false,pattern:false,allgreen:false}, valMin:5, streakMin:3 },
-  reset:     { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:40, filters:{trend:false,breakout:false,pattern:false,allgreen:false} },
+  golden:   { weights:{trend:60,brk:10,pa:10,mom:20}, minScore:55, filters:{trend:true}, kd:"nobad",
+              desc:"Saham dengan susunan MA20 > MA50 > MA200 dan harga di atas MA20. Cocok untuk ikut tren yang sudah terbentuk." },
+  quality:  { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:40, filters:{}, valMin:5, streakMin:3,
+              desc:"Transaksi minimal Rp 5 M/hari dan masuk Top 10 minimal 3 dari 10 hari terakhir. Paling aman untuk pemula." },
+  breakout: { weights:{trend:20,brk:50,pa:20,mom:10}, minScore:50, filters:{breakout:true},
+              desc:"Harga menembus harga tertinggi 20 hari dengan volume minimal 1,5 kali rata-rata. Waspada breakout palsu." },
+  allgreen: { weights:{trend:25,brk:25,pa:25,mom:25}, minScore:0, filters:{allgreen:true},
+              desc:"Daily, Mingguan, dan Bulanan sama-sama Strong Buy. Sering sudah mahal, perhatikan RSI." },
+  reversal: { weights:{trend:10,brk:10,pa:40,mom:40}, minScore:35, filters:{pattern:true, confirmed:true}, rsiMax:45,
+              desc:"RSI rendah dengan pola pembalikan yang sudah terkonfirmasi. Lebih berisiko; penurunan bisa berlanjut." },
+  pattern:  { weights:{trend:15,brk:15,pa:55,mom:15}, minScore:40, filters:{pattern:true},
+              desc:"Candle terakhir membentuk pola bullish. Pola berlabel \"tunggu\" belum terkonfirmasi." },
+  reset:    { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:40, filters:{},
+              desc:"Semua saham dengan skor minimal 40, tanpa filter tambahan." },
+};
+const STORE = "idxs:v2", WATCH = "idxs:watch", CALC = "idxs:calc", THEME = "idxs:theme";
+const $ = id => document.getElementById(id);
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
 };
 
-function fmtNum(n) { return n.toLocaleString('id-ID', {maximumFractionDigits:0}); }
+let page = 0, sortKey = "score", sortDir = -1, activePreset = "golden", openT = null;
+let watch = new Set(ls.get(WATCH, []));
+
+/* ---------- format ---------- */
+function fmtNum(n) { return (n === null || n === undefined) ? "-" : Number(n).toLocaleString("id-ID", { maximumFractionDigits: 0 }); }
+function fmtDec(n, d = 1) { return Number(n).toLocaleString("id-ID", { minimumFractionDigits: d, maximumFractionDigits: d }); }
 function fmtValue(v) {
-  if (v >= 1e12) return 'Rp ' + (v/1e12).toFixed(2) + ' T';
-  if (v >= 1e9) return 'Rp ' + (v/1e9).toFixed(1) + ' M';
-  if (v >= 1e6) return 'Rp ' + (v/1e6).toFixed(0) + ' Jt';
-  return 'Rp ' + fmtNum(v);
+  if (v >= 1e12) return "Rp " + fmtDec(v / 1e12, 2) + " T";
+  if (v >= 1e9) return "Rp " + fmtDec(v / 1e9, 1) + " M";
+  if (v >= 1e6) return "Rp " + fmtNum(v / 1e6) + " jt";
+  return "Rp " + fmtNum(v);
+}
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function vClass(v) { return v === "Strong Buy" ? "sb" : v === "Buy" ? "b" : v === "Strong Sell" ? "ss" : v === "Sell" ? "s" : "n"; }
+const isUp = v => v === "Buy" || v === "Strong Buy";
+const isDown = v => v === "Sell" || v === "Strong Sell";
+
+/* ---------- checklist ---------- */
+function checklist(r) {
+  const tf = r.tf || {}, x = r.x || {};
+  const ihsgDown = MARKET.ihsg ? isDown(MARKET.ihsg.d) : null;
+  const items = [
+    ["Tren tersusun naik (MA20 > MA50 > MA200, harga di atas MA20)", !!r.trendOk],
+    ["Harga di atas MA200 (tren jangka panjang naik)", x.ma200 ? r.p > x.ma200 : null],
+    ["Daily dan Mingguan sama-sama Buy", tf.daily && tf.weekly ? isUp(tf.daily.summary) && isUp(tf.weekly.summary) : null],
+    ["RSI di zona sehat 45–70 (RSI " + fmtDec(r.rsi, 1) + ")", r.rsi >= 45 && r.rsi <= 70],
+    ["Volume hari ini di atas rata-rata 20 hari (" + fmtDec(r.vr, 2) + "×)", r.vr >= 1],
+    ["Likuid: transaksi minimal Rp 5 M/hari (" + fmtValue(r.val) + ")", r.val >= 5e9],
+    ["Jangka pendek (1H) tidak sedang Sell", tf.h1 ? !isDown(tf.h1.summary) : null],
+    ["Risiko ke stop loss maksimal 7%" + (r.plan ? " (" + fmtDec(r.plan.risk, 1) + "%)" : ""), r.plan ? r.plan.risk <= 7 : null],
+    ["IHSG tidak sedang dalam tren turun", ihsgDown === null ? null : !ihsgDown],
+  ];
+  const ev = items.filter(i => i[1] !== null);
+  return { items, pass: ev.filter(i => i[1]).length, total: ev.length };
+}
+DATA.forEach(r => {
+  const c = checklist(r);
+  r._ck = c; r.ck = c.total ? c.pass / c.total + c.pass / 1000 : 0;
+  r.kdo = r.kd ? -KD_ORDER[r.kd.c] : -9;
+  r.streak = r.cst ? r.cst.streak : 0;
+});
+
+/* ---------- theme ---------- */
+function applyTheme(t) {
+  if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme");
+  const dark = t ? t === "dark" : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  $("theme-btn").textContent = dark ? "Tema terang" : "Tema gelap";
+}
+applyTheme(ls.get(THEME, null));
+$("theme-btn").addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme") || ((window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  ls.set(THEME, next); applyTheme(next);
+});
+
+/* ---------- market strip ---------- */
+function renderMarket() {
+  const m = MARKET.ihsg, b = MARKET.breadth;
+  let a = '<div><div class="m-label">IHSG</div>';
+  if (m) {
+    const up = m.chg >= 0;
+    const trend = m.p > m.ma20 && m.p > m.ma50 ? "di atas MA20 dan MA50" : m.p < m.ma20 && m.p < m.ma50 ? "di bawah MA20 dan MA50" : "di antara MA20 dan MA50";
+    const say = isDown(m.d) ? "Pasar sedang lemah. Kurangi ukuran posisi atau tunggu dulu."
+      : isUp(m.d) ? "Pasar mendukung. Tetap pasang stop loss." : "Pasar belum punya arah jelas. Pilih saham dengan checklist tinggi saja.";
+    a += `<div class="m-row"><span class="m-big">${fmtDec(m.p, 2)}</span><span class="m-chg ${up ? "up" : "down"}">${up ? "+" : ""}${fmtDec(m.chg, 2)}%</span></div>
+      <div class="m-say">Harga ${trend}, ringkasan teknikal ${m.d}${m.rsi ? ", RSI " + fmtDec(m.rsi, 1) : ""}. ${say}</div>`;
+  } else a += '<div class="m-say">Data IHSG tidak tersedia di run ini.</div>';
+  a += "</div>";
+  let br = '<div><div class="m-label">Napas pasar</div>';
+  if (b) br += `<div class="m-big">${b.pct}%</div><div class="breadth-bar"><i style="width:${b.pct}%"></i></div>
+      <div class="m-say">dari ${fmtNum(b.n)} saham likuid berada di atas MA20. ${b.pct >= 60 ? "Mayoritas saham sedang naik." : b.pct <= 40 ? "Mayoritas saham sedang turun." : "Pasar terbelah."}</div>`;
+  else br += '<div class="m-say">Belum ada data.</div>';
+  br += "</div>";
+  const cnt = {}; DATA.forEach(r => { if (r.kd) cnt[r.kd.c] = (cnt[r.kd.c] || 0) + 1; });
+  let kc = '<div><div class="m-label">Kondisi semua saham (klik untuk menyaring)</div><div class="kd-counts">';
+  ["ok", "wait", "hot", "rev", "n", "bad"].forEach(k => { if (cnt[k]) kc += `<button class="kd-count" data-kd="${k}" type="button">${KD_NAME[k]}<b>${cnt[k]}</b></button>`; });
+  kc += "</div></div>";
+  $("market").innerHTML = a + br + kc;
+  document.querySelectorAll(".kd-count").forEach(btn => btn.addEventListener("click", () => {
+    const turnOff = $("kd-filter").value === btn.dataset.kd;
+    applyPreset("reset", true);
+    $("min-score").value = 0; $("min-score-val").textContent = "0";
+    $("kd-filter").value = turnOff ? "" : btn.dataset.kd;
+    page = 0; save(); render();
+  }));
 }
 
-function computeScore(row, w) {
-  const totalW = w.trend + w.brk + w.pa + w.mom;
-  if (totalW <= 0) return 0;
-  return (row.trend*w.trend + row.brk*w.brk + row.pa*w.pa + row.mom*w.mom) / totalW;
-}
-
-function verdictClass(v) {
-  if (v === "Strong Buy") return "sb";
-  if (v === "Buy") return "b";
-  if (v === "Strong Sell") return "ss";
-  if (v === "Sell") return "s";
-  return "n";
-}
-
-function verdictBadge(tfKey, tfData) {
-  if (!tfData || !tfData[tfKey]) return '<span class="verdict n">-</span>';
-  const d = tfData[tfKey];
-  const cls = verdictClass(d.summary);
-  const tip = `MA: ${d.ma} (${d.ma_detail}) | Indikator: ${d.ind} (${d.ind_detail})`;
-  return `<span class="verdict ${cls}" title="${tip}">${d.summary}</span>`;
-}
-
-function isAllGreen(tfData) {
-  if (!tfData || !tfData.daily || !tfData.weekly || !tfData.monthly) return false;
-  return tfData.daily.summary === "Strong Buy" && tfData.weekly.summary === "Strong Buy" && tfData.monthly.summary === "Strong Buy";
-}
-
+/* ---------- small charts ---------- */
 function candleSvg(ohlc) {
-  if (!ohlc || ohlc.length < 2) return '';
-  const w = 130, h = 46, padX = 2, padY = 3;
-  const highs = ohlc.map(c => c[1]), lows = ohlc.map(c => c[2]);
-  const max = Math.max(...highs), min = Math.min(...lows);
-  const range = (max - min) || 1;
-  const n = ohlc.length;
-  const slotW = (w - padX*2) / n;
-  const bodyW = Math.max(1.2, slotW * 0.6);
-  const yFor = v => h - padY - ((v - min) / range) * (h - padY*2);
-
-  const parts = ohlc.map((c, i) => {
-    const [o, hi, lo, cl] = c;
-    const x = padX + i*slotW + slotW/2;
-    const up = cl >= o;
-    const color = up ? "#16a34a" : "#dc2626";
-    const yHigh = yFor(hi), yLow = yFor(lo);
-    const yOpen = yFor(o), yClose = yFor(cl);
-    const bodyTop = Math.min(yOpen, yClose);
-    const bodyH = Math.max(1, Math.abs(yClose - yOpen));
-    return `<line x1="${x.toFixed(1)}" y1="${yHigh.toFixed(1)}" x2="${x.toFixed(1)}" y2="${yLow.toFixed(1)}" stroke="${color}" stroke-width="1"></line>
-      <rect x="${(x-bodyW/2).toFixed(1)}" y="${bodyTop.toFixed(1)}" width="${bodyW.toFixed(1)}" height="${bodyH.toFixed(1)}" fill="${color}"></rect>`;
-  }).join("");
-
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="130" height="46">${parts}</svg>`;
+  if (!ohlc || ohlc.length < 2) return "";
+  const w = 120, h = 40, px = 2, py = 3, n = ohlc.length;
+  const max = Math.max(...ohlc.map(c => c[1])), min = Math.min(...ohlc.map(c => c[2])), rg = (max - min) || 1;
+  const sw = (w - px * 2) / n, bw = Math.max(1.2, sw * 0.6), y = v => h - py - ((v - min) / rg) * (h - py * 2);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">` + ohlc.map((c, i) => {
+    const [o, hi, lo, cl] = c, x = px + i * sw + sw / 2, col = cl >= o ? "var(--up)" : "var(--down)";
+    const top = Math.min(y(o), y(cl)), bh = Math.max(1, Math.abs(y(cl) - y(o)));
+    return `<line x1="${x.toFixed(1)}" y1="${y(hi).toFixed(1)}" x2="${x.toFixed(1)}" y2="${y(lo).toFixed(1)}" stroke="${col}" stroke-width="1"/><rect x="${(x - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${col}"/>`;
+  }).join("") + "</svg>";
 }
 
-function getWeights() {
-  return {
-    trend: +document.getElementById('w-trend').value,
-    brk: +document.getElementById('w-brk').value,
-    pa: +document.getElementById('w-pa').value,
-    mom: +document.getElementById('w-mom').value,
+function bigChart(r) {
+  const o = r.ohlc || [], n = o.length; if (n < 2) return "";
+  const W = 520, H = 250, L = 8, R = 74, T = 12, B = 14, x = r.x || {}, p = r.plan;
+  const vals = o.flatMap(c => [c[1], c[2]]);
+  (x.m20 || []).forEach(v => v && vals.push(v)); (x.m50 || []).forEach(v => v && vals.push(v));
+  if (p) vals.push(p.sl, p.tp, p.e1, p.e2);
+  let max = Math.max(...vals), min = Math.min(...vals); const pad = (max - min) * 0.04 || 1; max += pad; min -= pad;
+  const sw = (W - L - R) / n, bw = Math.max(2, sw * 0.62);
+  const y = v => T + (max - v) / (max - min) * (H - T - B), cx = i => L + i * sw + sw / 2;
+  let s = `<svg class="d-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart 30 hari ${esc(r.t)}">`;
+  if (p) {
+    s += `<rect x="${L}" y="${y(p.e2).toFixed(1)}" width="${W - L - R}" height="${Math.max(2, y(p.e1) - y(p.e2)).toFixed(1)}" fill="var(--accent)" opacity="0.12"/>`;
+    const line = (v, col, lab) => `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1.4" stroke-dasharray="5 4"/><text x="${W - R + 6}" y="${(y(v) + 4).toFixed(1)}" font-size="11" font-weight="700" fill="${col}">${lab} ${fmtNum(v)}</text>`;
+    s += line(p.tp, "var(--up)", "TP") + line(p.sl, "var(--down)", "SL");
+    s += `<text x="${W - R + 6}" y="${((y(p.e1) + y(p.e2)) / 2 + 4).toFixed(1)}" font-size="11" font-weight="700" fill="var(--accent)">Entry</text>`;
+  }
+  o.forEach((c, i) => {
+    const [op, hi, lo, cl] = c, col = cl >= op ? "var(--up)" : "var(--down)", top = Math.min(y(op), y(cl));
+    s += `<line x1="${cx(i).toFixed(1)}" x2="${cx(i).toFixed(1)}" y1="${y(hi).toFixed(1)}" y2="${y(lo).toFixed(1)}" stroke="${col}"/><rect x="${(cx(i) - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, Math.abs(y(cl) - y(op))).toFixed(1)}" fill="${col}"/>`;
+  });
+  const path = (arr, col) => {
+    const pts = (arr || []).map((v, i) => v ? `${cx(i).toFixed(1)},${y(v).toFixed(1)}` : null).filter(Boolean);
+    return pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="1.8"/>` : "";
   };
+  s += path(x.m20, "var(--blue)") + path(x.m50, "var(--orange)");
+  const last = o[n - 1][3], taken = p ? [y(p.tp), y(p.sl), (y(p.e1) + y(p.e2)) / 2] : [];
+  if (taken.every(v => Math.abs(v - y(last)) > 13)) s += `<text x="${W - R + 6}" y="${(y(last) + 4).toFixed(1)}" font-size="11" fill="var(--ink2)">${fmtNum(last)}</text>`;
+  s += "</svg>";
+  return s;
 }
 
-function applyPreset(name) {
-  const p = PRESETS[name];
-  if (!p) return;
-  document.getElementById('w-trend').value = p.weights.trend;
-  document.getElementById('w-brk').value = p.weights.brk;
-  document.getElementById('w-pa').value = p.weights.pa;
-  document.getElementById('w-mom').value = p.weights.mom;
-  document.getElementById('w-trend-val').textContent = p.weights.trend;
-  document.getElementById('w-brk-val').textContent = p.weights.brk;
-  document.getElementById('w-pa-val').textContent = p.weights.pa;
-  document.getElementById('w-mom-val').textContent = p.weights.mom;
-  document.getElementById('min-score').value = p.minScore;
-  document.getElementById('min-score-val').textContent = p.minScore;
-  document.getElementById('f-trend').checked = p.filters.trend;
-  document.getElementById('f-breakout').checked = p.filters.breakout;
-  document.getElementById('f-pattern').checked = p.filters.pattern;
-  document.getElementById('f-allgreen').checked = p.filters.allgreen;
-  document.getElementById('rsi-max').value = p.rsiMax !== undefined ? p.rsiMax : '';
-  document.getElementById('rsi-min').value = '';
-  document.getElementById('price-min').value = '';
-  document.getElementById('price-max').value = '';
-  document.getElementById('val-min').value = p.valMin !== undefined ? p.valMin : '';
-  document.getElementById('streak-min').value = p.streakMin !== undefined ? p.streakMin : '';
-  document.getElementById('search').value = '';
+/* ---------- cells ---------- */
+function verdictCell(k, tf) {
+  const d = tf && tf[k]; if (!d) return '<span class="muted">-</span>';
+  return `<span class="v ${vClass(d.summary)}" title="MA: ${esc(d.ma)} (${esc(d.ma_detail)}) | Indikator: ${esc(d.ind)} (${esc(d.ind_detail)})">${esc(d.summary)}</span>`;
+}
+function badges(r) {
+  const b = [];
+  if (r.trendOk) b.push('<span class="badge trend">Uptrend</span>');
+  if (r.brkOk) b.push('<span class="badge breakout">Breakout</span>');
+  if (r.pattern) b.push(r.pk === "ok" ? `<span class="badge pattern ok" title="Sudah dikonfirmasi candle hijau">${esc(r.pattern)} ✓</span>`
+    : `<span class="badge pattern" title="Belum terkonfirmasi">${esc(r.pattern)} · tunggu</span>`);
+  return b.join("") || '<span class="muted">-</span>';
+}
+function ckCell(r) {
+  const c = r._ck; if (!c.total) return '<span class="muted">-</span>';
+  const cls = c.pass >= 7 ? "hi" : c.pass >= 5 ? "mid" : "lo";
+  return `<span class="ck ${cls}">${c.pass}/${c.total}</span>`;
+}
+function planCell(r) {
+  const p = r.plan; if (!p) return '<span class="muted">-</span>';
+  return `<div class="plan">Entry <b>${fmtNum(p.e1)}–${fmtNum(p.e2)}</b><br><span class="sl">SL ${fmtNum(p.sl)}</span> · <span class="tp">TP ${fmtNum(p.tp)}</span></div>`;
+}
 
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-  const btn = document.querySelector(`.preset-btn[data-preset="${name}"]`);
-  if (btn && name !== 'reset') btn.classList.add('active');
+/* ---------- state ---------- */
+const FIELDS = ["search", "kd-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min"];
+const CHECKS = ["f-watch", "f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen"];
+const W = ["w-trend", "w-brk", "w-pa", "w-mom"];
+function save() {
+  const s = { preset: activePreset, sortKey, sortDir, page, min: $("min-score").value, f: {}, c: {}, w: {} };
+  FIELDS.forEach(id => s.f[id] = $(id).value); CHECKS.forEach(id => s.c[id] = $(id).checked); W.forEach(id => s.w[id] = $(id).value);
+  ls.set(STORE, s);
+}
+function load() {
+  const s = ls.get(STORE, null); if (!s) { applyPreset("golden", true); return; }
+  activePreset = s.preset; sortKey = s.sortKey || "score"; sortDir = s.sortDir || -1; page = s.page || 0;
+  FIELDS.forEach(id => { if (s.f && s.f[id] !== undefined) $(id).value = s.f[id]; });
+  CHECKS.forEach(id => { if (s.c && s.c[id] !== undefined) $(id).checked = s.c[id]; });
+  W.forEach(id => { if (s.w && s.w[id] !== undefined) { $(id).value = s.w[id]; $(id + "-val").textContent = s.w[id]; } });
+  $("min-score").value = s.min ?? 40; $("min-score-val").textContent = $("min-score").value;
+  markPreset();
+}
+function markPreset() {
+  document.querySelectorAll(".preset-btn").forEach(b => b.classList.toggle("active", b.dataset.preset === activePreset));
+  $("preset-desc").textContent = activePreset && PRESETS[activePreset] ? PRESETS[activePreset].desc : "Pengaturan manual.";
+  document.querySelectorAll("thead th").forEach(th => { th.classList.toggle("active", th.dataset.key === sortKey); th.classList.toggle("asc", th.dataset.key === sortKey && sortDir === 1); });
+}
+function applyPreset(name, silent) {
+  const p = PRESETS[name]; if (!p) return;
+  activePreset = name;
+  $("w-trend").value = p.weights.trend; $("w-brk").value = p.weights.brk; $("w-pa").value = p.weights.pa; $("w-mom").value = p.weights.mom;
+  W.forEach(id => $(id + "-val").textContent = $(id).value);
+  $("min-score").value = p.minScore; $("min-score-val").textContent = p.minScore;
+  const f = p.filters || {};
+  $("f-trend").checked = !!f.trend; $("f-breakout").checked = !!f.breakout; $("f-pattern").checked = !!f.pattern;
+  $("f-confirmed").checked = !!f.confirmed; $("f-allgreen").checked = !!f.allgreen;
+  $("rsi-max").value = p.rsiMax ?? ""; $("rsi-min").value = ""; $("price-min").value = ""; $("price-max").value = "";
+  $("val-min").value = p.valMin ?? ""; $("streak-min").value = p.streakMin ?? ""; $("kd-filter").value = p.kd || "";
+  $("search").value = ""; $("f-watch").checked = false;
+  sortKey = "score"; sortDir = -1; page = 0;
+  markPreset(); if (!silent) { save(); render(); }
+}
 
-  page = 0;
-  render();
+/* ---------- render table ---------- */
+function weights() { return { trend: +$("w-trend").value, brk: +$("w-brk").value, pa: +$("w-pa").value, mom: +$("w-mom").value }; }
+function score(r, w) { const t = w.trend + w.brk + w.pa + w.mom; return t ? (r.trend * w.trend + r.brk * w.brk + r.pa * w.pa + r.mom * w.mom) / t : 0; }
+function allGreen(tf) { return tf && tf.daily && tf.weekly && tf.monthly && [tf.daily, tf.weekly, tf.monthly].every(d => d.summary === "Strong Buy"); }
+function num(id) { return parseFloat($(id).value); }
+
+function filtered() {
+  const w = weights(), q = $("search").value.trim().toUpperCase(), kd = $("kd-filter").value;
+  const pmin = num("price-min"), pmax = num("price-max"), rmin = num("rsi-min"), rmax = num("rsi-max"), vmin = num("val-min"), smin = num("streak-min");
+  let rows = DATA.map(r => ({ ...r, score: score(r, w) })).filter(r => r.score >= +$("min-score").value);
+  if ($("f-watch").checked) rows = rows.filter(r => watch.has(r.t));
+  if ($("f-trend").checked) rows = rows.filter(r => r.trendOk);
+  if ($("f-breakout").checked) rows = rows.filter(r => r.brkOk);
+  if ($("f-pattern").checked) rows = rows.filter(r => r.pattern);
+  if ($("f-confirmed").checked) rows = rows.filter(r => r.pk === "ok");
+  if ($("f-allgreen").checked) rows = rows.filter(r => allGreen(r.tf));
+  if (!isNaN(pmin)) rows = rows.filter(r => r.p >= pmin);
+  if (!isNaN(pmax)) rows = rows.filter(r => r.p <= pmax);
+  if (!isNaN(rmin)) rows = rows.filter(r => r.rsi >= rmin);
+  if (!isNaN(rmax)) rows = rows.filter(r => r.rsi <= rmax);
+  if (!isNaN(vmin)) rows = rows.filter(r => r.val >= vmin * 1e9);
+  if (!isNaN(smin)) rows = rows.filter(r => r.streak >= smin);
+  if (q) rows = rows.filter(r => r.t.includes(q) || (r.nm || "").toUpperCase().includes(q));
+  if (kd === "nobad") rows = rows.filter(r => !r.kd || r.kd.c !== "bad");
+  else if (kd) rows = rows.filter(r => r.kd && r.kd.c === kd);
+  rows.sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (typeof av === "string") return sortDir * av.localeCompare(bv);
+    return sortDir * ((av ?? -1e18) - (bv ?? -1e18));
+  });
+  return rows;
 }
 
 function render() {
-  const w = getWeights();
-  const minScore = +document.getElementById('min-score').value;
-  const onlyTrend = document.getElementById('f-trend').checked;
-  const onlyBreakout = document.getElementById('f-breakout').checked;
-  const onlyPattern = document.getElementById('f-pattern').checked;
-  const onlyAllGreen = document.getElementById('f-allgreen').checked;
-  const q = document.getElementById('search').value.trim().toUpperCase();
-  const priceMin = parseFloat(document.getElementById('price-min').value);
-  const priceMax = parseFloat(document.getElementById('price-max').value);
-  const rsiMin = parseFloat(document.getElementById('rsi-min').value);
-  const rsiMax = parseFloat(document.getElementById('rsi-max').value);
-  const valMin = parseFloat(document.getElementById('val-min').value);
-  const streakMin = parseFloat(document.getElementById('streak-min').value);
-
-  let rows = DATA.map(r => ({...r, score: computeScore(r, w)}));
-  rows = rows.filter(r => r.score >= minScore);
-  if (onlyTrend) rows = rows.filter(r => r.trendOk);
-  if (onlyBreakout) rows = rows.filter(r => r.brkOk);
-  if (onlyPattern) rows = rows.filter(r => r.pattern);
-  if (onlyAllGreen) rows = rows.filter(r => isAllGreen(r.tf));
-  if (!isNaN(priceMin)) rows = rows.filter(r => r.p >= priceMin);
-  if (!isNaN(priceMax)) rows = rows.filter(r => r.p <= priceMax);
-  if (!isNaN(rsiMin)) rows = rows.filter(r => r.rsi >= rsiMin);
-  if (!isNaN(rsiMax)) rows = rows.filter(r => r.rsi <= rsiMax);
-  if (!isNaN(valMin)) rows = rows.filter(r => r.val >= valMin * 1e9);
-  if (!isNaN(streakMin)) rows = rows.filter(r => (r.cst && r.cst.streak || 0) >= streakMin);
-  if (q) rows = rows.filter(r => r.t.toUpperCase().includes(q));
-
-  rows.sort((a,b) => {
-    let av = a[sortKey], bv = b[sortKey];
-    if (typeof av === 'string') return sortDir * av.localeCompare(bv);
-    return sortDir * ((av||0) - (bv||0));
-  });
-
-  document.getElementById('count-info').textContent =
-    `${rows.length} saham cocok dengan kriteria saat ini (dari ${DATA.length} total)`;
-
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  if (page >= totalPages) page = totalPages - 1;
-  if (page < 0) page = 0;
-  const pageRows = rows.slice(page*PAGE_SIZE, page*PAGE_SIZE + PAGE_SIZE);
-
-  const tbody = document.getElementById('tbody');
-  tbody.innerHTML = pageRows.map(r => {
-    const chgClass = r.chg >= 0 ? 'pos' : 'neg';
-    const badges = [];
-    if (r.trendOk) badges.push('<span class="badge trend">Uptrend</span>');
-    if (r.brkOk) badges.push('<span class="badge breakout">Breakout</span>');
-    if (r.pattern) badges.push(`<span class="badge pattern">${r.pattern}</span>`);
-    const badgeHtml = badges.join(' ') || '<span class="muted">-</span>';
-    const scoreRounded = r.score.toFixed(1);
-    const cst = r.cst || {count:0,total:0,streak:0};
-    const streakStrong = cst.streak >= 3;
-    const cstHtml = cst.total > 0
-      ? `<span style="${streakStrong ? 'color:#15803d;font-weight:700;' : 'color:#475569;'}" title="${cst.count} dari ${cst.total} hari run terakhir masuk Top-10">${cst.count}/${cst.total} hari (streak ${cst.streak})</span>`
-      : '<span class="muted">- (run beberapa hari dulu)</span>';
-    const betaHtml = (r.beta === null || r.beta === undefined) ? '<span class="muted">-</span>' : r.beta.toFixed(2);
-    const sectorHtml = r.sector && r.sector !== '-' ? r.sector : '<span class="muted">-</span>';
-    return `<tr>
+  const rows = filtered();
+  $("count-info").textContent = `${fmtNum(rows.length)} saham cocok dari ${fmtNum(DATA.length)}. Klik baris untuk melihat detail.`;
+  document.querySelectorAll(".kd-count").forEach(b => b.classList.toggle("on", b.dataset.kd === $("kd-filter").value));
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  page = Math.min(Math.max(0, page), pages - 1);
+  const slice = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  if (!slice.length) {
+    $("tbody").innerHTML = `<tr><td colspan="21" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
+    $("empty-reset").addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
+  } else {
+    $("tbody").innerHTML = slice.map(r => `<tr data-t="${r.t}" tabindex="0">
+      <td class="sticky1"><button class="star ${watch.has(r.t) ? "on" : ""}" data-star="${r.t}" type="button" aria-label="Watchlist ${r.t}" aria-pressed="${watch.has(r.t)}">★</button></td>
+      <td class="sticky2"><div class="tk">${r.t}</div><div class="tk-name" title="${esc(r.nm)}">${esc(r.nm) || "&nbsp;"}</div></td>
       <td>${candleSvg(r.ohlc)}</td>
-      <td class="tk">${r.t}</td>
-      <td>${fmtNum(r.p)}</td>
-      <td class="${chgClass}">${r.chg>=0?'+':''}${r.chg.toFixed(2)}%</td>
-      <td>${sectorHtml}</td>
-      <td>${fmtValue(r.val)}</td>
-      <td><div class="score-bar"><div class="score-fill" style="width:${Math.min(100,scoreRounded)}%"></div><span>${scoreRounded}</span></div></td>
-      <td>${badgeHtml}</td>
-      <td>${r.rsi}</td>
-      <td>${betaHtml}</td>
-      <td>${verdictBadge('h1', r.tf)}</td>
-      <td>${verdictBadge('h2', r.tf)}</td>
-      <td>${verdictBadge('h4', r.tf)}</td>
-      <td>${verdictBadge('daily', r.tf)}</td>
-      <td>${verdictBadge('weekly', r.tf)}</td>
-      <td>${verdictBadge('monthly', r.tf)}</td>
-      <td>${cstHtml}</td>
-    </tr>`;
-  }).join('');
-
-  document.getElementById('page-info').textContent = `Hal ${page+1} / ${totalPages}`;
-  document.getElementById('prev-page').disabled = page <= 0;
-  document.getElementById('next-page').disabled = page >= totalPages - 1;
+      <td class="num">${fmtNum(r.p)}</td>
+      <td class="num ${r.chg >= 0 ? "pos" : "neg"}">${r.chg >= 0 ? "+" : ""}${fmtDec(r.chg, 2)}%</td>
+      <td><span class="score"><b>${fmtDec(r.score, 0)}</b><span class="score-bar"><i style="width:${Math.min(100, r.score)}%"></i></span></span></td>
+      <td>${ckCell(r)}</td>
+      <td>${r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : "-"}</td>
+      <td>${planCell(r)}</td>
+      <td>${badges(r)}</td>
+      <td class="num">${fmtDec(r.rsi, 1)}</td>
+      <td class="num">${fmtValue(r.val)}</td>
+      <td>${r.sector && r.sector !== "-" ? esc(r.sector) : '<span class="muted">-</span>'}</td>
+      <td class="num">${r.beta == null ? '<span class="muted">-</span>' : fmtDec(r.beta, 2)}</td>
+      <td>${verdictCell("h1", r.tf)}</td><td>${verdictCell("h2", r.tf)}</td><td>${verdictCell("h4", r.tf)}</td>
+      <td>${verdictCell("daily", r.tf)}</td><td>${verdictCell("weekly", r.tf)}</td><td>${verdictCell("monthly", r.tf)}</td>
+      <td>${r.cst && r.cst.total ? `${r.cst.count}/${r.cst.total}` : '<span class="muted">-</span>'}</td>
+    </tr>`).join("");
+  }
+  $("page-info").textContent = `Halaman ${page + 1} dari ${pages}`;
+  $("prev-page").disabled = page <= 0; $("next-page").disabled = page >= pages - 1;
 }
 
-document.querySelectorAll('.preset-btn').forEach(btn => {
-  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
-});
+/* ---------- drawer ---------- */
+function openDrawer(t) {
+  const r0 = DATA.find(x => x.t === t); if (!r0) return;
+  const w = weights(), r = { ...r0, score: score(r0, w) }; openT = t;
+  const up = r.chg >= 0, c = r._ck, p = r.plan, tf = r.tf || {};
+  const calc = ls.get(CALC, { modal: 10000000, risk: 1 });
+  const comp = [["Trend", r.trend, w.trend], ["Breakout", r.brk, w.brk], ["Price action", r.pa, w.pa], ["Momentum", r.mom, w.mom]];
+  const tfNames = [["h1", "1 jam"], ["h2", "2 jam"], ["h4", "4 jam"], ["daily", "Harian"], ["weekly", "Mingguan"], ["monthly", "Bulanan"]];
+  $("drawer").innerHTML = `
+    <div class="d-head">
+      <div><div class="d-tk" id="d-title">${r.t}</div><div class="d-name">${esc(r.nm)}${r.sector && r.sector !== "-" ? ". " + esc(r.sector) : ""}</div></div>
+      <button class="icon-btn" id="d-close" type="button">Tutup</button>
+    </div>
+    <div class="d-price">${fmtNum(r.p)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(r.chg, 2)}%</span></div>
+    <div class="muted" style="font-size:0.8rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.</div>
+    <div class="d-sec">
+      ${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}
+      <div style="margin-top:6px">${badges(r)}</div>
+    </div>
+    <div class="d-sec"><h3>Chart 30 hari</h3>${bigChart(r)}
+      <div class="legend"><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--orange)"></i>MA50</span>${p ? '<span><i style="background:var(--accent);opacity:.35;height:8px"></i>Area entry</span><span><i style="background:var(--down)"></i>Stop loss</span><span><i style="background:var(--up)"></i>Target</span>' : ""}</div>
+    </div>
+    <div class="d-sec"><h3>Checklist: ${c.pass} dari ${c.total} syarat terpenuhi</h3>
+      <ul class="checklist">${c.items.map(([label, ok]) => `<li><span class="ci ${ok === null ? "na" : ok ? "y" : "x"}">${ok === null ? "–" : ok ? "✓" : "✗"}</span><span>${esc(label)}${ok === null ? ' <span class="muted">(data tidak tersedia)</span>' : ""}</span></li>`).join("")}</ul>
+    </div>
+    ${p ? `<div class="d-sec"><h3>Rencana (contoh, bukan rekomendasi)</h3>
+      <div class="plan-box"><div><small>Area entry</small><b>${fmtNum(p.e1)}–${fmtNum(p.e2)}</b></div><div><small>Stop loss</small><b class="neg">${fmtNum(p.sl)}</b></div><div><small>Target</small><b class="pos">${fmtNum(p.tp)}</b></div><div><small>Risiko</small><b>${fmtDec(p.risk, 1)}%</b></div></div>
+      <div class="calc">
+        <div class="f"><label for="c-modal">Modal (Rp)</label><input type="number" id="c-modal" min="0" step="100000" value="${calc.modal}"></div>
+        <div class="f"><label for="c-risk">Risiko per transaksi (% modal)</label><input type="number" id="c-risk" min="0.1" max="10" step="0.1" value="${calc.risk}"></div>
+      </div>
+      <div class="calc-out" id="c-out"></div>
+    </div>` : `<div class="d-sec"><h3>Rencana</h3><p class="muted" style="margin:0">Tidak ada rencana untuk saham berlabel Hindari dulu atau yang datanya kurang.</p></div>`}
+    <div class="d-sec"><h3>Rincian skor</h3><div class="bars">${comp.map(([n, v, wt]) => `<div class="bar-row"><span>${n}</span><span class="track"><i style="width:${v}%"></i></span><span>${v}/100, bobot ${wt}</span></div>`).join("")}</div></div>
+    <div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>
+    <div class="d-sec"><h3>Data lain</h3><div class="muted" style="font-size:0.86rem">RSI ${fmtDec(r.rsi, 1)}. Volume ${fmtDec(r.vr, 2)}× rata-rata. Transaksi ${fmtValue(r.val)}/hari. Beta ${r.beta == null ? "-" : fmtDec(r.beta, 2)}. ${r.cst && r.cst.total ? `Masuk Top 10 ${r.cst.count} dari ${r.cst.total} hari terakhir.` : ""}</div></div>
+    <div class="d-actions"><button class="icon-btn" id="d-star" type="button">${watch.has(r.t) ? "★ Hapus dari watchlist" : "☆ Tambah ke watchlist"}</button></div>
+    <p class="d-foot">Semua angka dihitung otomatis dari data Yahoo Finance dan bisa tertunda. Cocokkan dengan chart di aplikasi trading-mu sebelum mengambil keputusan.</p>`;
+  $("drawer").classList.add("open"); $("scrim").classList.add("open"); $("drawer").focus();
+  $("d-close").addEventListener("click", closeDrawer);
+  $("d-star").addEventListener("click", () => { toggleWatch(r.t); openDrawer(r.t); });
+  if (p) {
+    const upd = () => {
+      const modal = parseFloat($("c-modal").value) || 0, risk = parseFloat($("c-risk").value) || 0;
+      ls.set(CALC, { modal, risk });
+      const mid = (p.e1 + p.e2) / 2, perLotRisk = (mid - p.sl) * 100;
+      const byRisk = perLotRisk > 0 ? Math.floor(modal * risk / 100 / perLotRisk) : 0, byCash = Math.floor(modal / (mid * 100));
+      const lot = Math.max(0, Math.min(byRisk, byCash));
+      $("c-out").innerHTML = lot > 0
+        ? `Maksimal <b>${fmtNum(lot)} lot</b> (sekitar Rp ${fmtNum(lot * mid * 100)}). Kalau kena stop loss, rugi sekitar <b>Rp ${fmtNum(lot * perLotRisk)}</b> atau ${fmtDec(lot * perLotRisk / modal * 100, 2)}% modal.${byCash < byRisk ? " Dibatasi oleh jumlah modal." : ""}`
+        : "Modal atau risiko terlalu kecil untuk membeli 1 lot dengan stop loss ini.";
+    };
+    $("c-modal").addEventListener("input", upd); $("c-risk").addEventListener("input", upd); upd();
+  }
+}
+function closeDrawer() { $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); const tr = document.querySelector(`tr[data-t="${openT}"]`); openT = null; if (tr) tr.focus(); }
+function toggleWatch(t) { watch.has(t) ? watch.delete(t) : watch.add(t); ls.set(WATCH, [...watch]); render(); }
 
-[['w-trend','w-trend-val'],['w-brk','w-brk-val'],['w-pa','w-pa-val'],['w-mom','w-mom-val']].forEach(([id,valId]) => {
-  const el = document.getElementById(id);
-  el.addEventListener('input', () => {
-    document.getElementById(valId).textContent = el.value;
-    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-    page = 0; render();
-  });
+/* ---------- events ---------- */
+document.querySelectorAll(".preset-btn").forEach(b => b.addEventListener("click", () => applyPreset(b.dataset.preset)));
+W.forEach(id => $(id).addEventListener("input", () => { $(id + "-val").textContent = $(id).value; activePreset = null; markPreset(); page = 0; save(); render(); }));
+$("min-score").addEventListener("input", function () { $("min-score-val").textContent = this.value; page = 0; save(); render(); });
+CHECKS.forEach(id => $(id).addEventListener("change", () => { page = 0; save(); render(); }));
+FIELDS.forEach(id => $(id).addEventListener(id === "kd-filter" ? "change" : "input", () => { page = 0; save(); render(); }));
+$("prev-page").addEventListener("click", () => { page--; save(); render(); });
+$("next-page").addEventListener("click", () => { page++; save(); render(); });
+document.querySelectorAll("thead th[data-key]").forEach(th => th.addEventListener("click", () => {
+  const k = th.dataset.key; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = k === "t" || k === "sector" ? 1 : -1; }
+  markPreset(); save(); render();
+}));
+$("tbody").addEventListener("click", e => {
+  const st = e.target.closest("[data-star]"); if (st) { e.stopPropagation(); toggleWatch(st.dataset.star); return; }
+  const tr = e.target.closest("tr[data-t]"); if (tr) openDrawer(tr.dataset.t);
 });
-document.getElementById('min-score').addEventListener('input', function() {
-  document.getElementById('min-score-val').textContent = this.value;
-  page = 0; render();
-});
-['f-trend','f-breakout','f-pattern','f-allgreen'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => { page = 0; render(); });
-});
-['price-min','price-max','rsi-min','rsi-max','val-min','streak-min'].forEach(id => {
-  document.getElementById(id).addEventListener('input', () => { page = 0; render(); });
-});
-document.getElementById('search').addEventListener('input', () => { page = 0; render(); });
-document.getElementById('prev-page').addEventListener('click', () => { page--; render(); });
-document.getElementById('next-page').addEventListener('click', () => { page++; render(); });
-document.querySelectorAll('thead th').forEach(th => {
-  th.addEventListener('click', () => {
-    const key = th.dataset.key;
-    if (key.startsWith('_')) return;
-    if (sortKey === key) { sortDir *= -1; } else { sortKey = key; sortDir = -1; }
-    document.querySelectorAll('thead th').forEach(x => x.classList.remove('active'));
-    th.classList.add('active');
-    render();
-  });
-});
+$("tbody").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("tr[data-t]")) openDrawer(e.target.dataset.t); });
+$("scrim").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && openT) closeDrawer(); });
 
-render();
+/* ---------- new data check (no auto reload) ---------- */
+function checkUpdate() {
+  if (location.protocol === "file:") return;
+  fetch(location.pathname + "?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(txt => {
+    const m = txt.match(/const GEN = "([^"]+)"/);
+    if (m && m[1] !== GEN && !m[1].startsWith("__")) { $("update-text").textContent = `Data baru (${m[1]} WIB) sudah tersedia. Filter dan watchlist-mu tetap tersimpan.`; $("update-bar").style.display = "flex"; }
+  }).catch(() => {});
+}
+$("update-btn").addEventListener("click", () => location.reload());
+if (location.protocol === "file:") {
+  let last = Date.now(); ["click", "keydown", "scroll", "input"].forEach(ev => window.addEventListener(ev, () => last = Date.now(), { passive: true }));
+  setInterval(() => { if (!openT && Date.now() - last > 120000) location.reload(); }, 300000);
+} else setInterval(checkUpdate, 300000);
+
+renderMarket(); load(); render();
 </script>
 </body>
-</html>'''
+</html>
+'''
 
 
 if __name__ == "__main__":
