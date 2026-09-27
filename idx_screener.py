@@ -924,6 +924,13 @@ TEMPLATE = r'''<!DOCTYPE html>
   .preset-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
   :root[data-theme="dark"] .preset-btn.active { color:#0F1522; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .preset-btn.active { color:#0F1522; } }
+  .watch-btn { border-color:#E2A400; color:#8A6400; }
+  .watch-btn b { margin-left:4px; }
+  .watch-btn.on { background:#E2A400; border-color:#E2A400; color:#1F1600; }
+  :root[data-theme="dark"] .watch-btn { color:#F2C94C; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .watch-btn { color:#F2C94C; } }
+  :root[data-theme="dark"] .watch-btn.on, :root:not([data-theme="light"]) .watch-btn.on { color:#1F1600; }
+  #filter-card.dim { opacity:.45; }
   .preset-desc { font-size:0.84rem; color:var(--muted); margin:10px 2px 0; min-height:1.3em; }
   .filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px 18px; }
   .f label { display:block; font-size:0.8rem; color:var(--muted); font-weight:600; margin-bottom:4px; }
@@ -1072,6 +1079,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   <section class="card" aria-label="Preset">
     <h2>Pilih gaya screening</h2>
     <div class="presets" id="presets">
+      <button class="preset-btn watch-btn" id="watch-btn" type="button" aria-pressed="false">★ Watchlist saya <b id="watch-count">0</b></button>
       <button class="preset-btn" data-preset="golden">Tren naik rapi</button>
       <button class="preset-btn" data-preset="quality">Likuid &amp; konsisten</button>
       <button class="preset-btn" data-preset="breakout">Breakout</button>
@@ -1083,7 +1091,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <p class="preset-desc" id="preset-desc"></p>
   </section>
 
-  <section class="card" aria-label="Filter">
+  <section class="card" aria-label="Filter" id="filter-card">
     <div class="filters">
       <div class="f"><label for="search">Cari kode atau nama</label><input type="text" id="search" placeholder="mis. BBCA atau Astra"></div>
       <div class="f"><label for="kd-filter">Kondisi</label>
@@ -1104,7 +1112,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     </div>
     <div class="chips">
       <div class="minscore"><label for="min-score">Skor minimum</label><input type="range" id="min-score" min="0" max="100" value="40"><b id="min-score-val">40</b></div>
-      <label class="chip"><input type="checkbox" id="f-watch"> Hanya watchlist</label>
+      <input type="checkbox" id="f-watch" hidden>
       <label class="chip"><input type="checkbox" id="f-trend"> Hanya uptrend</label>
       <label class="chip"><input type="checkbox" id="f-breakout"> Hanya breakout</label>
       <label class="chip"><input type="checkbox" id="f-pattern"> Ada pola candle</label>
@@ -1170,7 +1178,7 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p>1. Lihat strip biru tua di atas. Kalau IHSG sedang turun, kurangi agresivitas atau tunggu dulu.</p>
         <p>2. Pilih satu gaya screening, misalnya "Tren naik rapi".</p>
         <p>3. Klik baris saham untuk membuka detailnya: chart dengan garis entry, stop loss, dan target, checklist syarat, serta kalkulator lot.</p>
-        <p>4. Tandai saham incaran dengan bintang, lalu centang "Hanya watchlist" untuk memantaunya.</p>
+        <p>4. Tandai saham incaran dengan bintang ☆, lalu klik tombol "★ Watchlist saya" untuk melihat semuanya sekaligus, apa pun filternya.</p>
         <p>5. Cocokkan dengan chart di aplikasi trading-mu sebelum entry. Checklist yang banyak terpenuhi menambah keyakinan, tapi tidak menjamin harga naik.</p>
       </div>
     </details>
@@ -1505,8 +1513,10 @@ function load() {
   markPreset();
 }
 function markPreset() {
-  document.querySelectorAll(".preset-btn").forEach(b => b.classList.toggle("active", b.dataset.preset === activePreset));
-  $("preset-desc").textContent = activePreset && PRESETS[activePreset] ? PRESETS[activePreset].desc : "Pengaturan manual.";
+  const wOn = $("f-watch").checked;
+  document.querySelectorAll(".preset-btn[data-preset]").forEach(b => b.classList.toggle("active", !wOn && b.dataset.preset === activePreset));
+  $("preset-desc").textContent = wOn ? "Semua saham yang kamu tandai bintang, tanpa filter apa pun. Tanda bintang tersimpan di browser ini."
+    : activePreset && PRESETS[activePreset] ? PRESETS[activePreset].desc : "Pengaturan manual.";
   document.querySelectorAll("thead th").forEach(th => { th.classList.toggle("active", th.dataset.key === sortKey); th.classList.toggle("asc", th.dataset.key === sortKey && sortDir === 1); });
 }
 function applyPreset(name, silent) {
@@ -1534,8 +1544,16 @@ function num(id) { return parseFloat($(id).value); }
 function filtered() {
   const w = weights(), q = $("search").value.trim().toUpperCase(), kd = $("kd-filter").value;
   const pmin = num("price-min"), pmax = num("price-max"), rmin = num("rsi-min"), rmax = num("rsi-max"), vmin = num("val-min"), smin = num("streak-min");
-  let rows = DATA.map(r => ({ ...r, score: score(r, w) })).filter(r => r.score >= +$("min-score").value);
-  if ($("f-watch").checked) rows = rows.filter(r => watch.has(r.t));
+  let rows = DATA.map(r => ({ ...r, score: score(r, w) }));
+  if (q) {   // pencarian selalu menemukan saham yang dicari, filter lain diabaikan
+    rows = rows.filter(r => r.t.includes(q) || (r.nm || "").toUpperCase().includes(q));
+    rows.sort((a, b) => (b.t === q) - (a.t === q) || (b.t.startsWith(q)) - (a.t.startsWith(q)) || b.score - a.score);
+    return rows;
+  }
+  if ($("f-watch").checked) {   // watchlist: tampilkan semua saham bertanda bintang, filter lain diabaikan
+    rows = rows.filter(r => watch.has(r.t));
+  } else {
+  rows = rows.filter(r => r.score >= +$("min-score").value);
   if ($("f-trend").checked) rows = rows.filter(r => r.trendOk);
   if ($("f-breakout").checked) rows = rows.filter(r => r.brkOk);
   if ($("f-pattern").checked) rows = rows.filter(r => r.pattern);
@@ -1550,6 +1568,7 @@ function filtered() {
   if (q) rows = rows.filter(r => r.t.includes(q) || (r.nm || "").toUpperCase().includes(q));
   if (kd === "nobad") rows = rows.filter(r => !r.kd || r.kd.c !== "bad");
   else if (kd) rows = rows.filter(r => r.kd && r.kd.c === kd);
+  }
   rows.sort((a, b) => {
     const av = a[sortKey], bv = b[sortKey];
     if (typeof av === "string") return sortDir * av.localeCompare(bv);
@@ -1560,14 +1579,24 @@ function filtered() {
 
 function render() {
   const rows = filtered();
-  $("count-info").textContent = `${fmtNum(rows.length)} saham cocok dari ${fmtNum(DATA.length)}. Klik baris untuk melihat detail.`;
+  const watchOn = $("f-watch").checked && !$("search").value.trim();
+  $("watch-btn").classList.toggle("on", watchOn); $("watch-btn").setAttribute("aria-pressed", watchOn);
+  $("watch-count").textContent = watch.size;
+  $("filter-card").classList.toggle("dim", watchOn);
+  $("count-info").textContent = $("search").value.trim()
+    ? `${fmtNum(rows.length)} hasil pencarian. Pencarian mengabaikan filter lain. Hapus isi kotak cari untuk kembali ke filter.`
+    : watchOn ? `Watchlist-mu: ${fmtNum(rows.length)} saham. Filter lain diabaikan. Klik preset mana saja untuk kembali.`
+    : `${fmtNum(rows.length)} saham cocok dari ${fmtNum(DATA.length)}. Klik baris untuk melihat detail.`;
   document.querySelectorAll(".kd-count").forEach(b => b.classList.toggle("on", b.dataset.kd === $("kd-filter").value));
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   page = Math.min(Math.max(0, page), pages - 1);
   const slice = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
   if (!slice.length) {
-    $("tbody").innerHTML = `<tr><td colspan="21" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
-    $("empty-reset").addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
+    $("tbody").innerHTML = $("search").value.trim()
+      ? `<tr><td colspan="21" class="empty">Kode atau nama "${esc($("search").value.trim())}" tidak ada di data run ini. Mungkin saham itu baru IPO, sedang disuspensi, atau datanya gagal diambil dari Yahoo.</td></tr>`
+      : watchOn ? `<tr><td colspan="21" class="empty">Watchlist masih kosong. Klik bintang ☆ di samping kode saham untuk menambahkannya.</td></tr>`
+      : `<tr><td colspan="21" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
+    const er = $("empty-reset"); if (er) er.addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
   } else {
     $("tbody").innerHTML = slice.map(r => `<tr data-t="${r.t}" tabindex="0">
       <td class="sticky1"><button class="star ${watch.has(r.t) ? "on" : ""}" data-star="${r.t}" type="button" aria-label="Watchlist ${r.t}" aria-pressed="${watch.has(r.t)}">★</button></td>
@@ -1652,7 +1681,11 @@ function closeDrawer() { $("drawer").classList.remove("open"); $("scrim").classL
 function toggleWatch(t) { watch.has(t) ? watch.delete(t) : watch.add(t); ls.set(WATCH, [...watch]); render(); }
 
 /* ---------- events ---------- */
-document.querySelectorAll(".preset-btn").forEach(b => b.addEventListener("click", () => applyPreset(b.dataset.preset)));
+document.querySelectorAll(".preset-btn[data-preset]").forEach(b => b.addEventListener("click", () => applyPreset(b.dataset.preset)));
+$("watch-btn").addEventListener("click", () => {
+  $("f-watch").checked = !$("f-watch").checked; $("search").value = "";
+  page = 0; markPreset(); save(); render();
+});
 W.forEach(id => $(id).addEventListener("input", () => { $(id + "-val").textContent = $(id).value; activePreset = null; markPreset(); page = 0; save(); render(); }));
 $("min-score").addEventListener("input", function () { $("min-score-val").textContent = this.value; page = 0; save(); render(); });
 CHECKS.forEach(id => $(id).addEventListener("change", () => { page = 0; save(); render(); }));
