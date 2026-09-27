@@ -159,10 +159,15 @@ def status_pasar(now):
 def unduh(tickers, period, interval, chunk=40):
     out = _unduh(tickers, period, interval, chunk, threads=True)
     sisa = [t for t in tickers if t not in out]
-    if sisa:   # coba ulang yang gagal satu per satu (mis. error 'database is locked' dari cache yfinance)
-        time.sleep(2)
-        for t in sisa:
-            out.update(_unduh([t], period, interval, 1, threads=False))
+    if sisa:   # coba ulang yang gagal (mis. 'database is locked' dari cache yfinance atau pembatasan sementara)
+        time.sleep(3)
+        out.update(_unduh(sisa, period, interval, 20, threads=False))
+        sisa = [t for t in tickers if t not in out]
+        if 0 < len(sisa) <= 60:            # sisa sedikit: coba satu per satu
+            for t in sisa:
+                out.update(_unduh([t], period, interval, 1, threads=False))
+        elif sisa:
+            print(f"  ! {len(sisa)} saham gagal diunduh ({interval}), kemungkinan dibatasi Yahoo. Dicoba lagi di run berikutnya.")
     return out
 
 
@@ -449,10 +454,11 @@ def gabung_jam(df, n):
     tgl = pd.Series([d.date() for d in g.index], index=g.index)
     g["_b"] = g.groupby(tgl.values).cumcount() // n
     g["_d"] = tgl.values
+    g["_ts"] = g.index
     agg = g.groupby(["_d", "_b"], sort=True).agg(
         Open=("Open", "first"), High=("High", "max"), Low=("Low", "min"),
-        Close=("Close", "last"), Volume=("Volume", "sum"))
-    return agg.reset_index(drop=True)
+        Close=("Close", "last"), Volume=("Volume", "sum"), _ts=("_ts", "first"))
+    return agg.set_index("_ts")
 
 
 def pola_candle(df):
@@ -605,12 +611,12 @@ def analisa(t, d, ihsg_ret, sektor, nama, frac_hari, hari_ini):
         "x": {"m20": [None if not fin(v) else round(float(v), 1) for v in sma(c, 20).iloc[-30:]],
               "m50": [None if not fin(v) else round(float(v), 1) for v in sma(c, 50).iloc[-30:]],
               "ma200": round(float(ma200), 1) if fin(ma200) else None, "hi20": round(hi20, 1),
-              "m20l": round(float(ma20), 1) if fin(ma20) else None},
+              "m20l": round(float(ma20), 1) if fin(ma20) else None, "atr": round(atr(d), 2)},
         "_ma20": float(ma20) if fin(ma20) else None, "_atr": atr(d), "_ph": ph, "_d": d,
     }
 
 
-def konteks_pasar(ihsg, rows):
+def konteks_pasar(ihsg, rows, ihsg_jam=None):
     """Ringkasan IHSG + napas pasar (persentase saham likuid di atas MA20)."""
     m = {"ihsg": None, "breadth": None}
     if ihsg is not None and len(ihsg) > 60:
@@ -623,6 +629,27 @@ def konteks_pasar(ihsg, rows):
                      "ma200": round(float(m200), 2) if fin(m200) else None,
                      "rsi": round(float(r), 1) if fin(r) else None, "d": rt.get("summary", "Neutral"),
                      "ohlc": [[round(float(a), 2) for a in row] for row in ihsg[["Open", "High", "Low", "Close"]].iloc[-30:].values]}
+        tf = {"daily": rt or None, "weekly": rating(resample(ihsg, "W-FRI")), "monthly": rating(bulanan(ihsg))}
+        if ihsg_jam is not None and len(ihsg_jam) >= 20:
+            tf.update({"h1": rating(ihsg_jam), "h2": rating(gabung_jam(ihsg_jam, 2)), "h4": rating(gabung_jam(ihsg_jam, 4))})
+        m["ihsg"]["tf"] = {k: v for k, v in tf.items() if v}
+        m["ihsg"]["tgl"] = ihsg.index[-1].strftime("%Y-%m-%d")
+        try:
+            m["ihsg"]["smc"] = smc(ihsg)
+            ms = {}
+            if m["ihsg"]["smc"]:
+                e = m["ihsg"]["smc"]["ev"][-1] if m["ihsg"]["smc"]["ev"] else None
+                ms["d"] = {"tr": m["ihsg"]["smc"]["tr"], "ev": [e[3], e[4], e[5]] if e else None}
+            sw = struktur_ringkas(resample(ihsg, "W-FRI"), L=3)
+            if sw:
+                ms["w"] = sw
+            if ihsg_jam is not None and len(ihsg_jam) >= 40:
+                s4 = struktur_ringkas(gabung_jam(ihsg_jam, 4), L=3)
+                if s4:
+                    ms["h4"] = s4
+            m["ihsg"]["ms"] = ms
+        except Exception as e:
+            print(f"  ! smc IHSG: {e}")
     likuid = [r for r in rows if r["val"] >= 1e9 and r["x"].get("m20l")]
     if likuid:
         naik = sum(1 for r in likuid if r["p"] > r["x"]["m20l"])
@@ -636,8 +663,9 @@ def smc(d, L=5, win=120, ctx=260):
     equal highs/lows, dan range premium/discount untuk `win` candle terakhir."""
     d = d.iloc[-ctx:]
     n = len(d)
-    if n < max(60, win // 2):
+    if n < 60:
         return None
+    win = min(win, n)          # saham dengan riwayat pendek (IPO baru): pakai semua candle yang ada
     o, h, l, c = (d[k].to_numpy(float) for k in ("Open", "High", "Low", "Close"))
     tgl = [x.strftime("%Y-%m-%d") for x in d.index]
     a = atr(d) or (np.nanmean(h - l) or 1.0)
@@ -694,10 +722,43 @@ def smc(d, L=5, win=120, ctx=260):
 
     s0 = n - win
     cl = lambda i: max(0, i - s0)
+
+    # volume profile 120 candle terakhir: volume tiap candle dibagi rata ke rentang high-low-nya
+    vp = None
+    if "Volume" in d:
+        v = d["Volume"].to_numpy(float)
+        vlo, vhi, nb = l[s0:].min(), h[s0:].max(), 24
+        if vhi > vlo and np.nansum(v[s0:]) > 0:
+            edges = np.linspace(vlo, vhi, nb + 1)
+            bins = np.zeros(nb)
+            for i in range(s0, n):
+                a0 = int(np.clip((l[i] - vlo) / (vhi - vlo) * nb, 0, nb - 1))
+                a1 = int(np.clip((h[i] - vlo) / (vhi - vlo) * nb, 0, nb - 1))
+                bins[a0:a1 + 1] += (v[i] if np.isfinite(v[i]) else 0) / (a1 - a0 + 1)
+            poc = int(bins.argmax())
+            lo_i = hi_i = poc
+            tot, acc = bins.sum(), bins[poc]
+            while acc < 0.7 * tot and (lo_i > 0 or hi_i < nb - 1):
+                nxt_lo = bins[lo_i - 1] if lo_i > 0 else -1
+                nxt_hi = bins[hi_i + 1] if hi_i < nb - 1 else -1
+                if nxt_hi >= nxt_lo:
+                    hi_i += 1; acc += bins[hi_i]
+                else:
+                    lo_i -= 1; acc += bins[lo_i]
+            mx = bins.max() or 1
+            vp = {"b": [int(round(x / mx * 100)) for x in bins], "lo": rp(vlo), "hi": rp(vhi),
+                  "poc": rp((edges[poc] + edges[poc + 1]) / 2), "vah": rp(edges[hi_i + 1]), "val": rp(edges[lo_i])}
+
+    def volume_tinggi(top, bot):
+        if not vp:
+            return 0
+        if bot <= vp["vah"] and top >= vp["val"]:
+            return 1
+        return 0
     ev_out = [[cl(a1), b1 - s0, rp(pr), t, dr, tgl[b1]] for a1, b1, pr, t, dr in ev if b1 >= s0][-8:]
     ob_aktif = [ob for ob in obs if not ob[4]]
-    ob_out = ([[cl(k), rp(t_), rp(b_), dr] for k, t_, b_, dr, _ in ob_aktif if dr == 1][-3:] +
-              [[cl(k), rp(t_), rp(b_), dr] for k, t_, b_, dr, _ in ob_aktif if dr == -1][-3:])
+    ob_out = ([[cl(k), rp(t_), rp(b_), dr, volume_tinggi(t_, b_)] for k, t_, b_, dr, _ in ob_aktif if dr == 1][-3:] +
+              [[cl(k), rp(t_), rp(b_), dr, volume_tinggi(t_, b_)] for k, t_, b_, dr, _ in ob_aktif if dr == -1][-3:])
     fvg_out = ([[cl(i), rp(t_), rp(b_), dr] for i, t_, b_, dr in fvg if dr == 1][-3:] +
                [[cl(i), rp(t_), rp(b_), dr] for i, t_, b_, dr in fvg if dr == -1][-3:])
     eq_out = [[cl(p1), p2 - s0, rp(pr), nm] for p1, p2, pr, nm in eq if p2 >= s0][-4:]
@@ -706,15 +767,33 @@ def smc(d, L=5, win=120, ctx=260):
         "d0": tgl[s0], "d1": tgl[-1],
         "do": [(x - d.index[s0]).days for x in d.index[s0:]],
         "ev": ev_out, "ob": ob_out, "fvg": fvg_out, "eq": eq_out,
-        "pd": [rp(h[s0:].max()), rp(l[s0:].min())], "tr": tren,
+        "pd": [rp(h[s0:].max()), rp(l[s0:].min())], "tr": tren, "vp": vp,
     }
+
+
+def struktur_ringkas(d, L=3):
+    """Arah struktur (1 naik, -1 turun, 0 belum jelas) + kejadian BOS/CHoCH terakhir untuk satu timeframe."""
+    if d is None or len(d) < 40:
+        return None
+    sm = smc(d, L=L, win=min(120, len(d)), ctx=min(260, len(d)))
+    if not sm:
+        return None
+    e = sm["ev"][-1] if sm["ev"] else None
+    return {"tr": sm["tr"], "ev": [e[3], e[4], e[5]] if e else None}
 
 
 def tambah_intraday(r, jam):
     if jam is not None and len(jam) >= 20:
-        for k, x in (("h1", rating(jam)), ("h2", rating(gabung_jam(jam, 2))), ("h4", rating(gabung_jam(jam, 4)))):
+        j4 = gabung_jam(jam, 4)
+        for k, x in (("h1", rating(jam)), ("h2", rating(gabung_jam(jam, 2))), ("h4", rating(j4))):
             if x:
                 r["tf"][k] = x
+        try:
+            s4 = struktur_ringkas(j4, L=3)
+            if s4:
+                r.setdefault("ms", {})["h4"] = s4
+        except Exception as e:
+            print(f"  ! struktur 4H {r['t']}: {e}")
 
 
 def kondisi(r):
@@ -908,6 +987,7 @@ def main():
     print("  Unduh data harian (5 tahun)...")
     harian = {t: ke_tanggal(df) for t, df in unduh(tickers, "5y", "1d").items()}
     ihsg = unduh(["^JKSE"], "2y", "1d").get("^JKSE")
+    ihsg_jam = None if args.no_intraday else unduh(["^JKSE"], "60d", "60m").get("^JKSE")
     ihsg_ret = ke_tanggal(ihsg)["Close"].pct_change() if ihsg is not None else None
 
     sektor = ({t: sektor_daftar.get(t, "-") for t in harian} if args.no_sektor
@@ -953,6 +1033,11 @@ def main():
                 sm = smc(r["_d"])
                 if sm:
                     r["smc"] = sm
+                    e = sm["ev"][-1] if sm["ev"] else None
+                    r.setdefault("ms", {})["d"] = {"tr": sm["tr"], "ev": [e[3], e[4], e[5]] if e else None}
+                sw = struktur_ringkas(resample(r["_d"], "W-FRI"), L=3)
+                if sw:
+                    r.setdefault("ms", {})["w"] = sw
                     r.pop("ohlc", None)            # 30 candle terakhir diambil dari smc["b"] di browser
                     r["x"].pop("m20", None)
                     r["x"].pop("m50", None)
@@ -963,7 +1048,7 @@ def main():
 
     update_konsistensi(rows, now.strftime("%Y-%m-%d"))
     out_html = Path(args.output).resolve()
-    pasar = konteks_pasar(ke_tanggal(ihsg) if ihsg is not None else None, rows)
+    pasar = konteks_pasar(ke_tanggal(ihsg) if ihsg is not None else None, rows, ihsg_jam)
     tulis_html(rows, now, status, len(gagal), not args.no_intraday, out_html, not args.no_arsip, pasar)
 
     top = sorted(rows, key=skor, reverse=True)[:5]
@@ -1044,6 +1129,9 @@ TEMPLATE = r'''<!DOCTYPE html>
   .market > div { padding:16px 20px; border-right:1px solid rgba(255,255,255,.12); min-width:0; }
   .market > div:last-child { border-right:0; }
   .m-label { font-size:0.78rem; color:rgba(255,255,255,.66); font-weight:600; }
+  .m-ihsg.clickable { cursor:pointer; transition:background .15s; }
+  .m-ihsg.clickable:hover { background:rgba(255,255,255,.06); }
+  .m-hint { float:right; font-size:0.72rem; color:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.3); border-radius:999px; padding:1px 8px; }
   .m-big { font-size:1.7rem; font-weight:800; letter-spacing:-0.02em; line-height:1.15; }
   .m-chg { font-size:0.95rem; font-weight:700; margin-left:6px; }
   .m-chg.up { color:#5EE0AE; } .m-chg.down { color:#FF9A9A; }
@@ -1172,7 +1260,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   .ci { width:20px; flex:0 0 20px; font-weight:800; text-align:center; }
   .ci.y { color:var(--up); } .ci.x { color:var(--down); } .ci.na { color:var(--muted); }
   .bars { display:grid; gap:8px; }
-  .bar-row { display:grid; grid-template-columns:110px 1fr 70px; gap:10px; align-items:center; font-size:0.85rem; }
+  .bar-row { display:grid; grid-template-columns:110px 1fr 130px; gap:10px; align-items:center; font-size:0.85rem; }
   .bar-row .track { height:8px; background:var(--panel2); border-radius:9px; overflow:hidden; }
   .bar-row .track i { display:block; height:100%; background:var(--accent); }
   .bar-row span:last-child { color:var(--muted); font-size:0.78rem; text-align:right; }
@@ -1192,6 +1280,24 @@ TEMPLATE = r'''<!DOCTYPE html>
   .smc-sum { margin:10px 0 0; padding-left:18px; font-size:0.86rem; color:var(--ink2); }
   .smc-sum li { margin:4px 0; }
   .d-foot { font-size:0.78rem; color:var(--muted); margin-top:18px; }
+
+  .ms-row { display:inline-flex; gap:4px; }
+  .ms { font-size:0.72rem; font-weight:800; padding:2px 6px; border-radius:6px; background:var(--panel2); color:var(--muted); }
+  .ms.up { background:var(--up-soft); color:var(--up); } .ms.dn { background:var(--down-soft); color:var(--down); }
+  .warn { background:var(--amber-soft); color:var(--amber); border-radius:10px; padding:8px 12px; font-size:0.84rem; margin:8px 0 0; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:8px; flex-wrap:wrap; }
+  .seg button { border:0; background:var(--panel); padding:7px 12px; font-size:0.84rem; font-weight:600; cursor:pointer; color:var(--ink2); }
+  .seg button.on { background:var(--accent); color:#fff; }
+  :root[data-theme="dark"] .seg button.on { color:#0F1522; }
+  .seg button:disabled { opacity:.4; cursor:default; }
+  .plan-note { font-size:0.84rem; color:var(--ink2); margin:4px 0 10px; }
+  .j-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:10px; background:var(--panel2); border-radius:12px; padding:12px; }
+  .j-form input, .j-form select { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
+  .j-tbl { width:100%; border-collapse:collapse; font-size:0.84rem; }
+  .j-tbl th { text-align:left; color:var(--muted); font-size:0.76rem; padding:8px 10px; border-bottom:1px solid var(--line); background:var(--panel2); position:static; }
+  .j-tbl td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; background:var(--panel); }
+  .j-exit { width:90px; padding:5px 7px; border:1px solid var(--line); border-radius:8px; }
+  .j-stats { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
 
   /* kalender */
   .cal-head { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; margin-bottom:12px; }
@@ -1245,6 +1351,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <div class="top-actions">
       <button class="icon-btn" id="theme-btn" type="button" aria-label="Ganti tema terang atau gelap">Tema gelap</button>
       <a class="icon-btn" href="#kalender" style="text-decoration:none">Kalender</a>
+      <a class="icon-btn" href="#jurnal" style="text-decoration:none">Jurnal</a>
       <a class="icon-btn" href="#panduan" style="text-decoration:none">Panduan</a>
     </div>
   </header>
@@ -1260,6 +1367,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <h2>Pilih gaya screening</h2>
     <div class="presets" id="presets">
       <button class="preset-btn watch-btn" id="watch-btn" type="button" aria-pressed="false">★ Watchlist saya <b id="watch-count">0</b></button>
+      <button class="preset-btn" data-preset="struct">Struktur searah naik</button>
       <button class="preset-btn" data-preset="golden">Tren naik rapi</button>
       <button class="preset-btn" data-preset="quality">Likuid &amp; konsisten</button>
       <button class="preset-btn" data-preset="breakout">Breakout</button>
@@ -1299,6 +1407,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <label class="chip"><input type="checkbox" id="f-pattern"> Ada pola candle</label>
       <label class="chip"><input type="checkbox" id="f-confirmed"> Pola terkonfirmasi</label>
       <label class="chip"><input type="checkbox" id="f-allgreen"> Strong Buy D/W/M</label>
+      <label class="chip"><input type="checkbox" id="f-ms"> Struktur searah naik</label>
     </div>
     <details class="adv" id="adv">
       <summary>Pengaturan lanjutan: bobot skor manual</summary>
@@ -1325,6 +1434,7 @@ TEMPLATE = r'''<!DOCTYPE html>
           <th data-key="score" class="active">Skor</th>
           <th data-key="ck" title="Berapa syarat checklist yang terpenuhi">Checklist</th>
           <th data-key="kdo" title="Label kondisi; klik baris untuk alasannya">Kondisi</th>
+          <th data-key="msk" title="Arah struktur SMC Mingguan (W), Harian (D), dan 4 jam (4H)">Struktur</th>
           <th class="nosort" title="Contoh rencana berbasis ATR, bukan rekomendasi">Rencana (contoh)</th>
           <th class="nosort">Sinyal</th>
           <th class="num" data-key="rsi">RSI</th>
@@ -1364,6 +1474,15 @@ TEMPLATE = r'''<!DOCTYPE html>
     <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Waktu fase bulan dalam WIB, dihitung dengan rumus astronomi. Agenda MSCI, FTSE, GDX, dan batas laporan keuangan diambil dari jadwal resmi; tanggal bisa berubah, jadi cek pengumuman terbaru. Klik tanggal untuk melihat detailnya.</p>
   </section>
 
+  <section class="card" id="jurnal" aria-label="Jurnal trading">
+    <div class="cal-head"><h2>Jurnal trading</h2>
+      <div class="cal-opts"><button class="icon-btn" id="j-export" type="button">Unduh CSV</button></div></div>
+    <div class="plan-box j-stats" id="j-stats"></div>
+    <div id="j-setups" style="margin-top:12px"></div>
+    <div id="j-list" style="margin-top:12px"></div>
+    <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Jurnal tersimpan di browser ini saja, tidak ikut ke GitHub atau perangkat lain. Unduh CSV secara berkala sebagai cadangan. R = hasil dibagi risiko awal (entry − stop loss): +2R berarti untung 2 kali risiko.</p>
+  </section>
+
   <details class="notice" style="margin-top:18px">
     <summary>Tentang data dan batasan</summary>
     <div>__DISCLAIMER__</div>
@@ -1385,8 +1504,8 @@ TEMPLATE = r'''<!DOCTYPE html>
     <details class="guide-item">
       <summary>Checklist syarat</summary>
       <div class="guide-body">
-        <p>Setiap saham diperiksa terhadap 9 syarat: tren tersusun naik, harga di atas MA200, Daily dan Mingguan Buy, RSI 45–70, volume di atas rata-rata, transaksi ≥ Rp 5 M/hari, 1H tidak Sell, risiko ke stop loss ≤ 7%, dan IHSG tidak sedang turun.</p>
-        <p>Angka seperti 7/9 berarti 7 dari 9 syarat terpenuhi. Syarat yang datanya tidak ada (misal 1H di luar 200 saham teratas) tidak dihitung. Hijau = minimal 7, kuning = 5–6, merah = di bawah 5.</p>
+        <p>Setiap saham diperiksa terhadap 10 syarat: tren tersusun naik, harga di atas MA200, Daily dan Mingguan Buy, RSI 45–70, volume di atas rata-rata, transaksi ≥ Rp 5 M/hari, 1H tidak Sell, risiko ke stop loss ≤ 7%, IHSG tidak sedang turun, dan struktur SMC Mingguan serta Harian bullish.</p>
+        <p>Angka seperti 8/10 berarti 8 dari 10 syarat terpenuhi. Syarat yang datanya tidak ada (misal 1H di luar 200 saham teratas) tidak dihitung. Hijau = minimal 7, kuning = 5–6, merah = di bawah 5.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -1407,6 +1526,17 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p>Bagian Kalender (tombol "Kalender" di kanan atas) menampilkan fase bulan (🌑 bulan baru, 🌓 kuartal awal, 🌕 purnama, 🌗 kuartal akhir) dalam WIB, serta agenda pasar: review MSCI, FTSE, GDX, dan batas penyampaian laporan keuangan. Klik tanggal untuk melihat detailnya; klik kode saham di agenda untuk membuka panel detailnya.</p>
         <p>Fase bulan juga bisa ditampilkan di chart SMC sebagai lingkaran kecil di bawah candle (kuning = purnama, gelap = bulan baru). Penelitian menemukan return rata-rata pasar global sedikit lebih rendah di sekitar purnama dibanding bulan baru, tapi efeknya kecil dan tidak membuktikan fase bulan bisa menentukan titik pembalikan saham tertentu. Pakai sebagai konteks, bukan sinyal utama.</p>
         <p><b>Menambah agenda sendiri:</b> buat file <code>kalender.json</code> di repo berisi daftar seperti <code>[{"tgl": "2026-11-05", "jenis": "lain", "judul": "RUPS XXXX", "ket": "catatan", "saham": ["XXXX"]}]</code>. Jenis bisa msci, ftse, gdx, lapkeu, atau lain. Agenda muncul setelah run berikutnya.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Alur entry berbasis struktur market</summary>
+      <div class="guide-body">
+        <p><b>1. Arah besar dulu.</b> Lihat kolom Struktur (W = Mingguan, D = Harian, 4H = 4 jam; ▲ bullish, ▼ bearish) atau preset "Struktur searah naik". Idealnya W dan D sama-sama ▲.</p>
+        <p><b>2. Tunggu harga ke area bagus.</b> Di chart SMC panel detail, cari order block bullish atau zona discount di bawah harga. Order block yang berada di area volume tinggi (lapisan Volume profile, dekat POC atau value area) biasanya lebih kuat.</p>
+        <p><b>3. Konfirmasi di timeframe kecil.</b> Saat harga masuk area itu, tunggu CHoCH naik di 4 jam atau 1 jam (cek di Stockbit/TradingView). Kalau bisa, cek juga broker summary: apakah broker besar sedang akumulasi.</p>
+        <p><b>4. Rencana dan ukuran posisi.</b> Di bagian Rencana, pilih "Berbasis struktur (order block)": entry di order block, stop loss sedikit di bawahnya, target di order block bearish berikutnya atau 2 kali risiko. Kalkulator lot menghitung jumlah lot dari risiko per transaksi.</p>
+        <p><b>5. Catat dan evaluasi.</b> Klik "Catat ke jurnal", lalu tutup trade dengan harga keluar. Setelah sekitar 30 trade, bagian Jurnal trading menunjukkan setup mana yang benar-benar menghasilkan untukmu.</p>
+        <p>Peringatan kuning muncul untuk saham dengan transaksi di bawah Rp 5 M/hari, karena di saham sepi struktur SMC mudah terbentuk oleh sedikit order besar.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -1538,6 +1668,8 @@ const PAGE_SIZE = 25;
 const KD_ORDER = { ok: 0, rev: 1, wait: 2, hot: 3, n: 4, bad: 5 };
 const KD_NAME = { ok: "Kandidat kuat", wait: "Tunggu", hot: "Tunggu pullback", rev: "Pantau pembalikan", n: "Pantau", bad: "Hindari dulu" };
 const PRESETS = {
+  struct:   { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:0, filters:{ms:true}, valMin:5, kd:"nobad",
+              desc:"Struktur SMC Mingguan, Harian, dan 4 jam (kalau ada) sama-sama bullish, transaksi minimal Rp 5 M/hari. Cari entry saat harga kembali ke order block bullish atau zona discount, lalu konfirmasi di 1 jam." },
   golden:   { weights:{trend:60,brk:10,pa:10,mom:20}, minScore:55, filters:{trend:true}, kd:"nobad",
               desc:"Saham dengan susunan MA20 > MA50 > MA200 dan harga di atas MA20. Cocok untuk ikut tren yang sudah terbentuk." },
   quality:  { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:40, filters:{}, valMin:5, streakMin:3,
@@ -1591,6 +1723,7 @@ function checklist(r) {
     ["Jangka pendek (1H) tidak sedang Sell", tf.h1 ? !isDown(tf.h1.summary) : null],
     ["Risiko ke stop loss maksimal 7%" + (r.plan ? " (" + fmtDec(r.plan.risk, 1) + "%)" : ""), r.plan ? r.plan.risk <= 7 : null],
     ["IHSG tidak sedang dalam tren turun", ihsgDown === null ? null : !ihsgDown],
+    ["Struktur SMC Mingguan dan Harian sama-sama bullish", r.ms && r.ms.w && r.ms.d ? r.ms.w.tr === 1 && r.ms.d.tr === 1 : null],
   ];
   const ev = items.filter(i => i[1] !== null);
   return { items, pass: ev.filter(i => i[1]).length, total: ev.length };
@@ -1601,6 +1734,7 @@ DATA.forEach(r => {
   r._ck = c; r.ck = c.total ? c.pass / c.total + c.pass / 1000 : 0;
   r.kdo = r.kd ? -KD_ORDER[r.kd.c] : -9;
   r.streak = r.cst ? r.cst.streak : 0;
+  const ms = r.ms || {}; r.msk = (ms.w ? ms.w.tr : 0) * 1.01 + (ms.d ? ms.d.tr : 0) + (ms.h4 ? ms.h4.tr : 0) * 0.99;
 });
 
 /* ---------- theme ---------- */
@@ -1619,7 +1753,7 @@ $("theme-btn").addEventListener("click", () => {
 /* ---------- market strip ---------- */
 function renderMarket() {
   const m = MARKET.ihsg, b = MARKET.breadth;
-  let a = '<div><div class="m-label">IHSG</div>';
+  let a = `<div class="m-ihsg${m ? " clickable" : ""}" ${m ? 'role="button" tabindex="0" id="ihsg-card" aria-label="Buka detail IHSG"' : ""}><div class="m-label">IHSG${m ? ' <span class="m-hint">Klik untuk detail</span>' : ""}</div>`;
   if (m) {
     const up = m.chg >= 0;
     const trend = m.p > m.ma20 && m.p > m.ma50 ? "di atas MA20 dan MA50" : m.p < m.ma20 && m.p < m.ma50 ? "di bawah MA20 dan MA50" : "di antara MA20 dan MA50";
@@ -1639,6 +1773,8 @@ function renderMarket() {
   ["ok", "wait", "hot", "rev", "n", "bad"].forEach(k => { if (cnt[k]) kc += `<button class="kd-count" data-kd="${k}" type="button">${KD_NAME[k]}<b>${cnt[k]}</b></button>`; });
   kc += "</div></div>";
   $("market").innerHTML = a + br + kc;
+  const ic = $("ihsg-card");
+  if (ic) { ic.addEventListener("click", openIhsg); ic.addEventListener("keydown", e => { if (e.key === "Enter") openIhsg(); }); }
   document.querySelectorAll(".kd-count").forEach(btn => btn.addEventListener("click", () => {
     const turnOff = $("kd-filter").value === btn.dataset.kd;
     applyPreset("reset", true);
@@ -1717,7 +1853,7 @@ function planCell(r) {
 
 /* ---------- state ---------- */
 const FIELDS = ["search", "kd-filter", "sector-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min"];
-const CHECKS = ["f-watch", "f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen"];
+const CHECKS = ["f-watch", "f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen", "f-ms"];
 const W = ["w-trend", "w-brk", "w-pa", "w-mom"];
 function save() {
   const s = { preset: activePreset, sortKey, sortDir, page, min: $("min-score").value, f: {}, c: {}, w: {} };
@@ -1728,7 +1864,7 @@ function load() {
   const s = ls.get(STORE, null); if (!s) { applyPreset("golden", true); return; }
   activePreset = s.preset; sortKey = s.sortKey || "score"; sortDir = s.sortDir || -1; page = s.page || 0;
   FIELDS.forEach(id => { if (s.f && s.f[id] !== undefined) $(id).value = s.f[id]; });
-  CHECKS.forEach(id => { if (s.c && s.c[id] !== undefined) $(id).checked = s.c[id]; });
+  CHECKS.forEach(id => { if (id !== "f-watch" && s.c && s.c[id] !== undefined) $(id).checked = s.c[id]; });   // mode watchlist tidak dibawa ke kunjungan berikutnya
   W.forEach(id => { if (s.w && s.w[id] !== undefined) { $(id).value = s.w[id]; $(id + "-val").textContent = s.w[id]; } });
   $("min-score").value = s.min ?? 40; $("min-score-val").textContent = $("min-score").value;
   markPreset();
@@ -1748,7 +1884,7 @@ function applyPreset(name, silent) {
   $("min-score").value = p.minScore; $("min-score-val").textContent = p.minScore;
   const f = p.filters || {};
   $("f-trend").checked = !!f.trend; $("f-breakout").checked = !!f.breakout; $("f-pattern").checked = !!f.pattern;
-  $("f-confirmed").checked = !!f.confirmed; $("f-allgreen").checked = !!f.allgreen;
+  $("f-confirmed").checked = !!f.confirmed; $("f-allgreen").checked = !!f.allgreen; $("f-ms").checked = !!f.ms;
   $("rsi-max").value = p.rsiMax ?? ""; $("rsi-min").value = ""; $("price-min").value = ""; $("price-max").value = "";
   $("val-min").value = p.valMin ?? ""; $("streak-min").value = p.streakMin ?? ""; $("kd-filter").value = p.kd || "";
   $("search").value = ""; $("f-watch").checked = false; $("sector-filter").value = "";
@@ -1780,6 +1916,7 @@ function filtered() {
   if ($("f-pattern").checked) rows = rows.filter(r => r.pattern);
   if ($("f-confirmed").checked) rows = rows.filter(r => r.pk === "ok");
   if ($("f-allgreen").checked) rows = rows.filter(r => allGreen(r.tf));
+  if ($("f-ms").checked) rows = rows.filter(msAligned);
   if (!isNaN(pmin)) rows = rows.filter(r => r.p >= pmin);
   if (!isNaN(pmax)) rows = rows.filter(r => r.p <= pmax);
   if (!isNaN(rmin)) rows = rows.filter(r => r.rsi >= rmin);
@@ -1816,9 +1953,9 @@ function render() {
   const slice = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
   if (!slice.length) {
     $("tbody").innerHTML = $("search").value.trim()
-      ? `<tr><td colspan="21" class="empty">Kode atau nama "${esc($("search").value.trim())}" tidak ada di data run ini. Mungkin saham itu baru IPO, sedang disuspensi, atau datanya gagal diambil dari Yahoo.</td></tr>`
-      : watchOn ? `<tr><td colspan="21" class="empty">Watchlist masih kosong. Klik bintang ☆ di samping kode saham untuk menambahkannya.</td></tr>`
-      : `<tr><td colspan="21" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
+      ? `<tr><td colspan="22" class="empty">Kode atau nama "${esc($("search").value.trim())}" tidak ada di data run ini. Mungkin saham itu baru IPO, sedang disuspensi, atau datanya gagal diambil dari Yahoo.</td></tr>`
+      : watchOn ? `<tr><td colspan="22" class="empty">Watchlist masih kosong. Klik bintang ☆ di samping kode saham untuk menambahkannya.</td></tr>`
+      : `<tr><td colspan="22" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
     const er = $("empty-reset"); if (er) er.addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
   } else {
     $("tbody").innerHTML = slice.map(r => `<tr data-t="${r.t}" tabindex="0">
@@ -1830,6 +1967,7 @@ function render() {
       <td><span class="score"><b>${fmtDec(r.score, 0)}</b><span class="score-bar"><i style="width:${Math.min(100, r.score)}%"></i></span></span></td>
       <td>${ckCell(r)}</td>
       <td>${r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : "-"}</td>
+      <td>${msCell(r)}</td>
       <td>${planCell(r)}</td>
       <td>${badges(r)}</td>
       <td class="num">${fmtDec(r.rsi, 1)}</td>
@@ -1957,8 +2095,8 @@ $("cal-today").addEventListener("click", () => { const t = new Date(Date.now() +
 
 /* ---------- SMC chart ---------- */
 const SMC_KEY = "idxs:smc";
-const SMC_LAYERS = [["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "MA20/MA50"], ["plan", "Entry/SL/TP"]];
-function smcLayers() { return Object.assign({ pd: true, st: true, ob: true, fvg: true, eq: true, moon: true, ma: false, plan: false }, ls.get(SMC_KEY, {})); }
+const SMC_LAYERS = [["vp", "Volume profile"], ["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "MA20/MA50"], ["plan", "Entry/SL/TP"]];
+function smcLayers() { return Object.assign({ vp: true, pd: true, st: true, ob: true, fvg: true, eq: true, moon: true, ma: false, plan: false }, ls.get(SMC_KEY, {})); }
 
 function smcChart(r, lay) {
   const S = r.smc, bars = S.b, nb = bars.length, p = r.plan;
@@ -1977,6 +2115,15 @@ function smcChart(r, lay) {
     s += `<rect x="${L}" y="${clampY(hi)}" width="${iw}" height="${Math.max(0, clampY(mid) - clampY(hi))}" fill="${dn}" opacity="0.06"/>`;
     s += `<rect x="${L}" y="${clampY(mid)}" width="${iw}" height="${Math.max(0, clampY(lo) - clampY(mid))}" fill="${up}" opacity="0.06"/>`;
     s += `<line x1="${L}" x2="${L + iw}" y1="${y(mid)}" y2="${y(mid)}" stroke="var(--muted)" stroke-dasharray="2 4" opacity="0.7"/>`;
+  }
+  if (lay.vp && S.vp) {
+    const V = S.vp, nb = V.b.length, step = (V.hi - V.lo) / nb, maxW = iw * 0.2;
+    V.b.forEach((b, i) => {
+      const bot = V.lo + i * step, top = bot + step; if (bot > max || top < min) return;
+      const y1 = clampY(top), y2 = clampY(bot), w = b / 100 * maxW, inVA = bot >= V.val - 1e-9 && top <= V.vah + 1e-9;
+      s += `<rect x="${(L + iw - w).toFixed(1)}" y="${y1.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, y2 - y1 - 1).toFixed(1)}" fill="var(--accent)" opacity="${inVA ? 0.3 : 0.13}"/>`;
+    });
+    if (V.poc <= max && V.poc >= min) s += `<line x1="${L}" x2="${L + iw}" y1="${y(V.poc).toFixed(1)}" y2="${y(V.poc).toFixed(1)}" stroke="var(--orange)" stroke-width="1.2" opacity="0.8"/>`;
   }
   const zone = (z, cls) => {
     const [i, top, bot, dr] = z, col = dr === 1 ? up : dn;
@@ -2024,6 +2171,7 @@ function smcChart(r, lay) {
   const labs = [];
   const last = bars[nb - 1][3]; labs.push([last, fmtNum(last), "var(--ink)"]);
   if (lay.plan && p) { labs.push([p.tp, "TP " + fmtNum(p.tp), up]); labs.push([p.sl, "SL " + fmtNum(p.sl), dn]); }
+  if (lay.vp && S.vp) labs.push([S.vp.poc, "POC " + fmtNum(S.vp.poc), "var(--orange)"]);
   if (lay.pd && S.pd) { labs.push([S.pd[0], "Premium", dn]); labs.push([(S.pd[0] + S.pd[1]) / 2, "EQ " + fmtNum((S.pd[0] + S.pd[1]) / 2), "var(--muted)"]); labs.push([S.pd[1], "Discount", up]); }
   const used = [];
   labs.forEach(([v, t, col]) => {
@@ -2048,10 +2196,11 @@ function smcSummary(r) {
   if (inside) out.push(`Harga sedang berada di dalam order block ${inside[3] === 1 ? "bullish (area permintaan)" : "bearish (area penawaran)"} ${rng(inside[1], inside[2])}.`);
   const obBelow = (S.ob || []).filter(z => z[3] === 1 && z[1] < pr).sort((a, b) => b[1] - a[1])[0];
   const obAbove = (S.ob || []).filter(z => z[3] === -1 && z[2] > pr).sort((a, b) => a[2] - b[2])[0];
-  if (obBelow) out.push(`Order block bullish terdekat di bawah harga: ${rng(obBelow[1], obBelow[2])} (${fmtDec((pr - obBelow[1]) / pr * 100, 1)}% di bawah). Sering dipakai sebagai acuan area beli atau penempatan stop loss di bawahnya.`);
+  if (obBelow) out.push(`Order block bullish terdekat di bawah harga: ${rng(obBelow[1], obBelow[2])} (${fmtDec((pr - obBelow[1]) / pr * 100, 1)}% di bawah)${S.vp ? (obBelow[4] === 1 ? ", berada di area volume tinggi (value area), jadi lebih kuat" : ", berada di area volume rendah, jadi konfirmasinya lebih lemah") : ""}. Sering dipakai sebagai acuan area beli atau penempatan stop loss di bawahnya.`);
   if (obAbove) out.push(`Order block bearish terdekat di atas harga: ${rng(obAbove[1], obAbove[2])} (${fmtDec((obAbove[2] - pr) / pr * 100, 1)}% di atas). Area yang berpotensi menahan kenaikan.`);
   const gaps = (S.fvg || []).map(z => ({ z, d: z[3] === 1 ? pr - z[1] : z[2] - pr })).filter(o => o.d >= 0).sort((a, b) => a.d - b.d);
   if (gaps[0]) out.push(`FVG ${gaps[0].z[3] === 1 ? "bullish" : "bearish"} terdekat yang belum terisi: ${rng(gaps[0].z[1], gaps[0].z[2])}. Harga sering kembali mengisi celah seperti ini.`);
+  if (S.vp) out.push(`POC (harga dengan volume terbanyak dalam 120 hari) di ${fmtNum(S.vp.poc)}; value area ${fmtNum(S.vp.val)}–${fmtNum(S.vp.vah)}. Harga sekarang ${pr > S.vp.vah ? "di atas value area" : pr < S.vp.val ? "di bawah value area" : "di dalam value area"}.`);
   if (S.pd) {
     const pct = Math.round((pr - S.pd[1]) / ((S.pd[0] - S.pd[1]) || 1) * 100);
     out.push(`Posisi dalam range 120 hari: ${pct}%. ${pct >= 55 ? "Zona premium (relatif mahal)." : pct <= 45 ? "Zona discount (relatif murah)." : "Sekitar equilibrium."}`);
@@ -2067,6 +2216,157 @@ function renderSmc(r) {
     const cur = smcLayers(); cur[cb.dataset.layer] = cb.checked; ls.set(SMC_KEY, cur); renderSmc(r);
   }));
 }
+
+/* ---------- struktur multi-timeframe ---------- */
+function msAligned(r) { const ms = r.ms || {}; return !!(ms.w && ms.d && ms.w.tr === 1 && ms.d.tr === 1 && (!ms.h4 || ms.h4.tr === 1)); }
+function msCell(r) {
+  const ms = r.ms || {}, lab = { w: "W", d: "D", h4: "4H" }, nama = { w: "Mingguan", d: "Harian", h4: "4 jam" };
+  return `<span class="ms-row">${["w", "d", "h4"].map(k => {
+    const v = ms[k]; if (!v) return `<span class="ms na" title="${nama[k]}: data tidak tersedia">${lab[k]}</span>`;
+    const cls = v.tr === 1 ? "up" : v.tr === -1 ? "dn" : "na", ar = v.tr === 1 ? "▲" : v.tr === -1 ? "▼" : "•";
+    const t = v.ev ? `${v.ev[0]} ${v.ev[1] === 1 ? "naik" : "turun"} ${v.ev[2]}` : "belum ada BOS/CHoCH";
+    return `<span class="ms ${cls}" title="${nama[k]}: ${t}">${lab[k]}${ar}</span>`;
+  }).join("")}</span>`;
+}
+function msBlock(r) {
+  const ms = r.ms || {};
+  const cells = [["w", "Mingguan"], ["d", "Harian"], ["h4", "4 jam"]].map(([k, n]) => {
+    const v = ms[k];
+    if (!v) return `<div class="tf-cell"><small>${n}</small><span class="muted">-</span><small>${k === "h4" ? "hanya 200 saham skor tertinggi" : "data tidak tersedia"}</small></div>`;
+    const lab = v.tr === 1 ? "Bullish" : v.tr === -1 ? "Bearish" : "Belum jelas", cls = v.tr === 1 ? "sb" : v.tr === -1 ? "ss" : "n";
+    return `<div class="tf-cell"><small>${n}</small><span class="v ${cls}">${lab}</span><small>${v.ev ? `${v.ev[0]} ${v.ev[1] === 1 ? "naik" : "turun"}, ${esc(v.ev[2])}` : "belum ada BOS/CHoCH"}</small></div>`;
+  }).join("");
+  const t = [ms.w, ms.d, ms.h4].filter(Boolean).map(v => v.tr);
+  let say;
+  if (t.length >= 2 && t.every(x => x === 1)) say = "Semua timeframe searah naik. Ini kondisi paling ideal: cari entry buy saat harga kembali ke order block bullish atau zona discount.";
+  else if (ms.w && ms.d && ms.w.tr === 1 && ms.d.tr === 1 && ms.h4 && ms.h4.tr === -1) say = "Arah besar naik, tapi 4 jam sedang koreksi. Tunggu CHoCH naik di 4 jam atau 1 jam sebagai tanda koreksi selesai.";
+  else if (ms.w && ms.d && ms.w.tr === 1 && ms.d.tr !== 1) say = "Mingguan naik, tapi Harian belum. Ini koreksi di dalam tren besar; lebih aman tunggu Harian kembali bullish (CHoCH naik).";
+  else if (ms.w && ms.w.tr === -1) say = "Struktur Mingguan masih turun. Entry buy berarti melawan arus besar; kalau tetap entry, pakai lot kecil dan stop loss ketat.";
+  else say = "Struktur belum searah. Tunggu konfirmasi dari timeframe yang lebih besar.";
+  const warn = r.val !== undefined && r.val < 5e9 ? `<p class="warn">Transaksi ${fmtValue(r.val)}/hari, di bawah Rp 5 M. Di saham sepi, BOS/CHoCH dan order block mudah terbentuk oleh sedikit order besar, jadi struktur SMC kurang bisa dipercaya.</p>` : "";
+  return `<div class="d-sec"><h3>Struktur market (dari timeframe besar ke kecil)</h3><div class="tf-grid">${cells}</div><p class="d-why">${say}</p>${warn}</div>`;
+}
+
+/* ---------- rencana berbasis struktur ---------- */
+const PLAN_KEY = "idxs:planmode";
+const tickJS = v => v < 200 ? 1 : v < 500 ? 2 : v < 2000 ? 5 : v < 5000 ? 10 : 25;
+const floorT = v => Math.floor(v / tickJS(v)) * tickJS(v), ceilT = v => Math.ceil(v / tickJS(v)) * tickJS(v);
+function structPlan(r) {
+  const S = r.smc; if (!S || !S.ob) return null;
+  const p = r.p, atr = (r.x && r.x.atr) || 0;
+  const ob = S.ob.filter(z => z[3] === 1 && z[2] <= p).sort((a, b) => b[1] - a[1])[0]; if (!ob) return null;
+  const e1 = floorT(ob[2]), e2 = Math.max(e1, floorT(Math.min(ob[1], p)));
+  let sl = floorT(ob[2] - 0.3 * atr); if (!(sl < e1)) sl = e1 - tickJS(e1); if (sl <= 0) return null;
+  const mid = (e1 + e2) / 2, risk = mid - sl; if (risk <= 0) return null;
+  const bear = S.ob.filter(z => z[3] === -1 && z[2] > p).sort((a, b) => a[2] - b[2])[0];
+  let tp = bear ? floorT(bear[2]) : (S.pd && S.pd[0] > p ? floorT(S.pd[0]) : null);
+  let src = bear ? "batas bawah order block bearish terdekat di atas harga" : "puncak range 120 hari";
+  if (!tp || (tp - mid) / risk < 1.5) { tp = ceilT(mid + 2 * risk); src = "2 kali risiko, karena target struktur terlalu dekat atau tidak ada"; }
+  return { e1, e2, sl, tp, risk: Math.round(risk / mid * 1000) / 10, src, hv: ob[4] === 1, dist: Math.round((p - ob[1]) / p * 1000) / 10 };
+}
+function renderPlan(r0, r) {
+  const box = $("plan-sec"); if (!box) return;
+  const sp = r0.kd && r0.kd.c === "bad" ? null : structPlan(r0), ap = r0.plan;
+  let mode = ls.get(PLAN_KEY, "atr"); if (mode === "smc" && !sp) mode = "atr"; if (mode === "atr" && !ap && sp) mode = "smc";
+  const use = mode === "smc" ? sp : ap;
+  r.plan = use; if (r.smc) renderSmc(r);
+  if (!use) { box.innerHTML = `<h3>Rencana</h3><p class="muted" style="margin:0">Tidak ada rencana untuk saham ini (berlabel Hindari dulu, atau tidak ada order block bullish aktif di bawah harga).</p>`; return; }
+  const calc = ls.get(CALC, { modal: 10000000, risk: 1 }), mid = (use.e1 + use.e2) / 2, rr = (use.tp - mid) / (mid - use.sl);
+  const note = mode === "smc"
+    ? `Entry di order block bullish ${fmtNum(use.e1)}–${fmtNum(use.e2)}${use.hv ? ", yang berada di area volume tinggi (konfirmasi lebih kuat)" : ", yang berada di area volume rendah (konfirmasi lebih lemah)"}. Stop loss sedikit di bawah order block. Target: ${use.src}.${use.dist > 1 ? ` Harga sekarang ${fmtDec(use.dist, 1)}% di atas area entry, jadi rencana ini menunggu pullback.` : ""}`
+    : `Area entry dari MA20 (atau harga − 1 ATR) sampai harga sekarang, stop loss 1 ATR di bawah area entry, target 2 kali risiko.${sp ? "" : " Rencana berbasis struktur tidak tersedia karena tidak ada order block bullish aktif di bawah harga."}`;
+  box.innerHTML = `<h3>Rencana (contoh, bukan rekomendasi)</h3>
+    <div class="seg" role="group" aria-label="Jenis rencana">
+      <button type="button" data-mode="atr" class="${mode === "atr" ? "on" : ""}" ${ap ? "" : "disabled"}>Berbasis ATR</button>
+      <button type="button" data-mode="smc" class="${mode === "smc" ? "on" : ""}" ${sp ? "" : "disabled"}>Berbasis struktur (order block)</button>
+    </div>
+    <p class="plan-note">${esc(note)}</p>
+    <div class="plan-box"><div><small>Area entry</small><b>${fmtNum(use.e1)}–${fmtNum(use.e2)}</b></div><div><small>Stop loss</small><b class="neg">${fmtNum(use.sl)}</b></div><div><small>Target</small><b class="pos">${fmtNum(use.tp)}</b></div><div><small>Risiko / R:R</small><b>${fmtDec(use.risk, 1)}% · 1:${fmtDec(rr, 1)}</b></div></div>
+    <div class="calc">
+      <div class="f"><label for="c-modal">Modal (Rp)</label><input type="number" id="c-modal" min="0" step="100000" value="${calc.modal}"></div>
+      <div class="f"><label for="c-risk">Risiko per transaksi (% modal)</label><input type="number" id="c-risk" min="0.1" max="10" step="0.1" value="${calc.risk}"></div>
+    </div>
+    <div class="calc-out" id="c-out"></div>
+    <div class="d-actions"><button class="icon-btn" id="j-add" type="button">Catat ke jurnal</button></div>
+    <div id="j-form"></div>`;
+  box.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => { ls.set(PLAN_KEY, b.dataset.mode); renderPlan(r0, r); }));
+  let lot = 0;
+  const upd = () => {
+    const modal = parseFloat($("c-modal").value) || 0, risk = parseFloat($("c-risk").value) || 0;
+    ls.set(CALC, { modal, risk });
+    const perLotRisk = (mid - use.sl) * 100;
+    const byRisk = perLotRisk > 0 ? Math.floor(modal * risk / 100 / perLotRisk) : 0, byCash = Math.floor(modal / (mid * 100));
+    lot = Math.max(0, Math.min(byRisk, byCash));
+    $("c-out").innerHTML = lot > 0
+      ? `Maksimal <b>${fmtNum(lot)} lot</b> (sekitar Rp ${fmtNum(lot * mid * 100)}). Kalau kena stop loss, rugi sekitar <b>Rp ${fmtNum(lot * perLotRisk)}</b> atau ${fmtDec(lot * perLotRisk / modal * 100, 2)}% modal.${byCash < byRisk ? " Dibatasi oleh jumlah modal." : ""}`
+      : "Modal atau risiko terlalu kecil untuk membeli 1 lot dengan stop loss ini.";
+  };
+  $("c-modal").addEventListener("input", upd); $("c-risk").addEventListener("input", upd); upd();
+  $("j-add").addEventListener("click", () => journalForm(r0, use, lot, mode));
+}
+
+/* ---------- jurnal trading (tersimpan di browser ini) ---------- */
+const JR = "idxs:jurnal";
+const SETUPS = ["BOS + order block", "CHoCH + order block", "Pantulan dari FVG", "Pullback ke zona discount", "Breakout", "Pullback ke MA20", "Lainnya"];
+const jrLoad = () => ls.get(JR, []), jrSave = a => ls.set(JR, a);
+function journalForm(r, p, lot, mode) {
+  const today = ymd(new Date()), mid = floorT((p.e1 + p.e2) / 2);
+  $("j-form").innerHTML = `<div class="j-form">
+    <div class="f"><label>Tanggal</label><input type="date" id="jf-tgl" value="${today}"></div>
+    <div class="f"><label>Harga entry</label><input type="number" id="jf-entry" value="${mid}"></div>
+    <div class="f"><label>Stop loss</label><input type="number" id="jf-sl" value="${p.sl}"></div>
+    <div class="f"><label>Target</label><input type="number" id="jf-tp" value="${p.tp}"></div>
+    <div class="f"><label>Lot</label><input type="number" id="jf-lot" value="${lot || 1}" min="1"></div>
+    <div class="f"><label>Setup</label><select id="jf-setup">${SETUPS.map(s => `<option ${mode === "smc" && s === "BOS + order block" ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+    <div class="f"><label>Timeframe entry</label><select id="jf-tf"><option>1 jam</option><option>4 jam</option><option selected>Harian</option></select></div>
+    <div class="f" style="grid-column:1/-1"><label>Catatan</label><input type="text" id="jf-note" placeholder="mis. CHoCH 1 jam di OB harian, broker akumulasi"></div>
+    <div style="grid-column:1/-1;display:flex;gap:8px"><button class="icon-btn" id="jf-save" type="button">Simpan trade</button><button class="icon-btn" id="jf-cancel" type="button">Batal</button></div>
+  </div>`;
+  $("jf-cancel").addEventListener("click", () => $("j-form").innerHTML = "");
+  $("jf-save").addEventListener("click", () => {
+    const e = +$("jf-entry").value, sl = +$("jf-sl").value;
+    if (!(e > 0) || !(sl > 0) || sl >= e) { alert("Stop loss harus di bawah harga entry."); return; }
+    const a = jrLoad();
+    a.push({ id: Date.now(), t: r.t, tgl: $("jf-tgl").value, entry: e, sl, tp: +$("jf-tp").value || null, lot: +$("jf-lot").value || 1,
+      setup: $("jf-setup").value, tf: $("jf-tf").value, note: $("jf-note").value.trim(), exit: null, tglExit: null });
+    jrSave(a); renderJournal();
+    $("j-form").innerHTML = `<p class="calc-out">Tersimpan di jurnal. Lihat bagian Jurnal trading di halaman utama.</p>`;
+  });
+}
+const rOf = (j, px) => (px - j.entry) / (j.entry - j.sl);
+function renderJournal() {
+  const a = jrLoad(), closed = a.filter(j => j.exit != null), open = a.filter(j => j.exit == null);
+  const wins = closed.filter(j => j.exit > j.entry).length, tot = closed.reduce((s, j) => s + rOf(j, j.exit), 0);
+  const bySetup = {}; closed.forEach(j => { const b = bySetup[j.setup] = bySetup[j.setup] || { n: 0, w: 0, r: 0 }; b.n++; b.r += rOf(j, j.exit); if (j.exit > j.entry) b.w++; });
+  const stat = (lab, val) => `<div><small>${lab}</small><b>${val}</b></div>`;
+  $("j-stats").innerHTML = closed.length
+    ? stat("Trade selesai", closed.length) + stat("Win rate", fmtDec(wins / closed.length * 100, 0) + "%") + stat("Rata-rata R", fmtDec(tot / closed.length, 2) + "R") + stat("Total R", fmtDec(tot, 2) + "R")
+    : stat("Trade selesai", 0) + stat("Masih terbuka", open.length);
+  $("j-setups").innerHTML = Object.keys(bySetup).length ? `<table class="j-tbl"><thead><tr><th>Setup</th><th class="num">Trade</th><th class="num">Win rate</th><th class="num">Rata-rata R</th></tr></thead><tbody>${Object.entries(bySetup).sort((x, y) => y[1].r / y[1].n - x[1].r / x[1].n).map(([k, b]) => `<tr><td>${esc(k)}</td><td class="num">${b.n}</td><td class="num">${fmtDec(b.w / b.n * 100, 0)}%</td><td class="num ${b.r >= 0 ? "pos" : "neg"}">${fmtDec(b.r / b.n, 2)}R</td></tr>`).join("")}</tbody></table>${closed.length < 30 ? '<p class="muted" style="font-size:0.8rem">Kesimpulan per setup baru bisa dipercaya setelah sekitar 30 trade selesai.</p>' : ""}` : "";
+  const rows = a.slice().sort((x, y) => ((x.exit != null) - (y.exit != null)) || y.tgl.localeCompare(x.tgl));
+  $("j-list").innerHTML = rows.length ? `<div class="table-wrap" style="max-height:none"><table class="j-tbl"><thead><tr><th>Tanggal</th><th>Saham</th><th>Setup</th><th class="num">Entry</th><th class="num">SL</th><th class="num">Target</th><th class="num">Lot</th><th class="num">Harga kini / keluar</th><th class="num">R</th><th>Aksi</th></tr></thead><tbody>${rows.map(j => {
+    const cur = DATA.find(d => d.t === j.t), px = j.exit != null ? j.exit : cur ? cur.p : null, r = px != null ? rOf(j, px) : null;
+    return `<tr><td>${esc(j.tgl)}</td><td><b>${esc(j.t)}</b><div class="muted" style="font-size:0.72rem">${esc(j.tf)}${j.note ? " · " + esc(j.note) : ""}</div></td><td>${esc(j.setup)}</td><td class="num">${fmtNum(j.entry)}</td><td class="num">${fmtNum(j.sl)}</td><td class="num">${j.tp ? fmtNum(j.tp) : "-"}</td><td class="num">${fmtNum(j.lot)}</td>
+      <td class="num">${px != null ? fmtNum(px) : "-"}${j.exit == null ? '<div class="muted" style="font-size:0.72rem">masih terbuka</div>' : ""}${j.exit == null && cur && cur.p <= j.sl ? '<div class="neg" style="font-size:0.72rem">sudah di bawah SL</div>' : ""}${j.exit == null && cur && j.tp && cur.p >= j.tp ? '<div class="pos" style="font-size:0.72rem">sudah capai target</div>' : ""}</td>
+      <td class="num ${r == null ? "" : r >= 0 ? "pos" : "neg"}">${r == null ? "-" : fmtDec(r, 2) + "R"}</td>
+      <td class="j-act" data-id="${j.id}">${j.exit == null ? `<button class="icon-btn" data-close="${j.id}" type="button">Tutup</button>` : ""} <button class="icon-btn" data-del="${j.id}" type="button">Hapus</button></td></tr>`;
+  }).join("")}</tbody></table></div>` : '<p class="muted">Belum ada trade. Buka panel detail saham, lalu klik "Catat ke jurnal" di bagian Rencana.</p>';
+  $("j-list").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { if (confirm("Hapus trade ini dari jurnal?")) { jrSave(jrLoad().filter(j => j.id !== +b.dataset.del)); renderJournal(); } }));
+  $("j-list").querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => {
+    const td = b.closest("td"), j = jrLoad().find(x => x.id === +b.dataset.close), cur = DATA.find(d => d.t === j.t);
+    td.innerHTML = `<input type="number" class="j-exit" value="${cur ? cur.p : j.entry}" aria-label="Harga keluar"> <button class="icon-btn" type="button">OK</button>`;
+    td.querySelector("button").addEventListener("click", () => {
+      const v = +td.querySelector("input").value; if (!(v > 0)) return;
+      const arr = jrLoad(); const it = arr.find(x => x.id === j.id); it.exit = v; it.tglExit = ymd(new Date()); jrSave(arr); renderJournal();
+    });
+  }));
+}
+$("j-export").addEventListener("click", () => {
+  const a = jrLoad(), head = ["tanggal", "saham", "setup", "timeframe", "entry", "stop_loss", "target", "lot", "harga_keluar", "tanggal_keluar", "R", "catatan"];
+  const lines = [head.join(",")].concat(a.map(j => [j.tgl, j.t, j.setup, j.tf, j.entry, j.sl, j.tp ?? "", j.lot, j.exit ?? "", j.tglExit ?? "", j.exit != null ? rOf(j, j.exit).toFixed(2) : "", `"${(j.note || "").replace(/"/g, '""')}"`].join(",")));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" }), url = URL.createObjectURL(blob), el = document.createElement("a");
+  el.href = url; el.download = `jurnal_trading_${ymd(new Date())}.csv`; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
 
 /* ---------- drawer ---------- */
 function openDrawer(t) {
@@ -2087,6 +2387,7 @@ function openDrawer(t) {
       ${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}
       <div style="margin-top:6px">${badges(r)}</div>
     </div>
+    ${msBlock(r)}
     ${r.smc ? `<div class="d-sec"><h3>Chart 120 hari dengan Smart Money Concepts</h3>
       <div id="smc-box"></div>
       <div class="chips smc-toggles" id="smc-toggles"></div>
@@ -2099,38 +2400,45 @@ function openDrawer(t) {
     <div class="d-sec"><h3>Checklist: ${c.pass} dari ${c.total} syarat terpenuhi</h3>
       <ul class="checklist">${c.items.map(([label, ok]) => `<li><span class="ci ${ok === null ? "na" : ok ? "y" : "x"}">${ok === null ? "–" : ok ? "✓" : "✗"}</span><span>${esc(label)}${ok === null ? ' <span class="muted">(data tidak tersedia)</span>' : ""}</span></li>`).join("")}</ul>
     </div>
-    ${p ? `<div class="d-sec"><h3>Rencana (contoh, bukan rekomendasi)</h3>
-      <div class="plan-box"><div><small>Area entry</small><b>${fmtNum(p.e1)}–${fmtNum(p.e2)}</b></div><div><small>Stop loss</small><b class="neg">${fmtNum(p.sl)}</b></div><div><small>Target</small><b class="pos">${fmtNum(p.tp)}</b></div><div><small>Risiko</small><b>${fmtDec(p.risk, 1)}%</b></div></div>
-      <div class="calc">
-        <div class="f"><label for="c-modal">Modal (Rp)</label><input type="number" id="c-modal" min="0" step="100000" value="${calc.modal}"></div>
-        <div class="f"><label for="c-risk">Risiko per transaksi (% modal)</label><input type="number" id="c-risk" min="0.1" max="10" step="0.1" value="${calc.risk}"></div>
-      </div>
-      <div class="calc-out" id="c-out"></div>
-    </div>` : `<div class="d-sec"><h3>Rencana</h3><p class="muted" style="margin:0">Tidak ada rencana untuk saham berlabel Hindari dulu atau yang datanya kurang.</p></div>`}
+    <div class="d-sec" id="plan-sec"></div>
     <div class="d-sec"><h3>Rincian skor</h3><div class="bars">${comp.map(([n, v, wt]) => `<div class="bar-row"><span>${n}</span><span class="track"><i style="width:${v}%"></i></span><span>${v}/100, bobot ${wt}</span></div>`).join("")}</div></div>
     <div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>
     <div class="d-sec"><h3>Data lain</h3><div class="muted" style="font-size:0.86rem">RSI ${fmtDec(r.rsi, 1)}. Volume ${fmtDec(r.vr, 2)}× rata-rata. Transaksi ${fmtValue(r.val)}/hari. Beta ${r.beta == null ? "-" : fmtDec(r.beta, 2)}. ${r.cst && r.cst.total ? `Masuk Top 10 ${r.cst.count} dari ${r.cst.total} hari terakhir.` : ""}</div></div>
     <div class="d-actions"><button class="icon-btn" id="d-star" type="button">${watch.has(r.t) ? "★ Hapus dari watchlist" : "☆ Tambah ke watchlist"}</button></div>
     <p class="d-foot">Semua angka dihitung otomatis dari data Yahoo Finance dan bisa tertunda. Cocokkan dengan chart di aplikasi trading-mu sebelum mengambil keputusan.</p>`;
   $("drawer").classList.add("open"); $("scrim").classList.add("open"); $("drawer").focus();
-  if (r.smc) renderSmc(r);
   $("d-close").addEventListener("click", closeDrawer);
   $("d-star").addEventListener("click", () => { toggleWatch(r.t); openDrawer(r.t); });
-  if (p) {
-    const upd = () => {
-      const modal = parseFloat($("c-modal").value) || 0, risk = parseFloat($("c-risk").value) || 0;
-      ls.set(CALC, { modal, risk });
-      const mid = (p.e1 + p.e2) / 2, perLotRisk = (mid - p.sl) * 100;
-      const byRisk = perLotRisk > 0 ? Math.floor(modal * risk / 100 / perLotRisk) : 0, byCash = Math.floor(modal / (mid * 100));
-      const lot = Math.max(0, Math.min(byRisk, byCash));
-      $("c-out").innerHTML = lot > 0
-        ? `Maksimal <b>${fmtNum(lot)} lot</b> (sekitar Rp ${fmtNum(lot * mid * 100)}). Kalau kena stop loss, rugi sekitar <b>Rp ${fmtNum(lot * perLotRisk)}</b> atau ${fmtDec(lot * perLotRisk / modal * 100, 2)}% modal.${byCash < byRisk ? " Dibatasi oleh jumlah modal." : ""}`
-        : "Modal atau risiko terlalu kecil untuk membeli 1 lot dengan stop loss ini.";
-    };
-    $("c-modal").addEventListener("input", upd); $("c-risk").addEventListener("input", upd); upd();
-  }
+  renderPlan(r0, r);
 }
-function closeDrawer() { $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); const tr = document.querySelector(`tr[data-t="${openT}"]`); openT = null; if (tr) tr.focus(); }
+function openIhsg() {
+  const m = MARKET.ihsg; if (!m) return;
+  openT = "IHSG";
+  const up = m.chg >= 0, tf = m.tf || {}, b = MARKET.breadth;
+  const r = { t: "IHSG", p: m.p, smc: m.smc, plan: null };
+  const pos = (v, n) => v ? `<li><span class="ci ${m.p > v ? "y" : "x"}">${m.p > v ? "✓" : "✗"}</span><span>${m.p > v ? "Di atas" : "Di bawah"} ${n} (${fmtDec(v, 2)})</span></li>` : "";
+  const tfNames = [["h1", "1 jam"], ["h2", "2 jam"], ["h4", "4 jam"], ["daily", "Harian"], ["weekly", "Mingguan"], ["monthly", "Bulanan"]];
+  $("drawer").innerHTML = `
+    <div class="d-head">
+      <div><div class="d-tk" id="d-title">IHSG</div><div class="d-name">Indeks Harga Saham Gabungan</div></div>
+      <button class="icon-btn" id="d-close" type="button">Tutup</button>
+    </div>
+    <div class="d-price">${fmtDec(m.p, 2)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(m.chg, 2)}%</span></div>
+    <div class="muted" style="font-size:0.8rem">Candle terakhir ${esc(m.tgl || "")}. Ringkasan teknikal harian: ${esc(m.d)}${m.rsi ? `, RSI ${fmtDec(m.rsi, 1)}` : ""}.</div>
+    ${msBlock({ ms: m.ms })}
+    ${m.smc ? `<div class="d-sec"><h3>Chart 120 hari dengan Smart Money Concepts</h3>
+      <div id="smc-box"></div><div class="chips smc-toggles" id="smc-toggles"></div>
+      <ul class="smc-sum">${smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>` : ""}
+    <div class="d-sec"><h3>Posisi terhadap moving average</h3><ul class="checklist">${pos(m.ma20, "MA20")}${pos(m.ma50, "MA50")}${pos(m.ma200, "MA200")}</ul></div>
+    <div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>
+    ${b ? `<div class="d-sec"><h3>Napas pasar</h3><div class="muted" style="font-size:0.88rem">${b.pct}% dari ${fmtNum(b.n)} saham likuid (transaksi ≥ Rp 1 M/hari) berada di atas MA20. Kalau IHSG naik tapi napas pasar di bawah 50%, kenaikannya hanya ditopang sedikit saham besar.</div></div>` : ""}
+    <p class="d-foot">Data IHSG dari Yahoo Finance (^JKSE), bisa tertunda. Kondisi IHSG dipakai sebagai salah satu syarat di checklist setiap saham.</p>`;
+  $("drawer").classList.add("open"); $("scrim").classList.add("open"); $("drawer").focus();
+  $("d-close").addEventListener("click", closeDrawer);
+  if (m.smc) renderSmc(r);
+}
+
+function closeDrawer() { $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); const tr = openT === "IHSG" ? $("ihsg-card") : document.querySelector(`tr[data-t="${openT}"]`); openT = null; if (tr) tr.focus(); }
 function toggleWatch(t) { watch.has(t) ? watch.delete(t) : watch.add(t); ls.set(WATCH, [...watch]); render(); }
 
 /* ---------- events ---------- */
@@ -2176,7 +2484,7 @@ if (location.protocol === "file:") {
   $("sector-filter").innerHTML = '<option value="">Semua sektor</option>' + Object.keys(cnt).filter(k => k !== "-").sort()
     .map(k => `<option value="${esc(k)}">${esc(k)} (${cnt[k]})</option>`).join("") + (cnt["-"] ? `<option value="-">Tanpa sektor (${cnt["-"]})</option>` : "");
 })();
-renderMarket(); load(); render(); renderCal();
+renderMarket(); load(); render(); renderCal(); renderJournal();
 </script>
 </body>
 </html>
