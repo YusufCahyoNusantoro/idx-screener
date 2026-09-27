@@ -74,6 +74,53 @@ ADMR SRTG BIRD
 
 W_DEFAULT = {"trend": 30, "brk": 30, "pa": 25, "mom": 15}   # sama dengan bobot awal di HTML
 
+KALENDER = BASE / "kalender.json"   # opsional: agenda tambahanmu sendiri (lihat README / panduan)
+
+# Agenda pasar bawaan (tanggal WIB). Sumber: jadwal resmi MSCI (rilis 12 Agu 2026), FTSE GEIS 2026 (Jul 2026),
+# MarketVector MVGDX, dan POJK 14/2022 untuk batas laporan keuangan. Jenis: msci, ftse, gdx, lapkeu.
+AGENDA_DEFAULT = [
+    ["2026-08-12", "msci", "MSCI: pengumuman review Agustus 2026", "Hasil biasanya terbaca dini hari WIB keesokan harinya.", []],
+    ["2026-08-21", "ftse", "FTSE: rilis file indikatif review September 2026", "", []],
+    ["2026-08-31", "msci", "MSCI: rebalancing review Agustus (penutupan)", "Efektif 1 September 2026. Volume saham yang masuk/keluar biasanya melonjak di penutupan hari ini.", []],
+    ["2026-09-11", "gdx", "GDX/GDXJ: pengumuman review Q3 2026", "MarketVector Global Gold Miners Index.", ["AMMN", "BRMS", "ARCI", "EMAS", "PSAB"]],
+    ["2026-09-18", "gdx", "GDX/GDXJ: implementasi review Q3 2026 (penutupan)", "", ["AMMN", "BRMS", "ARCI", "EMAS", "PSAB"]],
+    ["2026-09-18", "ftse", "FTSE: rebalancing review September 2026 (penutupan)", "Efektif saat pembukaan Senin 21 September 2026.", []],
+    ["2026-10-31", "lapkeu", "Batas laporan keuangan Q3 2026 (tanpa audit)", "Akhir bulan pertama setelah 30 September (POJK 14/2022). Jatuh pada hari Sabtu; banyak emiten merilis di hari kerja terakhir Oktober.", []],
+    ["2026-11-11", "msci", "MSCI: pengumuman review November 2026", "Hasil biasanya terbaca dini hari 12 November WIB. Pasar menyorot keputusan MSCI terkait perlakuan saham Indonesia.", []],
+    ["2026-11-13", "ftse", "FTSE: rilis file indikatif review Desember 2026", "FTSE menunda penambahan saham Indonesia setidaknya sampai review Desember 2026.", []],
+    ["2026-11-30", "msci", "MSCI: rebalancing review November (penutupan)", "Efektif 1 Desember 2026.", []],
+    ["2026-11-30", "lapkeu", "Batas laporan keuangan Q3 2026 (direviu akuntan)", "Akhir bulan kedua setelah 30 September.", []],
+    ["2026-12-04", "ftse", "FTSE: rilis file final review Desember 2026", "", []],
+    ["2026-12-11", "gdx", "GDX: pengumuman review Q4 2026", "", ["AMMN", "BRMS", "ARCI", "EMAS", "PSAB"]],
+    ["2026-12-18", "gdx", "GDX: implementasi review Q4 2026 (penutupan)", "", ["AMMN", "BRMS", "ARCI", "EMAS", "PSAB"]],
+    ["2026-12-18", "ftse", "FTSE: rebalancing review Desember 2026 (penutupan)", "Efektif saat pembukaan Senin 21 Desember 2026.", []],
+    ["2026-12-31", "lapkeu", "Batas laporan keuangan Q3 2026 (diaudit)", "Akhir bulan ketiga setelah 30 September.", []],
+    ["2027-02-09", "msci", "MSCI: pengumuman review Februari 2027", "", []],
+    ["2027-02-26", "msci", "MSCI: rebalancing review Februari (penutupan)", "Efektif 1 Maret 2027.", []],
+    ["2027-03-31", "lapkeu", "Batas laporan keuangan tahunan 2026", "Akhir bulan ketiga setelah 31 Desember (POJK 14/2022).", []],
+    ["2027-05-10", "msci", "MSCI: pengumuman review Mei 2027", "", []],
+    ["2027-05-27", "msci", "MSCI: rebalancing review Mei (penutupan)", "Efektif 28 Mei 2027.", []],
+    ["2027-08-12", "msci", "MSCI: pengumuman review Agustus 2027", "", []],
+    ["2027-08-31", "msci", "MSCI: rebalancing review Agustus 2027 (penutupan)", "Efektif 1 September 2027.", []],
+]
+
+
+def muat_agenda():
+    """Agenda bawaan + agenda dari kalender.json (kalau ada). Format tiap item kalender.json:
+    {"tgl": "2026-11-05", "jenis": "lain", "judul": "...", "ket": "...", "saham": ["BBRI"]}"""
+    agenda = [{"tgl": t, "jenis": j, "judul": ju, "ket": k, "saham": sh} for t, j, ju, k, sh in AGENDA_DEFAULT]
+    if KALENDER.exists():
+        try:
+            tambahan = json.loads(KALENDER.read_text(encoding="utf-8"))
+            for it in tambahan if isinstance(tambahan, list) else []:
+                if isinstance(it, dict) and it.get("tgl") and it.get("judul"):
+                    agenda.append({"tgl": str(it["tgl"])[:10], "jenis": str(it.get("jenis", "lain")),
+                                   "judul": str(it["judul"]), "ket": str(it.get("ket", "")),
+                                   "saham": [str(x).upper() for x in it.get("saham", [])]})
+        except Exception as e:
+            print(f"  ! kalender.json tidak bisa dibaca: {e}")
+    return sorted(agenda, key=lambda a: a["tgl"])
+
 
 # ─────────────────────────── jam bursa ───────────────────────────
 def jam_sesi(d):
@@ -287,7 +334,12 @@ def ambil_sektor(tickers, sektor_daftar, maks_baru=30):
         except Exception:
             pass   # gagal (mis. rate limit) -> dicoba lagi di run berikutnya
     CACHE_SEKTOR.write_text(json.dumps(cache, indent=1), encoding="utf-8")
-    return {t: sektor_daftar.get(t) or cache.get(t, "-") for t in tickers}
+    yahoo_ke_bei = {"basic materials": "Barang Baku", "energy": "Energi", "financial services": "Keuangan",
+                    "consumer cyclical": "Konsumen Non-Primer", "consumer defensive": "Konsumen Primer",
+                    "healthcare": "Kesehatan", "industrials": "Perindustrian", "real estate": "Properti & Real Estat",
+                    "technology": "Teknologi", "communication services": "Infrastruktur", "utilities": "Infrastruktur"}
+    return {t: sektor_daftar.get(t) or yahoo_ke_bei.get(str(cache.get(t, "-")).lower(), cache.get(t, "-"))
+            for t in tickers}
 
 
 def sma(s, n):
@@ -652,6 +704,7 @@ def smc(d, L=5, win=120, ctx=260):
     return {
         "b": [[rp(v) for v in row] for row in d[["Open", "High", "Low", "Close"]].iloc[-win:].values],
         "d0": tgl[s0], "d1": tgl[-1],
+        "do": [(x - d.index[s0]).days for x in d.index[s0:]],
         "ev": ev_out, "ob": ob_out, "fvg": fvg_out, "eq": eq_out,
         "pd": [rp(h[s0:].max()), rp(l[s0:].min())], "tr": tren,
     }
@@ -795,6 +848,7 @@ def tulis_html(rows, now, status, n_gagal, pakai_intraday, out_html=OUT_HTML, ar
             .replace("__TITLE__", f"{now:%Y-%m-%d %H:%M}")
             .replace("__MARKET__", json.dumps(bersih(pasar or {}), ensure_ascii=False, allow_nan=False))
             .replace("__GEN__", now.strftime("%Y-%m-%d %H:%M"))
+            .replace("__AGENDA__", json.dumps(muat_agenda(), ensure_ascii=False))
             .replace("__BADGE__", status)
             .replace("__SUB__", sub)
             .replace("__DISCLAIMER__", disc))
@@ -1139,6 +1193,37 @@ TEMPLATE = r'''<!DOCTYPE html>
   .smc-sum li { margin:4px 0; }
   .d-foot { font-size:0.78rem; color:var(--muted); margin-top:18px; }
 
+  /* kalender */
+  .cal-head { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; margin-bottom:12px; }
+  .cal-head h2 { margin:0; }
+  .cal-nav { display:flex; align-items:center; gap:8px; }
+  .cal-title { font-weight:800; font-size:1.05rem; min-width:150px; text-align:center; }
+  .cal-opts { display:flex; gap:14px; margin-left:auto; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
+  .cal-dow { font-size:0.78rem; font-weight:700; color:var(--muted); text-align:center; padding:2px 0 4px; }
+  .cal-cell { min-height:92px; border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:6px 7px; text-align:left;
+    display:flex; flex-direction:column; gap:3px; cursor:pointer; overflow:hidden; }
+  .cal-cell:hover { border-color:var(--accent); }
+  .cal-cell.empty { border:0; background:transparent; cursor:default; }
+  .cal-cell.weekend { background:var(--panel2); }
+  .cal-cell.today { border:2px solid var(--accent); }
+  .cal-cell.sel { box-shadow:0 0 0 3px var(--accent-soft); border-color:var(--accent); }
+  .cal-d { font-weight:700; font-size:0.86rem; }
+  .cal-moon { font-size:1.15rem; line-height:1.1; }
+  .cal-moon small { font-size:0.68rem; color:var(--muted); margin-left:4px; vertical-align:3px; font-weight:600; }
+  .cal-ev { display:inline-block; font-size:0.68rem; font-weight:700; padding:1px 7px; border-radius:999px; white-space:nowrap; }
+  .ev-msci { background:var(--blue-soft); color:var(--blue); }
+  .ev-ftse { background:var(--accent-soft); color:var(--accent); }
+  .ev-gdx { background:var(--amber-soft); color:var(--amber); }
+  .ev-lapkeu { background:var(--orange-soft); color:var(--orange); }
+  .ev-lain { background:var(--panel2); color:var(--ink2); }
+  .cal-list { list-style:none; margin:14px 0 0; padding:0; }
+  .cal-list li { display:flex; gap:14px; padding:9px 0; border-top:1px solid var(--line); font-size:0.88rem; }
+  .cl-date { flex:0 0 104px; font-weight:700; color:var(--ink2); white-space:nowrap; }
+  .tk-chip { border:1px solid var(--line); background:var(--panel2); border-radius:999px; padding:2px 9px; margin:5px 5px 0 0; font-size:0.76rem; font-weight:700; cursor:pointer; }
+  .tk-chip:hover { border-color:var(--accent); color:var(--accent); }
+  @media (max-width:700px) { .cal-cell { min-height:64px; } .cal-moon small, .cal-ev { display:none; } .cal-ev + .cal-ev { display:none; } }
+
   /* guide */
   .guide-item { border:1px solid var(--line); border-radius:10px; margin-bottom:8px; overflow:hidden; background:var(--panel); }
   .guide-item summary { cursor:pointer; padding:11px 14px; font-weight:700; font-size:0.9rem; list-style:none; display:flex; gap:8px; align-items:center; }
@@ -1159,6 +1244,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     </div>
     <div class="top-actions">
       <button class="icon-btn" id="theme-btn" type="button" aria-label="Ganti tema terang atau gelap">Tema gelap</button>
+      <a class="icon-btn" href="#kalender" style="text-decoration:none">Kalender</a>
       <a class="icon-btn" href="#panduan" style="text-decoration:none">Panduan</a>
     </div>
   </header>
@@ -1199,6 +1285,7 @@ TEMPLATE = r'''<!DOCTYPE html>
           <option value="n">Pantau</option>
           <option value="bad">Hindari dulu</option>
         </select></div>
+      <div class="f"><label for="sector-filter">Sektor</label><select id="sector-filter"><option value="">Semua sektor</option></select></div>
       <div class="f"><label>Harga (Rp)</label><div class="pair"><input type="number" id="price-min" placeholder="Min" min="0"><input type="number" id="price-max" placeholder="Maks" min="0"></div></div>
       <div class="f"><label>RSI</label><div class="pair"><input type="number" id="rsi-min" placeholder="0" min="0" max="100"><input type="number" id="rsi-max" placeholder="100" min="0" max="100"></div></div>
       <div class="f"><label for="val-min">Min. nilai transaksi (Rp miliar/hari)</label><input type="number" id="val-min" placeholder="mis. 5" min="0" step="0.5"></div>
@@ -1258,6 +1345,25 @@ TEMPLATE = r'''<!DOCTYPE html>
     <button id="next-page" type="button">Berikutnya</button>
   </div>
 
+  <section class="card cal-card" id="kalender" aria-label="Kalender">
+    <div class="cal-head">
+      <h2>Kalender</h2>
+      <div class="cal-nav">
+        <button class="icon-btn" id="cal-prev" type="button" aria-label="Bulan sebelumnya">‹</button>
+        <span id="cal-title" class="cal-title"></span>
+        <button class="icon-btn" id="cal-next" type="button" aria-label="Bulan berikutnya">›</button>
+        <button class="icon-btn" id="cal-today" type="button">Bulan ini</button>
+      </div>
+      <div class="cal-opts">
+        <label class="chip"><input type="checkbox" id="cal-moon"> Fase bulan</label>
+        <label class="chip"><input type="checkbox" id="cal-agenda"> Agenda pasar</label>
+      </div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <ul class="cal-list" id="cal-list"></ul>
+    <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Waktu fase bulan dalam WIB, dihitung dengan rumus astronomi. Agenda MSCI, FTSE, GDX, dan batas laporan keuangan diambil dari jadwal resmi; tanggal bisa berubah, jadi cek pengumuman terbaru. Klik tanggal untuk melihat detailnya.</p>
+  </section>
+
   <details class="notice" style="margin-top:18px">
     <summary>Tentang data dan batasan</summary>
     <div>__DISCLAIMER__</div>
@@ -1293,6 +1399,14 @@ TEMPLATE = r'''<!DOCTYPE html>
         <b>EQH/EQL</b>: dua puncak atau dua lembah yang hampir sama tinggi, tempat banyak stop loss berkumpul.<br>
         <b>Premium/discount</b>: separuh atas range 120 hari (relatif mahal) dan separuh bawah (relatif murah), dengan garis EQ di tengah.</p>
         <p>Ini versi sederhana yang dihitung otomatis dari candle harian (swing 5 candle kiri-kanan), jadi bisa berbeda dari indikator SMC di TradingView atau Stockbit. Gunakan sebagai petunjuk area, lalu pastikan di chart aplikasi trading-mu.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Kalender: fase bulan dan agenda pasar</summary>
+      <div class="guide-body">
+        <p>Bagian Kalender (tombol "Kalender" di kanan atas) menampilkan fase bulan (🌑 bulan baru, 🌓 kuartal awal, 🌕 purnama, 🌗 kuartal akhir) dalam WIB, serta agenda pasar: review MSCI, FTSE, GDX, dan batas penyampaian laporan keuangan. Klik tanggal untuk melihat detailnya; klik kode saham di agenda untuk membuka panel detailnya.</p>
+        <p>Fase bulan juga bisa ditampilkan di chart SMC sebagai lingkaran kecil di bawah candle (kuning = purnama, gelap = bulan baru). Penelitian menemukan return rata-rata pasar global sedikit lebih rendah di sekitar purnama dibanding bulan baru, tapi efeknya kecil dan tidak membuktikan fase bulan bisa menentukan titik pembalikan saham tertentu. Pakai sebagai konteks, bukan sinyal utama.</p>
+        <p><b>Menambah agenda sendiri:</b> buat file <code>kalender.json</code> di repo berisi daftar seperti <code>[{"tgl": "2026-11-05", "jenis": "lain", "judul": "RUPS XXXX", "ket": "catatan", "saham": ["XXXX"]}]</code>. Jenis bisa msci, ftse, gdx, lapkeu, atau lain. Agenda muncul setelah run berikutnya.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -1602,7 +1716,7 @@ function planCell(r) {
 }
 
 /* ---------- state ---------- */
-const FIELDS = ["search", "kd-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min"];
+const FIELDS = ["search", "kd-filter", "sector-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min"];
 const CHECKS = ["f-watch", "f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen"];
 const W = ["w-trend", "w-brk", "w-pa", "w-mom"];
 function save() {
@@ -1637,7 +1751,7 @@ function applyPreset(name, silent) {
   $("f-confirmed").checked = !!f.confirmed; $("f-allgreen").checked = !!f.allgreen;
   $("rsi-max").value = p.rsiMax ?? ""; $("rsi-min").value = ""; $("price-min").value = ""; $("price-max").value = "";
   $("val-min").value = p.valMin ?? ""; $("streak-min").value = p.streakMin ?? ""; $("kd-filter").value = p.kd || "";
-  $("search").value = ""; $("f-watch").checked = false;
+  $("search").value = ""; $("f-watch").checked = false; $("sector-filter").value = "";
   sortKey = "score"; sortDir = -1; page = 0;
   markPreset(); if (!silent) { save(); render(); }
 }
@@ -1673,6 +1787,8 @@ function filtered() {
   if (!isNaN(vmin)) rows = rows.filter(r => r.val >= vmin * 1e9);
   if (!isNaN(smin)) rows = rows.filter(r => r.streak >= smin);
   if (q) rows = rows.filter(r => r.t.includes(q) || (r.nm || "").toUpperCase().includes(q));
+  const sec = $("sector-filter").value;
+  if (sec) rows = rows.filter(r => (r.sector || "-") === sec);
   if (kd === "nobad") rows = rows.filter(r => !r.kd || r.kd.c !== "bad");
   else if (kd) rows = rows.filter(r => r.kd && r.kd.c === kd);
   }
@@ -1729,10 +1845,120 @@ function render() {
   $("prev-page").disabled = page <= 0; $("next-page").disabled = page >= pages - 1;
 }
 
+/* ---------- fase bulan (Meeus, Astronomical Algorithms bab 49) ---------- */
+function moonPhaseUTC(k) {
+  const rad = Math.PI / 180, T = k / 1236.85, T2 = T * T, T3 = T2 * T, T4 = T3 * T;
+  let jde = 2451550.09766 + 29.530588861 * k + 0.00015437 * T2 - 0.00000015 * T3 + 0.00000000073 * T4;
+  const E = 1 - 0.002516 * T - 0.0000074 * T2;
+  const M = (2.5534 + 29.1053567 * k - 0.0000014 * T2 - 0.00000011 * T3) * rad;
+  const Mp = (201.5643 + 385.81693528 * k + 0.0107582 * T2 + 0.00001238 * T3 - 0.000000058 * T4) * rad;
+  const F = (160.7108 + 390.67050284 * k - 0.0016118 * T2 - 0.00000227 * T3 + 0.000000011 * T4) * rad;
+  const Om = (124.7746 - 1.56375588 * k + 0.0020672 * T2 + 0.00000215 * T3) * rad;
+  const s = Math.sin, c = Math.cos, f = Math.round((k - Math.floor(k)) * 4) % 4;
+  let d;
+  if (f === 0 || f === 2) {
+    const n = f === 0;
+    d = (n ? -0.4072 : -0.40614) * s(Mp) + (n ? 0.17241 : 0.17302) * E * s(M) + (n ? 0.01608 : 0.01614) * s(2 * Mp)
+      + (n ? 0.01039 : 0.01043) * s(2 * F) + (n ? 0.00739 : 0.00734) * E * s(Mp - M) - (n ? 0.00514 : 0.00515) * E * s(Mp + M)
+      + (n ? 0.00208 : 0.00209) * E * E * s(2 * M) - 0.00111 * s(Mp - 2 * F) - 0.00057 * s(Mp + 2 * F) + 0.00056 * E * s(2 * Mp + M)
+      - 0.00042 * s(3 * Mp) + 0.00042 * E * s(M + 2 * F) + 0.00038 * E * s(M - 2 * F) - 0.00024 * E * s(2 * Mp - M) - 0.00017 * s(Om)
+      - 0.00007 * s(Mp + 2 * M) + 0.00004 * s(2 * Mp - 2 * F) + 0.00004 * s(3 * M) + 0.00003 * s(Mp + M - 2 * F) + 0.00003 * s(2 * Mp + 2 * F)
+      - 0.00003 * s(Mp + M + 2 * F) + 0.00003 * s(Mp - M + 2 * F) - 0.00002 * s(Mp - M - 2 * F) - 0.00002 * s(3 * Mp + M) + 0.00002 * s(4 * Mp);
+  } else {
+    d = -0.62801 * s(Mp) + 0.17172 * E * s(M) - 0.01183 * E * s(Mp + M) + 0.00862 * s(2 * Mp) + 0.00804 * s(2 * F)
+      + 0.00454 * E * s(Mp - M) + 0.00204 * E * E * s(2 * M) - 0.0018 * s(Mp - 2 * F) - 0.0007 * s(Mp + 2 * F) - 0.0004 * s(3 * Mp)
+      - 0.00034 * E * s(2 * Mp - M) + 0.00032 * E * s(M + 2 * F) + 0.00032 * E * s(M - 2 * F) - 0.00028 * E * E * s(Mp + 2 * M)
+      + 0.00027 * E * s(2 * Mp + M) - 0.00017 * s(Om) - 0.00005 * s(Mp - M - 2 * F) + 0.00004 * s(2 * Mp + 2 * F)
+      - 0.00004 * s(Mp + M + 2 * F) + 0.00004 * s(Mp - 2 * M) + 0.00003 * s(Mp + M - 2 * F) + 0.00003 * s(3 * M)
+      + 0.00002 * s(2 * Mp - 2 * F) + 0.00002 * s(Mp - M + 2 * F) - 0.00002 * s(3 * Mp + M);
+    const W = 0.00306 - 0.00038 * E * c(M) + 0.00026 * c(Mp) - 0.00002 * c(Mp - M) + 0.00002 * c(Mp + M) + 0.00002 * c(2 * F);
+    d += f === 1 ? W : -W;
+  }
+  const A = [[299.77, 0.107408, 0.000325], [251.88, 0.016321, 0.000165], [251.83, 26.651886, 0.000164], [349.42, 36.412478, 0.000126],
+    [84.66, 18.206239, 0.00011], [141.74, 53.303771, 0.000062], [207.14, 2.453732, 0.00006], [154.84, 7.30686, 0.000056],
+    [34.52, 27.261239, 0.000047], [207.19, 0.121824, 0.000042], [291.34, 1.844379, 0.00004], [161.72, 24.198154, 0.000037],
+    [239.56, 25.513099, 0.000035], [331.55, 3.592518, 0.000023]];
+  let add = 0; A.forEach(([a, b, amp], i) => add += amp * s((a + b * k - (i === 0 ? 0.009173 * T2 : 0)) * rad));
+  jde += d + add - 69 / 86400;                        // TT -> UT (ΔT ≈ 69 detik)
+  return new Date((jde - 2440587.5) * 86400000);
+}
+/* daftar fase (0=bulan baru, 1=kuartal awal, 2=purnama, 3=kuartal akhir) antara dua tanggal */
+function moonPhases(from, to) {
+  const out = [], y = from.getUTCFullYear() + from.getUTCMonth() / 12;
+  let k = Math.floor((y - 2000) * 12.3685) - 1;
+  for (; ; k++) {
+    for (let q = 0; q < 4; q++) {
+      const t = moonPhaseUTC(k + q / 4);
+      if (t > to) return out;
+      if (t >= from) out.push({ t, q });
+    }
+  }
+}
+
+/* ---------- kalender (fase bulan + agenda pasar) ---------- */
+const AGENDA = __AGENDA__;
+const MOON_NAME = ["Bulan baru", "Kuartal awal", "Purnama", "Kuartal akhir"];
+const MOON_ICON = ["🌑", "🌓", "🌕", "🌗"];
+const JENIS = { msci: "MSCI", ftse: "FTSE", gdx: "GDX", lapkeu: "Lapkeu", lain: "Agenda" };
+const BULAN_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const CAL_KEY = "idxs:cal";
+const WIB_MS = 7 * 3600000;
+const ymd = d => new Date(d.getTime() + WIB_MS).toISOString().slice(0, 10);          // tanggal WIB dari waktu UTC
+const hm = d => new Date(d.getTime() + WIB_MS).toISOString().slice(11, 16);
+let cal = Object.assign({ moon: true, agenda: true }, ls.get(CAL_KEY, {}));
+let calMonth = (() => { const t = new Date(Date.now() + WIB_MS); return [t.getUTCFullYear(), t.getUTCMonth()]; })();
+let calSel = null;
+
+function calData(y, m) {
+  const from = new Date(Date.UTC(y, m, 1) - WIB_MS - 86400000), to = new Date(Date.UTC(y, m + 1, 1) - WIB_MS + 86400000);
+  const moons = {}; moonPhases(from, to).forEach(p => { (moons[ymd(p.t)] = moons[ymd(p.t)] || []).push(p); });
+  const ev = {}; AGENDA.forEach(a => { (ev[a.tgl] = ev[a.tgl] || []).push(a); });
+  return { moons, ev };
+}
+
+function renderCal() {
+  const [y, m] = calMonth, { moons, ev } = calData(y, m);
+  const today = ymd(new Date()), first = new Date(Date.UTC(y, m, 1)), days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const lead = (first.getUTCDay() + 6) % 7;             // Senin = kolom pertama
+  $("cal-title").textContent = `${BULAN_ID[m]} ${y}`;
+  $("cal-moon").checked = cal.moon; $("cal-agenda").checked = cal.agenda;
+  let h = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < lead; i++) h += '<div class="cal-cell empty"></div>';
+  for (let d = 1; d <= days; d++) {
+    const key = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`, wd = (lead + d - 1) % 7;
+    const mo = cal.moon ? (moons[key] || []) : [], es = cal.agenda ? (ev[key] || []) : [];
+    h += `<button type="button" class="cal-cell${wd >= 5 ? " weekend" : ""}${key === today ? " today" : ""}${key === calSel ? " sel" : ""}" data-day="${key}">
+      <span class="cal-d">${d}</span>
+      ${mo.map(p => `<span class="cal-moon" title="${MOON_NAME[p.q]} ${hm(p.t)} WIB">${MOON_ICON[p.q]}<small>${p.q === 0 || p.q === 2 ? MOON_NAME[p.q] : ""}</small></span>`).join("")}
+      ${es.map(a => `<span class="cal-ev ev-${esc(a.jenis)}" title="${esc(a.judul)}">${esc(JENIS[a.jenis] || JENIS.lain)}</span>`).join("")}
+    </button>`;
+  }
+  $("cal-grid").innerHTML = h;
+  $("cal-grid").querySelectorAll("[data-day]").forEach(b => b.addEventListener("click", () => { calSel = calSel === b.dataset.day ? null : b.dataset.day; renderCal(); }));
+  // daftar di bawah grid
+  const prefix = `${y}-${String(m + 1).padStart(2, "0")}`;
+  const items = [];
+  if (cal.moon) Object.entries(moons).forEach(([k, arr]) => { if (k.startsWith(prefix)) arr.forEach(p => items.push({ tgl: k, moon: p })); });
+  if (cal.agenda) AGENDA.forEach(a => { if (a.tgl.startsWith(prefix)) items.push({ tgl: a.tgl, ev: a }); });
+  const list = items.filter(i => !calSel || i.tgl === calSel).sort((a, b) => a.tgl.localeCompare(b.tgl) || (a.moon ? -1 : 1));
+  const tglTxt = k => { const [yy, mm, dd] = k.split("-").map(Number); const w = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay()]; return `${w}, ${dd} ${BULAN_ID[mm - 1].slice(0, 3)}`; };
+  $("cal-list").innerHTML = list.length ? list.map(i => i.moon
+    ? `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><b>${MOON_ICON[i.moon.q]} ${MOON_NAME[i.moon.q]}</b> <span class="muted">${hm(i.moon.t)} WIB</span></span></li>`
+    : `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><span class="cal-ev ev-${esc(i.ev.jenis)}">${esc(JENIS[i.ev.jenis] || JENIS.lain)}</span> <b>${esc(i.ev.judul)}</b>${i.ev.ket ? `<br><span class="muted">${esc(i.ev.ket)}</span>` : ""}${(i.ev.saham || []).length ? `<br>${i.ev.saham.map(t => `<button type="button" class="tk-chip" data-open="${esc(t)}">${esc(t)}</button>`).join("")}` : ""}</span></li>`).join("")
+    : `<li class="muted">${calSel ? "Tidak ada fase bulan atau agenda di tanggal ini." : "Tidak ada agenda bulan ini."}</li>`;
+  $("cal-list").querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => {
+    if (DATA.some(r => r.t === b.dataset.open)) openDrawer(b.dataset.open);
+  }));
+}
+$("cal-prev").addEventListener("click", () => { calMonth = calMonth[1] === 0 ? [calMonth[0] - 1, 11] : [calMonth[0], calMonth[1] - 1]; calSel = null; renderCal(); });
+$("cal-next").addEventListener("click", () => { calMonth = calMonth[1] === 11 ? [calMonth[0] + 1, 0] : [calMonth[0], calMonth[1] + 1]; calSel = null; renderCal(); });
+$("cal-today").addEventListener("click", () => { const t = new Date(Date.now() + WIB_MS); calMonth = [t.getUTCFullYear(), t.getUTCMonth()]; calSel = null; renderCal(); });
+["cal-moon", "cal-agenda"].forEach(id => $(id).addEventListener("change", () => { cal.moon = $("cal-moon").checked; cal.agenda = $("cal-agenda").checked; ls.set(CAL_KEY, cal); renderCal(); }));
+
 /* ---------- SMC chart ---------- */
 const SMC_KEY = "idxs:smc";
-const SMC_LAYERS = [["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["ma", "MA20/MA50"], ["plan", "Entry/SL/TP"]];
-function smcLayers() { return Object.assign({ pd: true, st: true, ob: true, fvg: true, eq: true, ma: false, plan: false }, ls.get(SMC_KEY, {})); }
+const SMC_LAYERS = [["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "MA20/MA50"], ["plan", "Entry/SL/TP"]];
+function smcLayers() { return Object.assign({ pd: true, st: true, ob: true, fvg: true, eq: true, moon: true, ma: false, plan: false }, ls.get(SMC_KEY, {})); }
 
 function smcChart(r, lay) {
   const S = r.smc, bars = S.b, nb = bars.length, p = r.plan;
@@ -1782,6 +2008,16 @@ function smcChart(r, lay) {
   if (lay.plan && p) {
     s += `<rect x="${L}" y="${y(p.e2).toFixed(1)}" width="${iw}" height="${Math.max(2, y(p.e1) - y(p.e2)).toFixed(1)}" fill="var(--accent)" opacity="0.12"/>`;
     [[p.tp, up], [p.sl, dn]].forEach(([v, col]) => s += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1.3" stroke-dasharray="6 4"/>`);
+  }
+  if (lay.moon && S.do && S.d0) {
+    const base = Date.parse(S.d0 + "T00:00:00Z"), dates = S.do.map(o => new Date(base + o * 86400000).toISOString().slice(0, 10));
+    const from = new Date(base - WIB_MS), to = new Date(Date.parse(S.d1 + "T00:00:00Z") + 86400000 - WIB_MS);
+    moonPhases(from, to).filter(p => p.q === 0 || p.q === 2).forEach(p => {
+      const day = ymd(p.t), i = dates.findIndex(dd => dd >= day); if (i < 0) return;
+      const cx = x(i), full = p.q === 2;
+      s += `<line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${T}" y2="${T + ih - 12}" stroke="var(--muted)" stroke-dasharray="2 4" opacity="0.45"/>`;
+      s += `<circle cx="${cx.toFixed(1)}" cy="${T + ih - 6}" r="4.5" fill="${full ? "#F2C94C" : "var(--ink)"}" stroke="${full ? "#B8860B" : "var(--muted)"}" stroke-width="1"><title>${MOON_NAME[p.q]} ${day} ${hm(p.t)} WIB</title></circle>`;
+    });
   }
   s += "</g>";
   // right-side labels
@@ -1855,7 +2091,7 @@ function openDrawer(t) {
       <div id="smc-box"></div>
       <div class="chips smc-toggles" id="smc-toggles"></div>
       <ul class="smc-sum">${smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
-      <p class="muted" style="font-size:0.78rem;margin:6px 0 0">SMC di sini versi sederhana yang dihitung otomatis, jadi bisa berbeda dari indikator SMC di TradingView atau Stockbit. Garis putus-putus = CHoCH, garis penuh = BOS.</p>
+      <p class="muted" style="font-size:0.78rem;margin:6px 0 0">SMC di sini versi sederhana yang dihitung otomatis, jadi bisa berbeda dari indikator SMC di TradingView atau Stockbit. Garis putus-putus = CHoCH, garis penuh = BOS. Lingkaran kuning di bawah = purnama, lingkaran gelap = bulan baru (ditaruh di hari bursa terdekat).</p>
     </div>` : `<div class="d-sec"><h3>Chart 30 hari</h3>${bigChart(r)}
       <div class="legend"><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--orange)"></i>MA50</span>${p ? '<span><i style="background:var(--accent);opacity:.35;height:8px"></i>Area entry</span><span><i style="background:var(--down)"></i>Stop loss</span><span><i style="background:var(--up)"></i>Target</span>' : ""}</div>
       <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Chart SMC 120 hari belum tersedia karena riwayat harga saham ini masih terlalu pendek.</p>
@@ -1906,7 +2142,7 @@ $("watch-btn").addEventListener("click", () => {
 W.forEach(id => $(id).addEventListener("input", () => { $(id + "-val").textContent = $(id).value; activePreset = null; markPreset(); page = 0; save(); render(); }));
 $("min-score").addEventListener("input", function () { $("min-score-val").textContent = this.value; page = 0; save(); render(); });
 CHECKS.forEach(id => $(id).addEventListener("change", () => { page = 0; save(); render(); }));
-FIELDS.forEach(id => $(id).addEventListener(id === "kd-filter" ? "change" : "input", () => { page = 0; save(); render(); }));
+FIELDS.forEach(id => $(id).addEventListener(id === "kd-filter" || id === "sector-filter" ? "change" : "input", () => { page = 0; save(); render(); }));
 $("prev-page").addEventListener("click", () => { page--; save(); render(); });
 $("next-page").addEventListener("click", () => { page++; save(); render(); });
 document.querySelectorAll("thead th[data-key]").forEach(th => th.addEventListener("click", () => {
@@ -1935,7 +2171,12 @@ if (location.protocol === "file:") {
   setInterval(() => { if (!openT && Date.now() - last > 120000) location.reload(); }, 300000);
 } else setInterval(checkUpdate, 300000);
 
-renderMarket(); load(); render();
+(() => {
+  const cnt = {}; DATA.forEach(r => { const k = r.sector && r.sector !== "-" ? r.sector : "-"; cnt[k] = (cnt[k] || 0) + 1; });
+  $("sector-filter").innerHTML = '<option value="">Semua sektor</option>' + Object.keys(cnt).filter(k => k !== "-").sort()
+    .map(k => `<option value="${esc(k)}">${esc(k)} (${cnt[k]})</option>`).join("") + (cnt["-"] ? `<option value="-">Tanpa sektor (${cnt["-"]})</option>` : "");
+})();
+renderMarket(); load(); render(); renderCal();
 </script>
 </body>
 </html>
