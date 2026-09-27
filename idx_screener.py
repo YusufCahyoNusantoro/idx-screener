@@ -552,8 +552,9 @@ def analisa(t, d, ihsg_ret, sektor, nama, frac_hari, hari_ini):
         "tgl": d.index[-1].strftime("%Y-%m-%d"),
         "x": {"m20": [None if not fin(v) else round(float(v), 1) for v in sma(c, 20).iloc[-30:]],
               "m50": [None if not fin(v) else round(float(v), 1) for v in sma(c, 50).iloc[-30:]],
-              "ma200": round(float(ma200), 1) if fin(ma200) else None, "hi20": round(hi20, 1)},
-        "_ma20": float(ma20) if fin(ma20) else None, "_atr": atr(d), "_ph": ph,
+              "ma200": round(float(ma200), 1) if fin(ma200) else None, "hi20": round(hi20, 1),
+              "m20l": round(float(ma20), 1) if fin(ma20) else None},
+        "_ma20": float(ma20) if fin(ma20) else None, "_atr": atr(d), "_ph": ph, "_d": d,
     }
 
 
@@ -570,11 +571,90 @@ def konteks_pasar(ihsg, rows):
                      "ma200": round(float(m200), 2) if fin(m200) else None,
                      "rsi": round(float(r), 1) if fin(r) else None, "d": rt.get("summary", "Neutral"),
                      "ohlc": [[round(float(a), 2) for a in row] for row in ihsg[["Open", "High", "Low", "Close"]].iloc[-30:].values]}
-    likuid = [r for r in rows if r["val"] >= 1e9 and r["x"]["m20"][-1]]
+    likuid = [r for r in rows if r["val"] >= 1e9 and r["x"].get("m20l")]
     if likuid:
-        naik = sum(1 for r in likuid if r["p"] > r["x"]["m20"][-1])
+        naik = sum(1 for r in likuid if r["p"] > r["x"]["m20l"])
         m["breadth"] = {"pct": round(naik / len(likuid) * 100), "n": len(likuid)}
     return m
+
+
+def smc(d, L=5, win=120, ctx=260):
+    """Smart Money Concepts (versi sederhana) pada candle harian.
+    Menghasilkan struktur BOS/CHoCH, order block & FVG yang belum termitigasi,
+    equal highs/lows, dan range premium/discount untuk `win` candle terakhir."""
+    d = d.iloc[-ctx:]
+    n = len(d)
+    if n < max(60, win // 2):
+        return None
+    o, h, l, c = (d[k].to_numpy(float) for k in ("Open", "High", "Low", "Close"))
+    tgl = [x.strftime("%Y-%m-%d") for x in d.index]
+    a = atr(d) or (np.nanmean(h - l) or 1.0)
+    rp = (lambda x: round(float(x))) if c[-1] >= 50 else (lambda x: round(float(x), 2))
+
+    piv_h = [i for i in range(L, n - L) if h[i] >= h[i - L:i + L + 1].max() and h[i] > h[i - L:i].max()]
+    piv_l = [i for i in range(L, n - L) if l[i] <= l[i - L:i + L + 1].min() and l[i] < l[i - L:i].min()]
+    konf_h = {i + L: i for i in piv_h}
+    konf_l = {i + L: i for i in piv_l}
+
+    last_h = last_l = None
+    tren, ev, obs = 0, [], []
+    for i in range(n):
+        if i in konf_h:
+            last_h = [konf_h[i], h[konf_h[i]], False]
+        if i in konf_l:
+            last_l = [konf_l[i], l[konf_l[i]], False]
+        if last_h and not last_h[2] and c[i] > last_h[1]:
+            ev.append((last_h[0], i, last_h[1], "CHoCH" if tren == -1 else "BOS", 1))
+            tren, last_h[2] = 1, True
+            seg = range(last_h[0], i)
+            k = next((j for j in reversed(seg) if c[j] < o[j]), None)
+            if k is None:
+                k = min(seg, key=lambda j: l[j])
+            obs.append([k, h[k], l[k], 1, False])
+        if last_l and not last_l[2] and c[i] < last_l[1]:
+            ev.append((last_l[0], i, last_l[1], "CHoCH" if tren == 1 else "BOS", -1))
+            tren, last_l[2] = -1, True
+            seg = range(last_l[0], i)
+            k = next((j for j in reversed(seg) if c[j] > o[j]), None)
+            if k is None:
+                k = max(seg, key=lambda j: h[j])
+            obs.append([k, h[k], l[k], -1, False])
+        for ob in obs:
+            if not ob[4] and ob[0] < i:
+                if (ob[3] == 1 and c[i] < ob[2]) or (ob[3] == -1 and c[i] > ob[1]):
+                    ob[4] = True
+
+    fvg = []
+    for i in range(2, n):
+        if l[i] > h[i - 2] and l[i] - h[i - 2] > 0.15 * a:
+            fvg.append([i - 1, l[i], h[i - 2], 1])
+        elif h[i] < l[i - 2] and l[i - 2] - h[i] > 0.15 * a:
+            fvg.append([i - 1, l[i - 2], h[i], -1])
+    fvg = [g for g in fvg if not (
+        (g[3] == 1 and g[0] + 2 < n and l[g[0] + 2:].min() <= g[2]) or
+        (g[3] == -1 and g[0] + 2 < n and h[g[0] + 2:].max() >= g[1]))]
+
+    eq = []
+    for arr, src, nama in ((piv_h, h, "EQH"), (piv_l, l, "EQL")):
+        for p1, p2 in zip(arr, arr[1:]):
+            if abs(src[p1] - src[p2]) <= 0.1 * a:
+                eq.append((p1, p2, (src[p1] + src[p2]) / 2, nama))
+
+    s0 = n - win
+    cl = lambda i: max(0, i - s0)
+    ev_out = [[cl(a1), b1 - s0, rp(pr), t, dr, tgl[b1]] for a1, b1, pr, t, dr in ev if b1 >= s0][-8:]
+    ob_aktif = [ob for ob in obs if not ob[4]]
+    ob_out = ([[cl(k), rp(t_), rp(b_), dr] for k, t_, b_, dr, _ in ob_aktif if dr == 1][-3:] +
+              [[cl(k), rp(t_), rp(b_), dr] for k, t_, b_, dr, _ in ob_aktif if dr == -1][-3:])
+    fvg_out = ([[cl(i), rp(t_), rp(b_), dr] for i, t_, b_, dr in fvg if dr == 1][-3:] +
+               [[cl(i), rp(t_), rp(b_), dr] for i, t_, b_, dr in fvg if dr == -1][-3:])
+    eq_out = [[cl(p1), p2 - s0, rp(pr), nm] for p1, p2, pr, nm in eq if p2 >= s0][-4:]
+    return {
+        "b": [[rp(v) for v in row] for row in d[["Open", "High", "Low", "Close"]].iloc[-win:].values],
+        "d0": tgl[s0], "d1": tgl[-1],
+        "ev": ev_out, "ob": ob_out, "fvg": fvg_out, "eq": eq_out,
+        "pd": [rp(h[s0:].max()), rp(l[s0:].min())], "tr": tren,
+    }
 
 
 def tambah_intraday(r, jam):
@@ -814,7 +894,17 @@ def main():
         c, l, why = kondisi(r)
         r["kd"] = {"c": c, "l": l, "why": why}
         r["plan"] = rencana(r, c)
-        for k in ("_ma20", "_atr", "_ph"):
+        if True:                                # SMC untuk semua saham yang datanya cukup
+            try:
+                sm = smc(r["_d"])
+                if sm:
+                    r["smc"] = sm
+                    r.pop("ohlc", None)            # 30 candle terakhir diambil dari smc["b"] di browser
+                    r["x"].pop("m20", None)
+                    r["x"].pop("m50", None)
+            except Exception as e:
+                print(f"  ! smc {r['t']}: {e}")
+        for k in ("_ma20", "_atr", "_ph", "_d"):
             r.pop(k, None)
 
     update_konsistensi(rows, now.strftime("%Y-%m-%d"))
@@ -1007,7 +1097,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   /* drawer */
   .scrim { position:fixed; inset:0; background:rgba(15,21,34,.45); opacity:0; pointer-events:none; transition:opacity .2s; z-index:20; }
   .scrim.open { opacity:1; pointer-events:auto; }
-  .drawer { position:fixed; top:0; right:0; bottom:0; width:min(560px,100%); background:var(--panel); z-index:21;
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:min(720px,100%); background:var(--panel); z-index:21;
     transform:translateX(100%); visibility:hidden; transition:transform .22s ease, visibility 0s linear .22s; overflow-y:auto; box-shadow:-8px 0 24px rgba(0,0,0,.18);
     padding:calc(18px + env(safe-area-inset-top,0px)) 22px calc(28px + env(safe-area-inset-bottom,0px)); }
   .drawer.open { transform:none; visibility:visible; transition:transform .22s ease; }
@@ -1043,6 +1133,10 @@ TEMPLATE = r'''<!DOCTYPE html>
   .calc input { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); }
   .calc-out { margin-top:10px; background:var(--accent-soft); border-radius:10px; padding:10px 12px; font-size:0.9rem; }
   .d-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .smc-toggles { margin-top:8px; padding-top:0; border-top:0; gap:6px 14px; }
+  .smc-toggles .chip { font-size:0.8rem; }
+  .smc-sum { margin:10px 0 0; padding-left:18px; font-size:0.86rem; color:var(--ink2); }
+  .smc-sum li { margin:4px 0; }
   .d-foot { font-size:0.78rem; color:var(--muted); margin-top:18px; }
 
   /* guide */
@@ -1187,6 +1281,18 @@ TEMPLATE = r'''<!DOCTYPE html>
       <div class="guide-body">
         <p>Setiap saham diperiksa terhadap 9 syarat: tren tersusun naik, harga di atas MA200, Daily dan Mingguan Buy, RSI 45–70, volume di atas rata-rata, transaksi ≥ Rp 5 M/hari, 1H tidak Sell, risiko ke stop loss ≤ 7%, dan IHSG tidak sedang turun.</p>
         <p>Angka seperti 7/9 berarti 7 dari 9 syarat terpenuhi. Syarat yang datanya tidak ada (misal 1H di luar 200 saham teratas) tidak dihitung. Hijau = minimal 7, kuning = 5–6, merah = di bawah 5.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Smart Money Concepts (SMC) di chart detail</summary>
+      <div class="guide-body">
+        <p>Panel detail setiap saham menampilkan chart 120 hari dengan lapisan SMC (kecuali saham yang riwayat harganya masih terlalu pendek). Setiap lapisan bisa dinyalakan atau dimatikan.</p>
+        <p><b>BOS</b> (garis penuh): harga menembus swing high/low searah tren, tanda tren berlanjut. <b>CHoCH</b> (garis putus-putus): tembusan pertama yang berlawanan arah, tanda awal pembalikan.<br>
+        <b>Order block (OB)</b>: candle terakhir yang berlawanan arah sebelum dorongan yang memicu BOS/CHoCH. Hijau = area permintaan, merah = area penawaran. Yang ditampilkan hanya yang belum ditembus.<br>
+        <b>FVG</b>: celah antara candle 1 dan 3 yang belum terisi; harga sering kembali mengisinya.<br>
+        <b>EQH/EQL</b>: dua puncak atau dua lembah yang hampir sama tinggi, tempat banyak stop loss berkumpul.<br>
+        <b>Premium/discount</b>: separuh atas range 120 hari (relatif mahal) dan separuh bawah (relatif murah), dengan garis EQ di tengah.</p>
+        <p>Ini versi sederhana yang dihitung otomatis dari candle harian (swing 5 candle kiri-kanan), jadi bisa berbeda dari indikator SMC di TradingView atau Stockbit. Gunakan sebagai petunjuk area, lalu pastikan di chart aplikasi trading-mu.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -1375,6 +1481,7 @@ function checklist(r) {
   const ev = items.filter(i => i[1] !== null);
   return { items, pass: ev.filter(i => i[1]).length, total: ev.length };
 }
+DATA.forEach(r => { if (r.smc && !r.ohlc) r.ohlc = r.smc.b.slice(-30); });
 DATA.forEach(r => {
   const c = checklist(r);
   r._ck = c; r.ck = c.total ? c.pass / c.total + c.pass / 1000 : 0;
@@ -1622,6 +1729,109 @@ function render() {
   $("prev-page").disabled = page <= 0; $("next-page").disabled = page >= pages - 1;
 }
 
+/* ---------- SMC chart ---------- */
+const SMC_KEY = "idxs:smc";
+const SMC_LAYERS = [["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["ma", "MA20/MA50"], ["plan", "Entry/SL/TP"]];
+function smcLayers() { return Object.assign({ pd: true, st: true, ob: true, fvg: true, eq: true, ma: false, plan: false }, ls.get(SMC_KEY, {})); }
+
+function smcChart(r, lay) {
+  const S = r.smc, bars = S.b, nb = bars.length, p = r.plan;
+  const W = 720, H = 330, L = 8, R = 88, T = 10, B = 22, iw = W - L - R, ih = H - T - B;
+  let max = Math.max(...bars.map(b => b[1])), min = Math.min(...bars.map(b => b[2]));
+  if (lay.plan && p) { max = Math.max(max, p.tp); min = Math.min(min, p.sl); }
+  const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
+  const sw = iw / nb, bw = Math.max(1.4, sw * 0.62);
+  const y = v => T + (max - v) / (max - min) * ih, x = i => L + i * sw + sw / 2, xl = i => L + i * sw;
+  const clampY = v => Math.min(T + ih, Math.max(T, y(v)));
+  const up = "var(--up)", dn = "var(--down)";
+  let s = `<svg class="d-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart 120 hari dengan Smart Money Concepts ${esc(r.t)}">`;
+  s += `<defs><clipPath id="cp"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath></defs><g clip-path="url(#cp)">`;
+  if (lay.pd && S.pd) {
+    const [hi, lo] = S.pd, mid = (hi + lo) / 2;
+    s += `<rect x="${L}" y="${clampY(hi)}" width="${iw}" height="${Math.max(0, clampY(mid) - clampY(hi))}" fill="${dn}" opacity="0.06"/>`;
+    s += `<rect x="${L}" y="${clampY(mid)}" width="${iw}" height="${Math.max(0, clampY(lo) - clampY(mid))}" fill="${up}" opacity="0.06"/>`;
+    s += `<line x1="${L}" x2="${L + iw}" y1="${y(mid)}" y2="${y(mid)}" stroke="var(--muted)" stroke-dasharray="2 4" opacity="0.7"/>`;
+  }
+  const zone = (z, cls) => {
+    const [i, top, bot, dr] = z, col = dr === 1 ? up : dn;
+    if (bot > max || top < min) return "";
+    const y1 = clampY(top), y2 = clampY(bot), h = Math.max(2, y2 - y1);
+    return `<rect x="${xl(i).toFixed(1)}" y="${y1.toFixed(1)}" width="${(L + iw - xl(i)).toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" opacity="${cls === "ob" ? 0.2 : 0.1}" ${cls === "fvg" ? `stroke="${col}" stroke-dasharray="3 3" stroke-opacity="0.6"` : ""}/>` +
+      `<text x="${(xl(i) + 3).toFixed(1)}" y="${(y1 + Math.min(h, 12) - 2).toFixed(1)}" font-size="9" font-weight="700" fill="${col}">${cls === "ob" ? "OB" : "FVG"}</text>`;
+  };
+  if (lay.fvg) (S.fvg || []).forEach(z => s += zone(z, "fvg"));
+  if (lay.ob) (S.ob || []).forEach(z => s += zone(z, "ob"));
+  if (lay.eq) (S.eq || []).forEach(([i1, i2, pr, nm]) => {
+    if (pr > max || pr < min) return;
+    const col = nm === "EQH" ? dn : up;
+    s += `<line x1="${x(i1).toFixed(1)}" x2="${x(i2).toFixed(1)}" y1="${y(pr).toFixed(1)}" y2="${y(pr).toFixed(1)}" stroke="${col}" stroke-width="1.2" stroke-dasharray="1 3"/>`;
+    s += `<text x="${((x(i1) + x(i2)) / 2).toFixed(1)}" y="${(y(pr) + (nm === "EQH" ? -4 : 11)).toFixed(1)}" font-size="9" text-anchor="middle" fill="${col}">${nm}</text>`;
+  });
+  if (lay.st) (S.ev || []).forEach(([i1, i2, pr, t, dr]) => {
+    const col = dr === 1 ? up : dn;
+    s += `<line x1="${x(i1).toFixed(1)}" x2="${x(i2).toFixed(1)}" y1="${y(pr).toFixed(1)}" y2="${y(pr).toFixed(1)}" stroke="${col}" stroke-width="1.3" ${t === "CHoCH" ? 'stroke-dasharray="5 3"' : ""}/>`;
+    s += `<text x="${((x(i1) + x(i2)) / 2).toFixed(1)}" y="${(y(pr) + (dr === 1 ? -4 : 11)).toFixed(1)}" font-size="9.5" font-weight="700" text-anchor="middle" fill="${col}">${t}</text>`;
+  });
+  const path = (arr, col) => { const pts = (arr || []).map((v, i) => v ? `${x(i).toFixed(1)},${y(v).toFixed(1)}` : null).filter(Boolean); return pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="1.5" opacity="0.9"/>` : ""; };
+  const smaArr = n => bars.map((b, i) => i < n - 1 ? null : bars.slice(i - n + 1, i + 1).reduce((t, v) => t + v[3], 0) / n);
+  if (lay.ma) s += path(smaArr(20), "var(--blue)") + path(smaArr(50), "var(--orange)");
+  bars.forEach((b, i) => {
+    const [op, hi, lo, cl] = b, col = cl >= op ? up : dn, top = Math.min(y(op), y(cl));
+    s += `<line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${y(hi).toFixed(1)}" y2="${y(lo).toFixed(1)}" stroke="${col}" stroke-width="0.9"/><rect x="${(x(i) - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0.8, Math.abs(y(cl) - y(op))).toFixed(1)}" fill="${col}"/>`;
+  });
+  if (lay.plan && p) {
+    s += `<rect x="${L}" y="${y(p.e2).toFixed(1)}" width="${iw}" height="${Math.max(2, y(p.e1) - y(p.e2)).toFixed(1)}" fill="var(--accent)" opacity="0.12"/>`;
+    [[p.tp, up], [p.sl, dn]].forEach(([v, col]) => s += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1.3" stroke-dasharray="6 4"/>`);
+  }
+  s += "</g>";
+  // right-side labels
+  const labs = [];
+  const last = bars[nb - 1][3]; labs.push([last, fmtNum(last), "var(--ink)"]);
+  if (lay.plan && p) { labs.push([p.tp, "TP " + fmtNum(p.tp), up]); labs.push([p.sl, "SL " + fmtNum(p.sl), dn]); }
+  if (lay.pd && S.pd) { labs.push([S.pd[0], "Premium", dn]); labs.push([(S.pd[0] + S.pd[1]) / 2, "EQ " + fmtNum((S.pd[0] + S.pd[1]) / 2), "var(--muted)"]); labs.push([S.pd[1], "Discount", up]); }
+  const used = [];
+  labs.forEach(([v, t, col]) => {
+    if (v > max || v < min) return; let yy = y(v) + 4;
+    if (used.some(u => Math.abs(u - yy) < 12)) return; used.push(yy);
+    s += `<text x="${W - R + 6}" y="${yy.toFixed(1)}" font-size="10.5" font-weight="700" fill="${col}">${t}</text>`;
+  });
+  s += `<text x="${L}" y="${H - 6}" font-size="10" fill="var(--muted)">${esc(S.d0)}</text><text x="${L + iw}" y="${H - 6}" font-size="10" text-anchor="end" fill="var(--muted)">${esc(S.d1)}</text>`;
+  return s + "</svg>";
+}
+
+function smcSummary(r) {
+  const S = r.smc, pr = r.p, out = [], rng = (a, b) => `${fmtNum(Math.min(a, b))}–${fmtNum(Math.max(a, b))}`;
+  const e = (S.ev || [])[S.ev.length - 1];
+  if (e) {
+    const [, , lvl, t, dr, dt] = e;
+    const arti = t === "BOS" ? (dr === 1 ? "BOS naik: tren naik berlanjut" : "BOS turun: tren turun berlanjut")
+      : (dr === 1 ? "CHoCH naik: tanda awal pembalikan ke atas" : "CHoCH turun: tanda awal pembalikan ke bawah");
+    out.push(`Struktur terakhir ${arti} (tembus ${fmtNum(lvl)} pada ${dt}).`);
+  } else out.push("Belum ada perubahan struktur (BOS/CHoCH) dalam 120 hari terakhir.");
+  const inside = (S.ob || []).find(z => pr <= z[1] && pr >= z[2]);
+  if (inside) out.push(`Harga sedang berada di dalam order block ${inside[3] === 1 ? "bullish (area permintaan)" : "bearish (area penawaran)"} ${rng(inside[1], inside[2])}.`);
+  const obBelow = (S.ob || []).filter(z => z[3] === 1 && z[1] < pr).sort((a, b) => b[1] - a[1])[0];
+  const obAbove = (S.ob || []).filter(z => z[3] === -1 && z[2] > pr).sort((a, b) => a[2] - b[2])[0];
+  if (obBelow) out.push(`Order block bullish terdekat di bawah harga: ${rng(obBelow[1], obBelow[2])} (${fmtDec((pr - obBelow[1]) / pr * 100, 1)}% di bawah). Sering dipakai sebagai acuan area beli atau penempatan stop loss di bawahnya.`);
+  if (obAbove) out.push(`Order block bearish terdekat di atas harga: ${rng(obAbove[1], obAbove[2])} (${fmtDec((obAbove[2] - pr) / pr * 100, 1)}% di atas). Area yang berpotensi menahan kenaikan.`);
+  const gaps = (S.fvg || []).map(z => ({ z, d: z[3] === 1 ? pr - z[1] : z[2] - pr })).filter(o => o.d >= 0).sort((a, b) => a.d - b.d);
+  if (gaps[0]) out.push(`FVG ${gaps[0].z[3] === 1 ? "bullish" : "bearish"} terdekat yang belum terisi: ${rng(gaps[0].z[1], gaps[0].z[2])}. Harga sering kembali mengisi celah seperti ini.`);
+  if (S.pd) {
+    const pct = Math.round((pr - S.pd[1]) / ((S.pd[0] - S.pd[1]) || 1) * 100);
+    out.push(`Posisi dalam range 120 hari: ${pct}%. ${pct >= 55 ? "Zona premium (relatif mahal)." : pct <= 45 ? "Zona discount (relatif murah)." : "Sekitar equilibrium."}`);
+  }
+  return out;
+}
+
+function renderSmc(r) {
+  const lay = smcLayers();
+  $("smc-box").innerHTML = smcChart(r, lay);
+  $("smc-toggles").innerHTML = SMC_LAYERS.map(([k, n]) => `<label class="chip"><input type="checkbox" data-layer="${k}" ${lay[k] ? "checked" : ""}> ${n}</label>`).join("");
+  $("smc-toggles").querySelectorAll("input").forEach(cb => cb.addEventListener("change", () => {
+    const cur = smcLayers(); cur[cb.dataset.layer] = cb.checked; ls.set(SMC_KEY, cur); renderSmc(r);
+  }));
+}
+
 /* ---------- drawer ---------- */
 function openDrawer(t) {
   const r0 = DATA.find(x => x.t === t); if (!r0) return;
@@ -1641,9 +1851,15 @@ function openDrawer(t) {
       ${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}
       <div style="margin-top:6px">${badges(r)}</div>
     </div>
-    <div class="d-sec"><h3>Chart 30 hari</h3>${bigChart(r)}
+    ${r.smc ? `<div class="d-sec"><h3>Chart 120 hari dengan Smart Money Concepts</h3>
+      <div id="smc-box"></div>
+      <div class="chips smc-toggles" id="smc-toggles"></div>
+      <ul class="smc-sum">${smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+      <p class="muted" style="font-size:0.78rem;margin:6px 0 0">SMC di sini versi sederhana yang dihitung otomatis, jadi bisa berbeda dari indikator SMC di TradingView atau Stockbit. Garis putus-putus = CHoCH, garis penuh = BOS.</p>
+    </div>` : `<div class="d-sec"><h3>Chart 30 hari</h3>${bigChart(r)}
       <div class="legend"><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--orange)"></i>MA50</span>${p ? '<span><i style="background:var(--accent);opacity:.35;height:8px"></i>Area entry</span><span><i style="background:var(--down)"></i>Stop loss</span><span><i style="background:var(--up)"></i>Target</span>' : ""}</div>
-    </div>
+      <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Chart SMC 120 hari belum tersedia karena riwayat harga saham ini masih terlalu pendek.</p>
+    </div>`}
     <div class="d-sec"><h3>Checklist: ${c.pass} dari ${c.total} syarat terpenuhi</h3>
       <ul class="checklist">${c.items.map(([label, ok]) => `<li><span class="ci ${ok === null ? "na" : ok ? "y" : "x"}">${ok === null ? "–" : ok ? "✓" : "✗"}</span><span>${esc(label)}${ok === null ? ' <span class="muted">(data tidak tersedia)</span>' : ""}</span></li>`).join("")}</ul>
     </div>
@@ -1661,6 +1877,7 @@ function openDrawer(t) {
     <div class="d-actions"><button class="icon-btn" id="d-star" type="button">${watch.has(r.t) ? "★ Hapus dari watchlist" : "☆ Tambah ke watchlist"}</button></div>
     <p class="d-foot">Semua angka dihitung otomatis dari data Yahoo Finance dan bisa tertunda. Cocokkan dengan chart di aplikasi trading-mu sebelum mengambil keputusan.</p>`;
   $("drawer").classList.add("open"); $("scrim").classList.add("open"); $("drawer").focus();
+  if (r.smc) renderSmc(r);
   $("d-close").addEventListener("click", closeDrawer);
   $("d-star").addEventListener("click", () => { toggleWatch(r.t); openDrawer(r.t); });
   if (p) {
