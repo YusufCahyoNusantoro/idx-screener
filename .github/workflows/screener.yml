@@ -18,11 +18,11 @@ concurrency:
 jobs:
   screener:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -37,7 +37,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add docs/index.html docs/hasil_screener.csv riwayat_top10.json cache_sektor.json
+          git add -A
           git diff --cached --quiet || git commit -m "Update screener $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M') WIB"
           git pull --rebase
           git push
