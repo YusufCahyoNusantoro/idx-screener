@@ -1079,7 +1079,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     --line:#E1E4E8; --accent:#2E3A87; --accent-soft:#E8EAF7; --up:#0E9F6E; --up-soft:#E3F6EE;
     --down:#D64545; --down-soft:#FBE9E9; --amber:#9A6212; --amber-soft:#FBF1DE; --orange:#B8430E;
     --orange-soft:#FDEBDD; --blue:#2952C9; --blue-soft:#E4ECFD; --row-hover:#F7F8FB;
-    --shadow:0 1px 2px rgba(20,33,61,.06); --top-bg:#FFF6DB; --top-hover:#FFEFC2; --top-line:#E2A400; --top-ink:#7A5600;
+    --shadow:0 1px 2px rgba(20,33,61,.06); --field-bg:#FFFFFF; --field-line:#D3D8E0; --field-ph:#8A93A6; --top-bg:#FFF6DB; --top-hover:#FFEFC2; --top-line:#E2A400; --top-ink:#7A5600;
     box-sizing:border-box;
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
   }
@@ -1088,14 +1088,14 @@ TEMPLATE = r'''<!DOCTYPE html>
       --bg:#0F1522; --panel:#161E2E; --panel2:#1C2638; --ink:#E6E9EF; --ink2:#C3C9D6; --muted:#8E98AD;
       --line:#263041; --accent:#9AA8FF; --accent-soft:#232C4D; --up:#34C38F; --up-soft:#15302A;
       --down:#F07171; --down-soft:#3A1E24; --amber:#E7B45A; --amber-soft:#35291A; --orange:#F29A63;
-      --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
+      --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --field-bg:#1E2940; --field-line:#3A4868; --field-ph:#9AA5BC; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
     }
   }
   :root[data-theme="dark"] {
     --bg:#0F1522; --panel:#161E2E; --panel2:#1C2638; --ink:#E6E9EF; --ink2:#C3C9D6; --muted:#8E98AD;
     --line:#263041; --accent:#9AA8FF; --accent-soft:#232C4D; --up:#34C38F; --up-soft:#15302A;
     --down:#F07171; --down-soft:#3A1E24; --amber:#E7B45A; --amber-soft:#35291A; --orange:#F29A63;
-    --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
+    --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --field-bg:#1E2940; --field-line:#3A4868; --field-ph:#9AA5BC; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
   }
   html { scroll-padding-top:env(safe-area-inset-top,0px); }
   *, *::before, *::after { box-sizing:border-box; }
@@ -1167,14 +1167,24 @@ TEMPLATE = r'''<!DOCTYPE html>
   :root[data-theme="dark"] .watch-btn { color:#F2C94C; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .watch-btn { color:#F2C94C; } }
   :root[data-theme="dark"] .watch-btn.on, :root:not([data-theme="light"]) .watch-btn.on { color:#1F1600; }
-  #filter-card.dim { opacity:.45; }
+  #filter-card.dim .filt { opacity:.6; }
+  .filter-note { display:none; margin-top:10px; font-size:0.84rem; background:var(--accent-soft); color:var(--ink2); border-radius:9px; padding:8px 12px; }
+  .filter-note.show { display:block; }
+  .search-f { max-width:420px; }
+  .filt { margin-top:14px; }
+  .filt > summary { font-size:0.95rem; font-weight:700; color:var(--ink); }
+  .fcount { margin-left:8px; font-size:0.76rem; font-weight:700; padding:2px 9px; border-radius:999px; background:var(--accent); color:#fff; vertical-align:1px; }
+  .fcount:empty { display:none; }
+  :root[data-theme="dark"] .fcount { color:#0F1522; }
   .preset-desc { font-size:0.84rem; color:var(--muted); margin:10px 2px 0; min-height:1.3em; }
   .filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px 18px; }
-  .f label { display:block; font-size:0.8rem; color:var(--muted); font-weight:600; margin-bottom:4px; }
-  .f input, .f select { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); font-size:0.88rem; }
+  .f label { display:block; font-size:0.8rem; color:var(--ink2); font-weight:600; margin-bottom:4px; }
+  .f input, .f select { width:100%; padding:8px 10px; border:1px solid var(--field-line); border-radius:9px; background:var(--field-bg); color:var(--ink); font-size:0.88rem; }
+  .f input::placeholder, .j-form input::placeholder, .cmp-add::placeholder { color:var(--field-ph); opacity:1; }
+  .f input:focus, .f select:focus { border-color:var(--accent); outline:none; box-shadow:0 0 0 3px var(--accent-soft); }
   .pair { display:flex; gap:6px; align-items:center; }
   .chips { display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }
-  .chip { display:flex; align-items:center; gap:6px; font-size:0.86rem; color:var(--ink2); cursor:pointer; }
+  .chip { display:flex; align-items:center; gap:6px; font-size:0.86rem; color:var(--ink); cursor:pointer; }
   .chip input { accent-color:var(--accent); width:16px; height:16px; }
   .minscore { display:flex; align-items:center; gap:10px; flex:1 1 260px; }
   .minscore label { font-size:0.86rem; white-space:nowrap; color:var(--ink2); }
@@ -1377,6 +1387,26 @@ TEMPLATE = r'''<!DOCTYPE html>
   .d-nav .icon-btn:disabled { opacity:.35; cursor:default; }
   .d-pos { font-size:0.8rem; min-width:48px; text-align:center; }
 
+  /* perbandingan */
+  .cmp-bar { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:19; display:none;
+    align-items:center; gap:10px; flex-wrap:wrap; background:var(--ink); color:#fff; padding:10px 14px; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.25); font-size:0.88rem; max-width:calc(100% - 24px); }
+  .cmp-bar.show { display:flex; }
+  .cmp-bar .icon-btn { background:#fff; color:#14213D; border-color:#fff; }
+  .cmp-bar .icon-btn:disabled { opacity:.5; }
+  :root[data-theme="dark"] .cmp-bar { background:#2A3552; }
+  .cmp-grid { grid-template-columns:minmax(0,1fr); }
+  .cmp-grid > * { min-width:0; }
+  .cmp-chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .cmp-chip { display:inline-flex; align-items:center; gap:6px; border:2px solid; border-radius:999px; padding:3px 6px 3px 10px; font-weight:800; font-size:0.86rem; }
+  .cmp-chip i { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .cmp-chip button { border:0; background:none; cursor:pointer; font-size:1rem; color:var(--muted); padding:0 2px; }
+  .cmp-add { padding:7px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); width:150px; }
+  .cmp-tbl td, .cmp-tbl th { min-width:150px; }
+  .cmp-tbl td:first-child { min-width:170px; }
+  .link-btn { border:0; background:none; padding:0; cursor:pointer; color:var(--accent); font:inherit; text-align:left; }
+  .sim-self td { background:var(--accent-soft); }
+  .sim-add { padding:4px 10px; font-size:0.78rem; }
+
   /* guide */
   .guide-item { border:1px solid var(--line); border-radius:10px; margin-bottom:8px; overflow:hidden; background:var(--panel); }
   .guide-item summary { cursor:pointer; padding:11px 14px; font-weight:700; font-size:0.9rem; list-style:none; display:flex; gap:8px; align-items:center; }
@@ -1414,6 +1444,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <h2>Pilih gaya screening</h2>
     <div class="presets" id="presets">
       <button class="preset-btn watch-btn" id="watch-btn" type="button" aria-pressed="false">★ Watchlist saya <b id="watch-count">0</b></button>
+      <button class="preset-btn" data-preset="reset">Tampilkan semua</button>
       <button class="preset-btn" data-preset="struct">Struktur searah naik</button>
       <button class="preset-btn" data-preset="golden">Tren naik rapi</button>
       <button class="preset-btn" data-preset="quality">Likuid &amp; konsisten</button>
@@ -1421,14 +1452,16 @@ TEMPLATE = r'''<!DOCTYPE html>
       <button class="preset-btn" data-preset="allgreen">Kuat di semua timeframe</button>
       <button class="preset-btn" data-preset="reversal">Pantulan dari bawah</button>
       <button class="preset-btn" data-preset="pattern">Ada pola candle</button>
-      <button class="preset-btn" data-preset="reset">Tampilkan semua</button>
     </div>
     <p class="preset-desc" id="preset-desc"></p>
   </section>
 
   <section class="card" aria-label="Filter" id="filter-card">
-    <div class="filters">
-      <div class="f"><label for="search">Cari kode atau nama</label><input type="text" id="search" placeholder="mis. BBCA atau Astra"></div>
+    <div class="f search-f"><label for="search">Cari kode atau nama</label><input type="text" id="search" placeholder="mis. BBCA atau Astra" autocomplete="off"></div>
+    <div class="filter-note" id="filter-note" role="status"></div>
+    <details class="adv filt" id="filt">
+    <summary>Filter pencarian<span class="fcount" id="fcount"></span></summary>
+    <div class="filters" style="margin-top:12px">
       <div class="f"><label for="kd-filter">Kondisi</label>
         <select id="kd-filter">
           <option value="">Semua kondisi</option>
@@ -1466,6 +1499,7 @@ TEMPLATE = r'''<!DOCTYPE html>
         <div><label for="w-pa">Price action <b id="w-pa-val">25</b></label><input type="range" id="w-pa" min="0" max="100" value="25"></div>
         <div><label for="w-mom">Momentum (RSI) <b id="w-mom-val">15</b></label><input type="range" id="w-mom" min="0" max="100" value="15"></div>
       </div>
+    </details>
     </details>
   </section>
 
@@ -1596,6 +1630,14 @@ TEMPLATE = r'''<!DOCTYPE html>
       </div>
     </details>
     <details class="guide-item">
+      <summary>Bandingkan saham dan saham mirip</summary>
+      <div class="guide-body">
+        <p><b>Saham mirip:</b> di panel detail, bagian "Saham mirip" menampilkan 5 saham di sektor yang sama dengan pergerakan harga harian paling mirip dalam 60 hari terakhir (korelasi), lengkap dengan kinerja 20 hari, struktur, dan kondisinya. Kalimat di bawahnya memberi tahu apakah saham ini lebih kuat, sejalan, atau tertinggal dari saham-saham miripnya.</p>
+        <p><b>Bandingkan:</b> klik "+ Bandingkan" di panel detail (maksimal 4 saham). Bar di bawah layar menampilkan pilihanmu; klik "Buka perbandingan". Halaman perbandingan berisi chart kinerja dalam % sejak titik awal yang sama (20, 60, atau 120 hari) dengan IHSG sebagai pembanding, serta tabel berdampingan: kondisi, struktur W/D/4H, BOS/CHoCH terakhir, posisi premium/discount, order block terdekat, POC, RSI, checklist, dan lainnya. Link halamannya (…/#bandingkan=PTBA,ITMG) bisa dibagikan.</p>
+        <p>Saham yang tertinggal dari saham miripnya bisa jadi kandidat menyusul, tapi bisa juga tertinggal karena alasan khusus (berita, kinerja keuangan). Cek dulu sebelum entry.</p>
+      </div>
+    </details>
+    <details class="guide-item">
       <summary>Kalkulator lot</summary>
       <div class="guide-body">
         <p>Di panel detail, isi modal dan risiko per transaksi (umumnya 1–2% modal). Kalkulator menghitung jumlah lot supaya kerugian kalau kena stop loss tidak melebihi batas itu. 1 lot = 100 lembar. Isianmu tersimpan di browser ini.</p>
@@ -1714,6 +1756,8 @@ TEMPLATE = r'''<!DOCTYPE html>
 </div>
 
 <div class="full" id="full" role="dialog" aria-modal="true" aria-labelledby="d-title"></div>
+<div class="full" id="cmpv" role="dialog" aria-modal="true" aria-label="Bandingkan saham"></div>
+<div class="cmp-bar" id="cmp-bar" role="region" aria-label="Saham yang akan dibandingkan"></div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" tabindex="-1"></aside>
 
@@ -2002,7 +2046,15 @@ function render() {
   $("watch-btn").classList.toggle("on", watchOn); $("watch-btn").setAttribute("aria-pressed", watchOn);
   $("watch-count").textContent = watch.size;
   const topOn = !watchOn && $("f-top").checked && !$("search").value.trim();
-  $("filter-card").classList.toggle("dim", watchOn || topOn);
+  $("filter-card").classList.toggle("dim", watchOn || topOn || !!$("search").value.trim());
+  const note = $("filter-note");
+  note.textContent = $("search").value.trim() ? "Pencarian aktif: filter pencarian di bawah tidak dipakai sampai kotak cari dikosongkan."
+    : watchOn ? "Mode Watchlist aktif: filter pencarian tidak dipakai. Klik preset mana saja untuk kembali."
+    : topOn ? "Mode Top 10 aktif: filter pencarian tidak dipakai. Hapus centang Hanya Top 10 untuk kembali." : "";
+  note.classList.toggle("show", !!note.textContent);
+  const nAct = ["kd-filter", "sector-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min"].filter(id => $(id).value !== "").length
+    + ["f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen", "f-ms", "f-top"].filter(id => $(id).checked).length;
+  $("fcount").textContent = nAct ? `${nAct} aktif` : "";
   $("count-info").textContent = $("search").value.trim()
     ? `${fmtNum(rows.length)} hasil pencarian. Pencarian mengabaikan filter lain. Hapus isi kotak cari untuk kembali ke filter.`
     : watchOn ? `Watchlist-mu: ${fmtNum(rows.length)} saham. Filter lain diabaikan. Klik preset mana saja untuk kembali.`
@@ -2345,7 +2397,7 @@ function renderPlan(r0, r) {
     <div class="plan-box"><div><small>Area entry</small><b>${fmtNum(use.e1)}–${fmtNum(use.e2)}</b></div><div><small>Stop loss</small><b class="neg">${fmtNum(use.sl)}</b></div><div><small>Target</small><b class="pos">${fmtNum(use.tp)}</b></div><div><small>Risiko / R:R</small><b>${fmtDec(use.risk, 1)}% · 1:${fmtDec(rr, 1)}</b></div></div>
     <div class="calc">
       <div class="f"><label for="c-modal">Modal (Rp)</label><input type="number" id="c-modal" min="0" step="100000" value="${calc.modal}"></div>
-      <div class="f"><label for="c-risk">Risiko per transaksi (% modal)</label><input type="number" id="c-risk" min="0.1" max="10" step="0.1" value="${calc.risk}"></div>
+      <div class="f"><label for="c-risk" title="Berapa persen modal yang siap kamu relakan hilang kalau harga menyentuh stop loss. Umumnya 1–2%.">Maks. rugi kalau kena stop loss (% modal)</label><input type="number" id="c-risk" min="0.1" max="100" step="0.1" value="${calc.risk}"></div>
     </div>
     <div class="calc-out" id="c-out"></div>
     <div class="d-actions"><button class="icon-btn" id="j-add" type="button">Catat ke jurnal</button></div>
@@ -2358,9 +2410,11 @@ function renderPlan(r0, r) {
     const perLotRisk = (mid - use.sl) * 100;
     const byRisk = perLotRisk > 0 ? Math.floor(modal * risk / 100 / perLotRisk) : 0, byCash = Math.floor(modal / (mid * 100));
     lot = Math.max(0, Math.min(byRisk, byCash));
-    $("c-out").innerHTML = lot > 0
-      ? `Maksimal <b>${fmtNum(lot)} lot</b> (sekitar Rp ${fmtNum(lot * mid * 100)}). Kalau kena stop loss, rugi sekitar <b>Rp ${fmtNum(lot * perLotRisk)}</b> atau ${fmtDec(lot * perLotRisk / modal * 100, 2)}% modal.${byCash < byRisk ? " Dibatasi oleh jumlah modal." : ""}`
-      : "Modal atau risiko terlalu kecil untuk membeli 1 lot dengan stop loss ini.";
+    const budget = modal * risk / 100;
+    const warn = risk > 5 ? `<div class="warn" style="margin-top:8px">Risiko ${fmtDec(risk, 1)}% per transaksi sangat agresif: 3 kali kena stop loss berturut-turut bisa menghabiskan ${fmtDec(Math.min(100, risk * 3), 0)}% modal. Umumnya trader memakai 1–2%.</div>` : "";
+    $("c-out").innerHTML = (lot > 0
+      ? `Kamu siap rugi maksimal <b>Rp ${fmtNum(budget)}</b> (${fmtDec(risk, 1)}% dari modal) kalau harga menyentuh stop loss.<br>Jadi beli maksimal <b>${fmtNum(lot)} lot</b> (sekitar Rp ${fmtNum(lot * mid * 100)}). Kalau kena stop loss, ruginya sekitar <b>Rp ${fmtNum(lot * perLotRisk)}</b> atau ${fmtDec(lot * perLotRisk / modal * 100, 2)}% modal.${byCash < byRisk ? `<br><b>Dibatasi oleh jumlah modal:</b> uangmu hanya cukup untuk ${fmtNum(byCash)} lot, jadi menaikkan persentase risiko tidak menambah jumlah lot.` : ""}`
+      : "Modal atau risiko terlalu kecil untuk membeli 1 lot dengan stop loss ini.") + warn;
   };
   $("c-modal").addEventListener("input", upd); $("c-risk").addEventListener("input", upd); upd();
   $("j-add").addEventListener("click", () => journalForm(r0, use, lot, mode));
@@ -2471,6 +2525,177 @@ function renderHist(r) {
 }
 
 /* ---------- drawer ---------- */
+/* ---------- perbandingan saham & saham mirip ---------- */
+const CMP_KEY = "idxs:cmp", CMP_MAX = 4, CMP_COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#A855F7"];
+let cmp = (ls.get(CMP_KEY, []) || []).filter(t => DATA.some(r => r.t === t)).slice(0, CMP_MAX);
+let cmpPeriod = ls.get("idxs:cmpn", 60);
+const saveCmp = () => { ls.set(CMP_KEY, cmp); renderCmpBar(); };
+function seriesOf(o) {                       // {tgl: [...], c: [...]} dari data SMC (120 hari)
+  const S = o && o.smc; if (!S || !S.b || !S.do) return null;
+  const base = Date.parse(S.d0 + "T00:00:00Z");
+  return { tgl: S.do.map(x => new Date(base + x * 86400000).toISOString().slice(0, 10)), c: S.b.map(b => b[3]) };
+}
+function perf(r, n) { const s = seriesOf(r); if (!s || s.c.length < 2) return null; const k = Math.max(0, s.c.length - 1 - n); return (s.c[s.c.length - 1] / s.c[k] - 1) * 100; }
+function toggleCmp(t) {
+  if (cmp.includes(t)) cmp = cmp.filter(x => x !== t);
+  else { if (cmp.length >= CMP_MAX) { alert(`Maksimal ${CMP_MAX} saham dalam perbandingan. Hapus salah satu dulu.`); return false; } cmp.push(t); }
+  saveCmp(); return true;
+}
+function renderCmpBar() {
+  const bar = $("cmp-bar"); if (!bar) return;
+  if (!cmp.length) { bar.classList.remove("show"); return; }
+  bar.innerHTML = `<span><b>Bandingkan (${cmp.length}/${CMP_MAX}):</b> ${cmp.map(esc).join(", ")}</span>
+    <button class="icon-btn" id="cmp-open" type="button" ${cmp.length < 2 ? "disabled title=\"Pilih minimal 2 saham\"" : ""}>Buka perbandingan</button>
+    <button class="icon-btn" id="cmp-clear" type="button">Kosongkan</button>`;
+  bar.classList.add("show");
+  $("cmp-open").addEventListener("click", () => openCompare());
+  $("cmp-clear").addEventListener("click", () => { cmp = []; saveCmp(); if (openT && openT !== "IHSG") openDetail(openT, viewMode, { keepNav: true, fromPop: true, keepFocus: true }); });
+}
+
+/* B. saham mirip: korelasi return harian 60 hari, di sektor yang sama */
+function similarTo(t, n = 5) {
+  const r0 = DATA.find(r => r.t === t), s0 = seriesOf(r0); if (!s0 || s0.c.length < 41) return [];
+  const rets = s => { const m = new Map(); for (let i = Math.max(1, s.c.length - 60); i < s.c.length; i++) m.set(s.tgl[i], s.c[i] / s.c[i - 1] - 1); return m; };
+  const a = rets(s0), sec = r0.sector && r0.sector !== "-" ? r0.sector : null;
+  const out = [];
+  DATA.forEach(r => {
+    if (r.t === t || (sec && r.sector !== sec) || r.val < 1e9) return;
+    const s = seriesOf(r); if (!s || s.c.length < 41) return;
+    const b = rets(s), xs = [], ys = [];
+    a.forEach((v, k) => { if (b.has(k)) { xs.push(v); ys.push(b.get(k)); } });
+    if (xs.length < 30) return;
+    const mx = xs.reduce((p, v) => p + v, 0) / xs.length, my = ys.reduce((p, v) => p + v, 0) / ys.length;
+    let sxy = 0, sxx = 0, syy = 0; xs.forEach((x, i) => { sxy += (x - mx) * (ys[i] - my); sxx += (x - mx) ** 2; syy += (ys[i] - my) ** 2; });
+    if (!sxx || !syy) return;
+    out.push({ r, corr: sxy / Math.sqrt(sxx * syy) });
+  });
+  return out.sort((x, y) => y.corr - x.corr).slice(0, n);
+}
+function renderSimilar(r0) {
+  const box = $("sim-sec"); if (!box) return;
+  const sim = similarTo(r0.t);
+  if (!sim.length) { box.innerHTML = `<h3>Saham mirip</h3><p class="muted" style="margin:0">Belum ada saham pembanding yang cukup datanya di sektor ini.</p>`; return; }
+  const p20 = perf(r0, 20), avg = sim.reduce((s, x) => s + (perf(x.r, 20) || 0), 0) / sim.length;
+  const say = p20 == null ? "" : p20 > avg + 3 ? `${r0.t} bergerak lebih kuat dari saham-saham miripnya dalam 20 hari terakhir.`
+    : p20 < avg - 3 ? `${r0.t} tertinggal dari saham-saham miripnya dalam 20 hari terakhir. Bisa jadi kandidat menyusul, tapi cek dulu apakah ada alasan khusus ia tertinggal.`
+    : `${r0.t} bergerak sejalan dengan saham-saham miripnya.`;
+  box.innerHTML = `<h3>Saham mirip${r0.sector && r0.sector !== "-" ? ` di sektor ${esc(r0.sector)}` : ""}</h3>
+    <p class="muted" style="font-size:0.82rem;margin:0 0 8px">Diurutkan dari pergerakan harga harian yang paling mirip dalam 60 hari terakhir (korelasi). Hanya saham dengan transaksi minimal Rp 1 M/hari.</p>
+    <div class="table-wrap" style="max-height:none"><table class="j-tbl"><thead><tr><th>Saham</th><th class="num">Kemiripan</th><th class="num">20 hari</th><th>Struktur</th><th>Kondisi</th><th></th></tr></thead><tbody>
+      <tr class="sim-self"><td><b>${esc(r0.t)}</b> <span class="muted">(ini)</span></td><td class="num">-</td><td class="num ${p20 >= 0 ? "pos" : "neg"}">${p20 == null ? "-" : (p20 >= 0 ? "+" : "") + fmtDec(p20, 1) + "%"}</td><td>${msCell(r0)}</td><td>${r0.kd ? `<span class="kd ${r0.kd.c}">${esc(r0.kd.l)}</span>` : "-"}</td><td></td></tr>
+      ${sim.map(({ r, corr }) => { const pp = perf(r, 20); return `<tr><td><button class="link-btn" data-go="${r.t}" type="button"><b>${r.t}</b></button><div class="muted" style="font-size:0.72rem">${esc(r.nm)}</div></td>
+        <td class="num">${fmtDec(corr * 100, 0)}%</td><td class="num ${pp >= 0 ? "pos" : "neg"}">${pp == null ? "-" : (pp >= 0 ? "+" : "") + fmtDec(pp, 1) + "%"}</td>
+        <td>${msCell(r)}</td><td>${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span>` : "-"}</td>
+        <td><button class="icon-btn sim-add" data-add="${r.t}" type="button">${cmp.includes(r.t) ? "✓" : "+ Bandingkan"}</button></td></tr>`; }).join("")}
+    </tbody></table></div>
+    ${say ? `<p class="d-why">${esc(say)}</p>` : ""}
+    <div class="d-actions"><button class="icon-btn" id="sim-cmp" type="button">Bandingkan ${esc(r0.t)} dengan 3 teratas</button></div>`;
+  box.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => openDetail(b.dataset.go, viewMode, { keepFocus: true })));
+  box.querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => { toggleCmp(b.dataset.add); b.textContent = cmp.includes(b.dataset.add) ? "✓" : "+ Bandingkan"; }));
+  $("sim-cmp").addEventListener("click", () => { cmp = [r0.t, ...sim.slice(0, 3).map(x => x.r.t)]; saveCmp(); openCompare(); });
+}
+
+/* A. halaman bandingkan */
+function openCompare(fromPop) {
+  if (cmp.length < 2) { alert("Pilih minimal 2 saham untuk dibandingkan."); return; }
+  $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); hideFull(true); openT = null;
+  $("cmpv").classList.add("open"); document.body.classList.add("noscroll");
+  const h = "#bandingkan=" + cmp.join(",");
+  if (!fromPop) { if (location.hash.startsWith("#bandingkan=") || location.hash.startsWith("#s=")) history.replaceState({ cmp: 1 }, "", h); else history.pushState({ cmp: 1 }, "", h); }
+  else history.replaceState(history.state, "", h);
+  renderCompare();
+}
+function closeCompare() {
+  if (history.state && history.state.cmp) { history.back(); return; }
+  hideCompare();
+}
+function hideCompare() {
+  if (!$("cmpv").classList.contains("open")) return;
+  $("cmpv").classList.remove("open"); $("cmpv").innerHTML = ""; document.body.classList.remove("noscroll");
+  if (location.hash.startsWith("#bandingkan=")) history.replaceState(null, "", location.pathname + location.search);
+}
+function cmpChart(rows, n) {
+  const ih = MARKET.ihsg ? seriesOf(MARKET.ihsg) : null;
+  const master = ih ? ih.tgl : seriesOf(rows[0]).tgl;
+  const dates = master.slice(-(n + 1));
+  const lines = rows.map((r, i) => ({ t: r.t, col: CMP_COLORS[i], s: seriesOf(r), dash: "" }));
+  if (ih) lines.push({ t: "IHSG", col: "var(--muted)", s: ih, dash: "5 4" });
+  lines.forEach(L => {
+    const m = new Map(L.s.tgl.map((d, i) => [d, L.s.c[i]])); let last = null, base = null;
+    L.v = dates.map(d => { if (m.has(d)) last = m.get(d); if (last != null && base == null) base = last; return last == null ? null : (last / base - 1) * 100; });
+  });
+  const all = lines.flatMap(L => L.v.filter(v => v != null));
+  let max = Math.max(0, ...all), min = Math.min(0, ...all); const pad = (max - min) * 0.08 || 1; max += pad; min -= pad;
+  const W = 1100, H = 380, Lp = 48, R = 110, T = 12, B = 26, iw = W - Lp - R, ihh = H - T - B;
+  const x = i => Lp + i / Math.max(1, dates.length - 1) * iw, y = v => T + (max - v) / (max - min) * ihh;
+  let s = `<svg class="d-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Perbandingan kinerja">`;
+  const step = Math.pow(10, Math.floor(Math.log10((max - min) / 4 || 1))), tick = [1, 2, 5, 10].map(k => k * step).find(k => (max - min) / k <= 6) || step * 10;
+  for (let v = Math.ceil(min / tick) * tick; v <= max; v += tick) s += `<line x1="${Lp}" x2="${Lp + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)" ${Math.abs(v) < 1e-9 ? 'stroke-width="1.6" stroke="var(--muted)"' : ""}/><text x="${Lp - 6}" y="${(y(v) + 4).toFixed(1)}" font-size="11" text-anchor="end" fill="var(--muted)">${v > 0 ? "+" : ""}${fmtDec(v, Math.abs(tick) < 1 ? 1 : 0)}%</text>`;
+  const used = [];
+  lines.forEach(L => {
+    const pts = L.v.map((v, i) => v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean);
+    s += `<polyline points="${pts.join(" ")}" fill="none" stroke="${L.col}" stroke-width="${L.t === "IHSG" ? 1.6 : 2.4}" ${L.dash ? `stroke-dasharray="${L.dash}"` : ""}/>`;
+    const lv = L.v[L.v.length - 1]; if (lv == null) return; let yy = y(lv) + 4; while (used.some(u => Math.abs(u - yy) < 13)) yy += 13; used.push(yy);
+    s += `<text x="${Lp + iw + 8}" y="${yy.toFixed(1)}" font-size="12" font-weight="800" fill="${L.col}">${esc(L.t)} ${lv >= 0 ? "+" : ""}${fmtDec(lv, 1)}%</text>`;
+  });
+  s += `<text x="${Lp}" y="${H - 6}" font-size="11" fill="var(--muted)">${esc(dates[0])}</text><text x="${Lp + iw}" y="${H - 6}" font-size="11" text-anchor="end" fill="var(--muted)">${esc(dates[dates.length - 1])}</text></svg>`;
+  return s;
+}
+function renderCompare() {
+  const rows = cmp.map(t => DATA.find(r => r.t === t)).filter(Boolean), w = weights();
+  const pdPos = r => { const S = r.smc; if (!S || !S.pd) return null; return Math.round((r.p - S.pd[1]) / ((S.pd[0] - S.pd[1]) || 1) * 100); };
+  const lastEv = r => { const e = r.smc && r.smc.ev && r.smc.ev[r.smc.ev.length - 1]; return e ? `${e[3]} ${e[4] === 1 ? "naik" : "turun"}, ${e[5]}` : "-"; };
+  const obNear = r => { const S = r.smc; if (!S || !S.ob) return "-"; const z = S.ob.filter(o => o[3] === 1 && o[2] <= r.p).sort((a, b) => b[1] - a[1])[0]; return z ? `${fmtNum(z[2])}–${fmtNum(z[1])} (${fmtDec((r.p - z[1]) / r.p * 100, 1)}% di bawah)${z[4] ? ", volume tinggi" : ""}` : "tidak ada"; };
+  const pocTxt = r => { const V = r.smc && r.smc.vp; if (!V) return "-"; return `${fmtNum(V.poc)} (harga ${r.p > V.vah ? "di atas" : r.p < V.val ? "di bawah" : "di dalam"} value area)`; };
+  const metr = [
+    ["Harga", r => `<b>${fmtNum(r.p)}</b> <span class="${r.chg >= 0 ? "pos" : "neg"}">${r.chg >= 0 ? "+" : ""}${fmtDec(r.chg, 2)}%</span>`],
+    [`Kinerja ${cmpPeriod} hari`, r => { const v = perf(r, cmpPeriod); return v == null ? "-" : `<b class="${v >= 0 ? "pos" : "neg"}">${v >= 0 ? "+" : ""}${fmtDec(v, 1)}%</b>`; }],
+    ["Sektor", r => esc(r.sector || "-")],
+    ["Kondisi", r => r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : "-"],
+    ["Struktur W / D / 4H", r => msCell(r)],
+    ["BOS/CHoCH terakhir (harian)", r => esc(lastEv(r))],
+    ["Posisi range 120 hari", r => { const v = pdPos(r); return v == null ? "-" : `${v}% · ${v >= 55 ? "premium" : v <= 45 ? "discount" : "equilibrium"}`; }],
+    ["OB bullish terdekat", r => esc(obNear(r))],
+    ["POC volume", r => esc(pocTxt(r))],
+    ["RSI", r => fmtDec(r.rsi, 1)],
+    ["Checklist", r => ckCell(r)],
+    ["Skor", r => fmtDec(score(r, w), 0)],
+    ["Transaksi/hari", r => fmtValue(r.val)],
+    ["Top 10", r => r.top ? `<span class="top-badge">#${r.top}</span>` : (r.cst && r.cst.total ? `${r.cst.count}/${r.cst.total} hari` : "-")],
+  ];
+  const best = rows.slice().sort((a, b) => (perf(b, cmpPeriod) ?? -1e9) - (perf(a, cmpPeriod) ?? -1e9))[0];
+  const aligned = rows.filter(msAligned).map(r => r.t);
+  $("cmpv").innerHTML = `
+    <div class="full-head"><div class="full-head-in">
+      <button class="icon-btn" id="cmp-close" type="button">← Kembali ke daftar</button>
+      <div class="fh-id"><span class="fh-tk">Bandingkan saham</span><span class="fh-name">${rows.length} saham · dibanding IHSG</span></div>
+      <span class="fh-right">
+        <span class="cmp-chips">${rows.map((r, i) => `<span class="cmp-chip" style="border-color:${CMP_COLORS[i]}"><i style="background:${CMP_COLORS[i]}"></i>${r.t}<button type="button" data-rm="${r.t}" aria-label="Hapus ${r.t}">×</button></span>`).join("")}</span>
+        ${rows.length < CMP_MAX ? `<input list="cmp-list" id="cmp-add" class="cmp-add" placeholder="+ Tambah kode"><datalist id="cmp-list">${DATA.map(r => `<option value="${r.t}">${esc(r.nm)}</option>`).join("")}</datalist>` : ""}
+      </span>
+    </div></div>
+    <div class="full-grid cmp-grid">
+      <section class="card">
+        <div class="hist-head"><h3>Kinerja sejak titik awal yang sama</h3>
+          <div class="seg" role="group" aria-label="Periode">${[20, 60, 119].map(k => `<button type="button" data-p="${k}" class="${cmpPeriod === k ? "on" : ""}">${k === 119 ? "120 hari" : k + " hari"}</button>`).join("")}</div></div>
+        ${cmpChart(rows, cmpPeriod)}
+        <p class="d-why">${best ? `Paling kuat dalam ${cmpPeriod} hari terakhir: <b>${esc(best.t)}</b>.` : ""} ${aligned.length ? `Struktur searah naik (W dan D bullish): <b>${aligned.map(esc).join(", ")}</b>.` : "Belum ada yang strukturnya searah naik di Mingguan dan Harian."}</p>
+        <p class="muted" style="font-size:0.78rem;margin:4px 0 0">Setiap garis menunjukkan perubahan harga dalam % sejak hari pertama periode, jadi saham dengan harga berbeda bisa dibandingkan langsung. Garis putus-putus abu-abu = IHSG.</p>
+      </section>
+      <section class="card">
+        <div class="table-wrap" style="max-height:none"><table class="j-tbl cmp-tbl"><thead><tr><th></th>${rows.map((r, i) => `<th style="border-bottom:3px solid ${CMP_COLORS[i]}"><button class="link-btn" data-open="${r.t}" type="button"><b>${r.t}</b></button><div class="muted" style="font-size:0.72rem;font-weight:500">${esc(r.nm)}</div></th>`).join("")}</tr></thead>
+          <tbody>${metr.map(([lab, f]) => `<tr><td class="muted">${lab}</td>${rows.map(r => `<td>${f(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+        <p class="muted" style="font-size:0.78rem;margin:8px 0 0">Klik kode saham di judul kolom untuk membuka detailnya. Pilihan perbandingan tersimpan di browser ini.</p>
+      </section>
+    </div>`;
+  $("cmp-close").addEventListener("click", closeCompare);
+  $("cmpv").querySelectorAll("[data-p]").forEach(b => b.addEventListener("click", () => { cmpPeriod = +b.dataset.p; ls.set("idxs:cmpn", cmpPeriod); renderCompare(); }));
+  $("cmpv").querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => { toggleCmp(b.dataset.rm); if (cmp.length < 2) closeCompare(); else openCompare(true); }));
+  $("cmpv").querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => { const t = b.dataset.open; hideCompare(); openDetail(t, "full"); }));
+  const add = $("cmp-add");
+  if (add) add.addEventListener("change", () => { const t = add.value.trim().toUpperCase(); if (DATA.some(r => r.t === t) && !cmp.includes(t)) { toggleCmp(t); openCompare(true); } else add.value = ""; });
+}
+
 /* ---------- detail saham: panel kanan & layar penuh ---------- */
 let viewMode = "panel", navList = [];
 function currentNav(t) { const l = filtered().map(r => r.t); return l.includes(t) ? l : [t]; }
@@ -2502,6 +2727,8 @@ function detailParts(r, r0, w) {
     tf: `<div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>`,
     lain: `<div class="d-sec"><h3>Data lain</h3><div class="muted" style="font-size:0.86rem">RSI ${fmtDec(r.rsi, 1)}. Volume ${fmtDec(r.vr, 2)}× rata-rata. Transaksi ${fmtValue(r.val)}/hari. Beta ${r.beta == null ? "-" : fmtDec(r.beta, 2)}. ${r.cst && r.cst.total ? `Masuk Top 10 ${r.cst.count} dari ${r.cst.total} hari terakhir.` : ""}</div></div>`,
     star: `<button class="icon-btn" id="d-star" type="button">${watch.has(r.t) ? "★ Hapus dari watchlist" : "☆ Tambah ke watchlist"}</button>`,
+    cmpb: `<button class="icon-btn" id="d-cmp" type="button">${cmp.includes(r.t) ? "✓ Di perbandingan" : "+ Bandingkan"}</button>${cmp.includes(r.t) && cmp.length >= 2 ? `<button class="icon-btn" id="d-cmp-open" type="button">Buka perbandingan (${cmp.length})</button>` : ""}`,
+    sim: '<div class="d-sec" id="sim-sec"></div>',
     foot: '<p class="d-foot">Semua angka dihitung otomatis dari data Yahoo Finance dan bisa tertunda. Cocokkan dengan chart di aplikasi trading-mu sebelum mengambil keputusan.</p>',
   };
 }
@@ -2526,11 +2753,12 @@ function openDetail(t, mode, opt = {}) {
         <span class="fh-price">${P.price}</span>
         ${r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : ""}
         ${r.top ? `<span class="top-badge">Top 10 #${r.top}</span>` : ""}
-        <span class="fh-right">${P.star}${navHtml(t)}</span>
+        <span class="fh-right">${P.star}${P.cmpb}${navHtml(t)}</span>
       </div></div>
       <div class="full-grid">
         <div class="full-col">
           <section class="card">${P.chart}</section>
+          <section class="card">${P.sim}</section>
           <section class="card">${P.hist}</section>
         </div>
         <div class="full-col">
@@ -2555,19 +2783,22 @@ function openDetail(t, mode, opt = {}) {
       </div>
       <div class="d-price">${P.price}</div>
       <div class="muted" style="font-size:0.8rem">${P.meta}</div>
-      ${P.kond}${P.struktur}${P.chart}${P.checklist}${P.plan}${P.hist}${P.skor}${P.tf}${P.lain}
-      <div class="d-actions">${P.star}</div>${P.foot}`;
+      ${P.kond}${P.struktur}${P.chart}${P.sim}${P.checklist}${P.plan}${P.hist}${P.skor}${P.tf}${P.lain}
+      <div class="d-actions">${P.star}${P.cmpb}</div>${P.foot}`;
     $("drawer").classList.add("open"); $("scrim").classList.add("open");
     if (!opt.keepFocus) $("drawer").focus();
     $("d-full").addEventListener("click", () => openDetail(t, "full", { keepNav: true }));
   }
   $("d-close").addEventListener("click", mode === "full" ? closeFull : closeDrawer);
   $("d-star").addEventListener("click", () => { toggleWatch(t); openDetail(t, mode, { keepNav: true, fromPop: true, keepFocus: true }); });
+  $("d-cmp").addEventListener("click", () => { if (toggleCmp(t) !== false) openDetail(t, mode, { keepNav: true, fromPop: true, keepFocus: true }); });
+  const co = $("d-cmp-open"); if (co) co.addEventListener("click", () => openCompare());
   const pv = $("d-prev"), nx = $("d-next");
   if (pv) pv.addEventListener("click", () => stepDetail(-1));
   if (nx) nx.addEventListener("click", () => stepDetail(1));
   renderPlan(r0, r);
   renderHist(r0);
+  renderSimilar(r0);
 }
 function stepDetail(d) {
   const i = navList.indexOf(openT), j = i + d;
@@ -2586,6 +2817,9 @@ function closeFull() {
   const tr = document.querySelector(`tr[data-t="${t}"]`); if (tr) tr.focus();
 }
 window.addEventListener("popstate", () => {
+  const mc = location.hash.match(/^#bandingkan=([A-Z0-9,]+)$/);
+  if (mc) { cmp = mc[1].split(",").filter(t => DATA.some(r => r.t === t)).slice(0, CMP_MAX); saveCmp(); if (cmp.length >= 2) { openCompare(true); return; } }
+  if ($("cmpv").classList.contains("open")) hideCompare();
   const m = location.hash.match(/^#s=([A-Z0-9]+)$/);
   if (m && DATA.some(r => r.t === m[1])) openDetail(m[1], "full", { keepNav: navList.includes(m[1]), fromPop: true });
   else if ($("full").classList.contains("open")) {
@@ -2648,6 +2882,7 @@ $("tbody").addEventListener("click", e => {
 $("tbody").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("tr[data-t]")) openDrawer(e.target.dataset.t); });
 $("scrim").addEventListener("click", closeDrawer);
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("cmpv").classList.contains("open")) { closeCompare(); return; }
   if (!openT) return;
   if (e.key === "Escape") { if ($("full").classList.contains("open")) closeFull(); else closeDrawer(); return; }
   if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && openT !== "IHSG" && !(e.target && e.target.closest && e.target.closest("input, select, textarea"))) {
@@ -2675,7 +2910,13 @@ if (location.protocol === "file:") {
     .map(k => `<option value="${esc(k)}">${esc(k)} (${cnt[k]})</option>`).join("") + (cnt["-"] ? `<option value="-">Tanpa sektor (${cnt["-"]})</option>` : "");
 })();
 renderMarket(); load(); render(); renderCal(); renderJournal();
-(() => { const m = location.hash.match(/^#s=([A-Z0-9]+)$/); if (m && DATA.some(r => r.t === m[1])) openDetail(m[1], "full", { fromPop: true }); })();
+renderCmpBar();
+(() => { const f = $("filt"); f.open = !!ls.get("idxs:filt", false); f.addEventListener("toggle", () => ls.set("idxs:filt", f.open)); })();
+(() => {
+  const mc = location.hash.match(/^#bandingkan=([A-Z0-9,]+)$/);
+  if (mc) { const l = mc[1].split(",").filter(t => DATA.some(r => r.t === t)).slice(0, CMP_MAX); if (l.length >= 2) { cmp = l; saveCmp(); openCompare(true); return; } }
+  const m = location.hash.match(/^#s=([A-Z0-9]+)$/); if (m && DATA.some(r => r.t === m[1])) openDetail(m[1], "full", { fromPop: true });
+})();
 </script>
 </body>
 </html>
