@@ -102,6 +102,38 @@ AGENDA_DEFAULT = [
     ["2027-05-27", "msci", "MSCI: rebalancing review Mei (penutupan)", "Efektif 28 Mei 2027.", []],
     ["2027-08-12", "msci", "MSCI: pengumuman review Agustus 2027", "", []],
     ["2027-08-31", "msci", "MSCI: rebalancing review Agustus 2027 (penutupan)", "Efektif 1 September 2027.", []],
+    # --- kalender ekonomi (tanggal WIB) ---
+    # BI: jadwal RDG 2026 resmi Bank Indonesia; keputusan BI Rate diumumkan di hari ke-2.
+    ["2026-09-23", "bi", "BI: pengumuman suku bunga (RDG 22–23 Sep)", "Keputusan BI Rate diumumkan siang hari WIB di hari kedua RDG.", []],
+    ["2026-10-21", "bi", "BI: pengumuman suku bunga (RDG 20–21 Okt)", "RDG cakupan triwulanan dan tahunan. Keputusan BI Rate diumumkan siang hari WIB.", []],
+    ["2026-11-18", "bi", "BI: pengumuman suku bunga (RDG 17–18 Nov)", "Keputusan BI Rate diumumkan siang hari WIB.", []],
+    ["2026-12-16", "bi", "BI: pengumuman suku bunga (RDG 15–16 Des)", "Keputusan BI Rate diumumkan siang hari WIB.", []],
+    # FOMC: keputusan 14:00 waktu New York = dini hari WIB keesokan harinya (ditaruh di tanggal WIB).
+    ["2026-09-17", "fomc", "The Fed: keputusan suku bunga (FOMC 15–16 Sep)", "Diumumkan sekitar pukul 01.00 WIB; dampaknya terasa di perdagangan BEI hari ini.", []],
+    ["2026-10-29", "fomc", "The Fed: keputusan suku bunga (FOMC 27–28 Okt)", "Diumumkan sekitar pukul 01.00 WIB; dampaknya terasa di perdagangan BEI hari ini.", []],
+    ["2026-12-10", "fomc", "The Fed: keputusan suku bunga (FOMC 8–9 Des)", "Diumumkan sekitar pukul 02.00 WIB, disertai proyeksi ekonomi (dot plot).", []],
+    ["2027-01-28", "fomc", "The Fed: keputusan suku bunga (FOMC 26–27 Jan)", "Diumumkan dini hari WIB. Jadwal 2027 masih tentatif menurut The Fed.", []],
+    ["2027-03-18", "fomc", "The Fed: keputusan suku bunga (FOMC 16–17 Mar)", "Diumumkan dini hari WIB, disertai proyeksi ekonomi.", []],
+    ["2027-04-29", "fomc", "The Fed: keputusan suku bunga (FOMC 27–28 Apr)", "Diumumkan dini hari WIB.", []],
+    ["2027-06-10", "fomc", "The Fed: keputusan suku bunga (FOMC 8–9 Jun)", "Diumumkan dini hari WIB, disertai proyeksi ekonomi.", []],
+    ["2027-07-29", "fomc", "The Fed: keputusan suku bunga (FOMC 27–28 Jul)", "Diumumkan dini hari WIB.", []],
+    ["2027-09-16", "fomc", "The Fed: keputusan suku bunga (FOMC 14–15 Sep)", "Diumumkan dini hari WIB, disertai proyeksi ekonomi.", []],
+    ["2027-10-28", "fomc", "The Fed: keputusan suku bunga (FOMC 26–27 Okt)", "Diumumkan dini hari WIB.", []],
+    ["2027-12-09", "fomc", "The Fed: keputusan suku bunga (FOMC 7–8 Des)", "Diumumkan dini hari WIB, disertai proyeksi ekonomi.", []],
+    # BLS: CPI dan NFP (Employment Situation) pukul 08:30 waktu New York = 19:30 WIB (20:30 WIB mulai November).
+    ["2026-09-04", "nfp", "NFP AS (data lapangan kerja Agustus)", "Dirilis pukul 19.30 WIB; dampaknya di BEI hari bursa berikutnya.", []],
+    ["2026-09-11", "cpi", "CPI AS (inflasi Agustus)", "Dirilis pukul 19.30 WIB; dampaknya di BEI hari bursa berikutnya.", []],
+    ["2026-10-02", "nfp", "NFP AS (data lapangan kerja September)", "Dirilis pukul 19.30 WIB; dampaknya di BEI hari bursa berikutnya.", []],
+    ["2026-10-14", "cpi", "CPI AS (inflasi September)", "Dirilis pukul 19.30 WIB; dampaknya di BEI keesokan harinya.", []],
+    ["2026-11-06", "nfp", "NFP AS (data lapangan kerja Oktober)", "Dirilis pukul 20.30 WIB; dampaknya di BEI hari bursa berikutnya.", []],
+    ["2026-11-10", "cpi", "CPI AS (inflasi Oktober)", "Dirilis pukul 20.30 WIB; dampaknya di BEI keesokan harinya.", []],
+    ["2026-12-04", "nfp", "NFP AS (data lapangan kerja November)", "Dirilis pukul 20.30 WIB; dampaknya di BEI hari bursa berikutnya.", []],
+    ["2026-12-10", "cpi", "CPI AS (inflasi November)", "Dirilis pukul 20.30 WIB; dampaknya di BEI keesokan harinya.", []],
+    # BPS: inflasi Indonesia biasanya dirilis hari kerja pertama tiap bulan, sekitar pukul 11.00 WIB.
+    ["2026-09-01", "inflasi", "Inflasi Indonesia (BPS, data Agustus)", "Dirilis BPS sekitar pukul 11.00 WIB.", []],
+    ["2026-10-01", "inflasi", "Inflasi Indonesia (BPS, data September)", "Perkiraan: BPS biasanya merilis di hari kerja pertama bulan, sekitar pukul 11.00 WIB.", []],
+    ["2026-11-02", "inflasi", "Inflasi Indonesia (BPS, data Oktober)", "Perkiraan: BPS biasanya merilis di hari kerja pertama bulan, sekitar pukul 11.00 WIB.", []],
+    ["2026-12-01", "inflasi", "Inflasi Indonesia (BPS, data November)", "Perkiraan: BPS biasanya merilis di hari kerja pertama bulan, sekitar pukul 11.00 WIB.", []],
 ]
 
 
@@ -616,7 +648,29 @@ def analisa(t, d, ihsg_ret, sektor, nama, frac_hari, hari_ini):
     }
 
 
-def konteks_pasar(ihsg, rows, ihsg_jam=None):
+def musim_ihsg(d):
+    """Statistik musiman IHSG dari data harian (idealnya 10 tahun): per hari, posisi awal/akhir bulan, dan per bulan."""
+    if d is None or len(d) < 500:
+        return None
+    c = d["Close"].astype(float)
+    ret = c.pct_change().dropna()
+    ret = ret[ret.abs() < 0.2]                       # buang data janggal
+    st = lambda x: {"n": int(len(x)), "up": int((x > 0).sum()), "avg": round(float(x.mean()) * 100, 3)}
+    out = {"dari": ret.index[0].strftime("%Y-%m-%d"), "sampai": ret.index[-1].strftime("%Y-%m-%d"),
+           "wd": [st(ret[ret.index.dayofweek == i]) for i in range(5)], "tom": {}}
+    per = ret.index.to_period("M")
+    pos = pd.Series(range(len(ret)), index=ret.index).groupby(per).cumcount() + 1
+    rev = pd.Series(range(len(ret)), index=ret.index)[::-1].groupby(per[::-1]).cumcount()[::-1] + 1
+    for k in (1, 2, 3):
+        out["tom"][f"f{k}"] = st(ret[pos.values == k])
+        out["tom"][f"l{k}"] = st(ret[rev.values == k])
+    m = c.resample("ME").last() if hasattr(c, "resample") else c
+    mret = m.pct_change().dropna()
+    out["mon"] = [st(mret[mret.index.month == i]) for i in range(1, 13)]
+    return out
+
+
+def konteks_pasar(ihsg, rows, ihsg_jam=None, ihsg_panjang=None):
     """Ringkasan IHSG + napas pasar (persentase saham likuid di atas MA20)."""
     m = {"ihsg": None, "breadth": None}
     if ihsg is not None and len(ihsg) > 60:
@@ -650,6 +704,10 @@ def konteks_pasar(ihsg, rows, ihsg_jam=None):
             m["ihsg"]["ms"] = ms
         except Exception as e:
             print(f"  ! smc IHSG: {e}")
+    try:
+        m["musim"] = musim_ihsg(ihsg_panjang if ihsg_panjang is not None else ihsg)
+    except Exception as e:
+        print(f"  ! musim IHSG: {e}")
     likuid = [r for r in rows if r["val"] >= 1e9 and r["x"].get("m20l")]
     if likuid:
         naik = sum(1 for r in likuid if r["p"] > r["x"]["m20l"])
@@ -992,6 +1050,7 @@ def main():
     harian = {t: ke_tanggal(df) for t, df in unduh(tickers, "5y", "1d").items()}
     ihsg = unduh(["^JKSE"], "2y", "1d").get("^JKSE")
     ihsg_jam = None if args.no_intraday else unduh(["^JKSE"], "60d", "60m").get("^JKSE")
+    ihsg10 = unduh(["^JKSE"], "10y", "1d").get("^JKSE")        # untuk pola musiman
     ihsg_ret = ke_tanggal(ihsg)["Close"].pct_change() if ihsg is not None else None
 
     sektor = ({t: sektor_daftar.get(t, "-") for t in harian} if args.no_sektor
@@ -1053,7 +1112,8 @@ def main():
     tgl_bursa = max(r["tgl"] for r in rows)       # tanggal candle terakhir, bukan tanggal run (akhir pekan tidak dihitung)
     update_konsistensi(rows, tgl_bursa)
     out_html = Path(args.output).resolve()
-    pasar = konteks_pasar(ke_tanggal(ihsg) if ihsg is not None else None, rows, ihsg_jam)
+    pasar = konteks_pasar(ke_tanggal(ihsg) if ihsg is not None else None, rows, ihsg_jam,
+                          ke_tanggal(ihsg10) if ihsg10 is not None else None)
     tulis_html(rows, now, status, len(gagal), not args.no_intraday, out_html, not args.no_arsip, pasar)
 
     top = sorted(rows, key=skor, reverse=True)[:5]
@@ -1367,6 +1427,14 @@ TEMPLATE = r'''<!DOCTYPE html>
   .ev-gdx { background:var(--amber-soft); color:var(--amber); }
   .ev-lapkeu { background:var(--orange-soft); color:var(--orange); }
   .ev-lain { background:var(--panel2); color:var(--ink2); }
+  .ev-bi, .ev-fomc, .ev-cpi, .ev-nfp, .ev-inflasi { background:#EDE7FB; color:#5B34C4; }
+  :root[data-theme="dark"] .ev-bi, :root[data-theme="dark"] .ev-fomc, :root[data-theme="dark"] .ev-cpi, :root[data-theme="dark"] .ev-nfp, :root[data-theme="dark"] .ev-inflasi { background:#2D2450; color:#B9A5F5; }
+  .cal-lean { margin-top:auto; font-size:0.95rem; font-weight:800; line-height:1; }
+  .cal-lean.up { color:var(--up); } .cal-lean.dn { color:var(--down); } .cal-lean.n { color:var(--muted); }
+  .cal-musim-sum { font-size:0.88rem; color:var(--ink2); margin:0 0 10px; }
+  .cal-musim-sum:empty { display:none; }
+  .cal-legend { display:flex; flex-wrap:wrap; gap:6px 18px; font-size:0.8rem; color:var(--muted); margin-top:10px; align-items:center; }
+  .cal-legend .cal-lean { margin:0 3px 0 0; }
   .cal-list { list-style:none; margin:14px 0 0; padding:0; }
   .cal-list li { display:flex; gap:14px; padding:9px 0; border-top:1px solid var(--line); font-size:0.88rem; }
   .cl-date { flex:0 0 104px; font-weight:700; color:var(--ink2); white-space:nowrap; }
@@ -1569,11 +1637,16 @@ TEMPLATE = r'''<!DOCTYPE html>
       <div class="cal-opts">
         <label class="chip"><input type="checkbox" id="cal-moon"> Fase bulan</label>
         <label class="chip"><input type="checkbox" id="cal-agenda"> Agenda pasar</label>
+        <label class="chip"><input type="checkbox" id="cal-makro"> Kalender ekonomi</label>
+        <label class="chip"><input type="checkbox" id="cal-musim"> Pola musiman IHSG</label>
       </div>
     </div>
+    <p class="cal-musim-sum" id="cal-musim-sum"></p>
     <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend"><span><b class="cal-lean up">▲</b> condong naik</span><span><b class="cal-lean dn">▼</b> condong turun</span><span><b class="cal-lean n">·</b> tidak ada kecenderungan</span><span><b class="cal-lean up">▲+</b> kecenderungan kuat</span>
+      <span><span class="cal-ev ev-bi">BI</span> <span class="cal-ev ev-fomc">FOMC</span> <span class="cal-ev ev-cpi">CPI AS</span> <span class="cal-ev ev-nfp">NFP AS</span> <span class="cal-ev ev-inflasi">Inflasi RI</span> data ekonomi</span></div>
     <ul class="cal-list" id="cal-list"></ul>
-    <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Waktu fase bulan dalam WIB, dihitung dengan rumus astronomi. Agenda MSCI, FTSE, GDX, dan batas laporan keuangan diambil dari jadwal resmi; tanggal bisa berubah, jadi cek pengumuman terbaru. Klik tanggal untuk melihat detailnya.</p>
+    <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Waktu fase bulan dalam WIB, dihitung dengan rumus astronomi. Agenda MSCI, FTSE, GDX, batas laporan keuangan, BI, The Fed, CPI, dan NFP diambil dari jadwal resmi; tanggal inflasi BPS adalah perkiraan hari kerja pertama bulan. Tanggal bisa berubah, jadi cek pengumuman terbaru. <b>Pola musiman</b> dihitung dari data IHSG 10 tahun: panah hanya muncul kalau persentase hari naik berbeda signifikan dari 50% secara statistik (tingkat keyakinan 95%; "+" untuk 99%). Ini pola masa lalu, bukan prediksi. Klik tanggal untuk melihat angkanya.</p>
   </section>
 
   <section class="card" id="jurnal" aria-label="Jurnal trading">
@@ -1627,6 +1700,8 @@ TEMPLATE = r'''<!DOCTYPE html>
       <div class="guide-body">
         <p>Bagian Kalender (tombol "Kalender" di kanan atas) menampilkan fase bulan (🌑 bulan baru, 🌓 kuartal awal, 🌕 purnama, 🌗 kuartal akhir) dalam WIB, serta agenda pasar: review MSCI, FTSE, GDX, dan batas penyampaian laporan keuangan. Klik tanggal untuk melihat detailnya; klik kode saham di agenda untuk membuka panel detailnya.</p>
         <p>Fase bulan juga bisa ditampilkan di chart SMC sebagai lingkaran kecil di bawah candle (kuning = purnama, gelap = bulan baru). Penelitian menemukan return rata-rata pasar global sedikit lebih rendah di sekitar purnama dibanding bulan baru, tapi efeknya kecil dan tidak membuktikan fase bulan bisa menentukan titik pembalikan saham tertentu. Pakai sebagai konteks, bukan sinyal utama.</p>
+        <p><b>Kalender ekonomi</b> (label ungu): keputusan suku bunga BI, keputusan The Fed (FOMC, ditaruh di tanggal WIB karena diumumkan dini hari), CPI dan NFP Amerika (dirilis malam WIB, dampaknya di BEI keesokan harinya), serta inflasi Indonesia dari BPS. Di hari-hari ini pasar sering bergejolak, jadi pertimbangkan ukuran posisi yang lebih kecil.</p>
+        <p><b>Pola musiman IHSG</b> (▲ ▼ · di pojok bawah tanggal): dihitung dari data IHSG 10 tahun berdasarkan hari dalam seminggu dan posisi hari di awal/akhir bulan. ▲ atau ▼ hanya muncul kalau persentase hari naik berbeda signifikan dari 50% secara statistik (95%); "+" berarti sangat signifikan (99%). Klik tanggal untuk melihat angkanya, dan lihat ringkasan kinerja bulan itu di atas kalender. Ini pola masa lalu, bukan ramalan; selisihnya biasanya kecil.</p>
         <p><b>Menambah agenda sendiri:</b> buat file <code>kalender.json</code> di repo berisi daftar seperti <code>[{"tgl": "2026-11-05", "jenis": "lain", "judul": "RUPS XXXX", "ket": "catatan", "saham": ["XXXX"]}]</code>. Jenis bisa msci, ftse, gdx, lapkeu, atau lain. Agenda muncul setelah run berikutnya.</p>
       </div>
     </details>
@@ -2189,13 +2264,33 @@ function moonPhases(from, to) {
 const AGENDA = __AGENDA__;
 const MOON_NAME = ["Bulan baru", "Kuartal awal", "Purnama", "Kuartal akhir"];
 const MOON_ICON = ["🌑", "🌓", "🌕", "🌗"];
-const JENIS = { msci: "MSCI", ftse: "FTSE", gdx: "GDX", lapkeu: "Lapkeu", lain: "Agenda" };
+const JENIS = { msci: "MSCI", ftse: "FTSE", gdx: "GDX", lapkeu: "Lapkeu", lain: "Agenda", bi: "BI", fomc: "FOMC", cpi: "CPI AS", nfp: "NFP AS", inflasi: "Inflasi RI" };
+const MAKRO = new Set(["bi", "fomc", "cpi", "nfp", "inflasi"]);
+const HARI_PANJANG = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+/* pola musiman IHSG: panah hanya muncul kalau berbeda signifikan dari 50% (uji binomial, |z| ≥ 1,96) */
+function musimHari(key) {
+  const M = MARKET.musim; if (!M) return null;
+  const [yy, mm, dd] = key.split("-").map(Number), dt = new Date(Date.UTC(yy, mm - 1, dd)), wd = dt.getUTCDay();
+  if (wd === 0 || wd === 6) return null;
+  const hk = []; const last = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+  for (let d = 1; d <= last; d++) { const w = new Date(Date.UTC(yy, mm - 1, d)).getUTCDay(); if (w !== 0 && w !== 6) hk.push(d); }
+  const pF = hk.indexOf(dd) + 1, pL = hk.length - hk.indexOf(dd);
+  const cands = [[`Hari ${HARI_PANJANG[wd]}`, M.wd[wd - 1]]];
+  if (pF <= 3) cands.push([`Hari bursa ke-${pF} di awal bulan`, M.tom["f" + pF]]);
+  if (pL <= 3) cands.push([pL === 1 ? "Hari bursa terakhir bulan" : `Hari bursa ke-${pL} dari akhir bulan`, M.tom["l" + pL]]);
+  const ev = cands.filter(c => c[1] && c[1].n >= 30).map(([lab, st]) => { const pr = st.up / st.n; return { lab, st, pr, z: (pr - 0.5) / Math.sqrt(0.25 / st.n) }; });
+  if (!ev.length) return null;
+  const best = ev.slice().sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
+  const lean = Math.abs(best.z) >= 1.96 ? (best.z > 0 ? 1 : -1) : 0, kuat = Math.abs(best.z) >= 2.58;
+  return { lean, kuat, best, all: ev };
+}
+function musimTeks(st) { return `naik ${fmtDec(st.up / st.n * 100, 0)}% dari ${fmtNum(st.n)} kali, rata-rata ${st.avg >= 0 ? "+" : ""}${fmtDec(st.avg, 2)}%`; }
 const BULAN_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const CAL_KEY = "idxs:cal";
 const WIB_MS = 7 * 3600000;
 const ymd = d => new Date(d.getTime() + WIB_MS).toISOString().slice(0, 10);          // tanggal WIB dari waktu UTC
 const hm = d => new Date(d.getTime() + WIB_MS).toISOString().slice(11, 16);
-let cal = Object.assign({ moon: true, agenda: true }, ls.get(CAL_KEY, {}));
+let cal = Object.assign({ moon: true, agenda: true, makro: true, musim: true }, ls.get(CAL_KEY, {}));
 let calMonth = (() => { const t = new Date(Date.now() + WIB_MS); return [t.getUTCFullYear(), t.getUTCMonth()]; })();
 let calSel = null;
 
@@ -2211,16 +2306,21 @@ function renderCal() {
   const today = ymd(new Date()), first = new Date(Date.UTC(y, m, 1)), days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
   const lead = (first.getUTCDay() + 6) % 7;             // Senin = kolom pertama
   $("cal-title").textContent = `${BULAN_ID[m]} ${y}`;
-  $("cal-moon").checked = cal.moon; $("cal-agenda").checked = cal.agenda;
+  $("cal-moon").checked = cal.moon; $("cal-agenda").checked = cal.agenda; $("cal-makro").checked = cal.makro; $("cal-musim").checked = cal.musim;
+  const MS = MARKET.musim;
+  $("cal-musim-sum").innerHTML = cal.musim && MS && MS.mon[m] && MS.mon[m].n ? (() => { const st = MS.mon[m];
+    return `<b>${BULAN_ID[m]} secara historis</b> (${esc(MS.dari.slice(0, 4))}–${esc(MS.sampai.slice(0, 4))}): IHSG naik di ${st.up} dari ${st.n} tahun, rata-rata ${st.avg >= 0 ? "+" : ""}${fmtDec(st.avg, 2)}% sebulan.`; })() : "";
   let h = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map(d => `<div class="cal-dow">${d}</div>`).join("");
   for (let i = 0; i < lead; i++) h += '<div class="cal-cell empty"></div>';
   for (let d = 1; d <= days; d++) {
     const key = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`, wd = (lead + d - 1) % 7;
-    const mo = cal.moon ? (moons[key] || []) : [], es = cal.agenda ? (ev[key] || []) : [];
+    const mo = cal.moon ? (moons[key] || []) : [], es = (ev[key] || []).filter(a => MAKRO.has(a.jenis) ? cal.makro : cal.agenda);
+    const ms = cal.musim ? musimHari(key) : null;
     h += `<button type="button" class="cal-cell${wd >= 5 ? " weekend" : ""}${key === today ? " today" : ""}${key === calSel ? " sel" : ""}" data-day="${key}">
       <span class="cal-d">${d}</span>
       ${mo.map(p => `<span class="cal-moon" title="${MOON_NAME[p.q]} ${hm(p.t)} WIB">${MOON_ICON[p.q]}<small>${p.q === 0 || p.q === 2 ? MOON_NAME[p.q] : ""}</small></span>`).join("")}
       ${es.map(a => `<span class="cal-ev ev-${esc(a.jenis)}" title="${esc(a.judul)}">${esc(JENIS[a.jenis] || JENIS.lain)}</span>`).join("")}
+      ${ms ? `<span class="cal-lean ${ms.lean > 0 ? "up" : ms.lean < 0 ? "dn" : "n"}" title="${esc(ms.best.lab)}: ${esc(musimTeks(ms.best.st))}">${ms.lean > 0 ? "▲" : ms.lean < 0 ? "▼" : "·"}${ms.kuat ? "+" : ""}</span>` : ""}
     </button>`;
   }
   $("cal-grid").innerHTML = h;
@@ -2229,10 +2329,13 @@ function renderCal() {
   const prefix = `${y}-${String(m + 1).padStart(2, "0")}`;
   const items = [];
   if (cal.moon) Object.entries(moons).forEach(([k, arr]) => { if (k.startsWith(prefix)) arr.forEach(p => items.push({ tgl: k, moon: p })); });
-  if (cal.agenda) AGENDA.forEach(a => { if (a.tgl.startsWith(prefix)) items.push({ tgl: a.tgl, ev: a }); });
+  AGENDA.forEach(a => { if (a.tgl.startsWith(prefix) && (MAKRO.has(a.jenis) ? cal.makro : cal.agenda)) items.push({ tgl: a.tgl, ev: a }); });
+  if (calSel && cal.musim) { const ms = musimHari(calSel); if (ms) items.push({ tgl: calSel, musim: ms }); }
   const list = items.filter(i => !calSel || i.tgl === calSel).sort((a, b) => a.tgl.localeCompare(b.tgl) || (a.moon ? -1 : 1));
   const tglTxt = k => { const [yy, mm, dd] = k.split("-").map(Number); const w = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay()]; return `${w}, ${dd} ${BULAN_ID[mm - 1].slice(0, 3)}`; };
-  $("cal-list").innerHTML = list.length ? list.map(i => i.moon
+  $("cal-list").innerHTML = list.length ? list.map(i => i.musim
+    ? `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><b>Pola musiman IHSG:</b> ${i.musim.lean ? `condong <b class="${i.musim.lean > 0 ? "pos" : "neg"}">${i.musim.lean > 0 ? "naik" : "turun"}</b>${i.musim.kuat ? " (kuat)" : ""}` : "tidak ada kecenderungan yang signifikan"}.<br>${i.musim.all.map(x => `<span class="muted">${esc(x.lab)}: ${esc(musimTeks(x.st))}.</span>`).join("<br>")}</span></li>`
+    : i.moon
     ? `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><b>${MOON_ICON[i.moon.q]} ${MOON_NAME[i.moon.q]}</b> <span class="muted">${hm(i.moon.t)} WIB</span></span></li>`
     : `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><span class="cal-ev ev-${esc(i.ev.jenis)}">${esc(JENIS[i.ev.jenis] || JENIS.lain)}</span> <b>${esc(i.ev.judul)}</b>${i.ev.ket ? `<br><span class="muted">${esc(i.ev.ket)}</span>` : ""}${(i.ev.saham || []).length ? `<br>${i.ev.saham.map(t => `<button type="button" class="tk-chip" data-open="${esc(t)}">${esc(t)}</button>`).join("")}` : ""}</span></li>`).join("")
     : `<li class="muted">${calSel ? "Tidak ada fase bulan atau agenda di tanggal ini." : "Tidak ada agenda bulan ini."}</li>`;
@@ -2243,7 +2346,7 @@ function renderCal() {
 $("cal-prev").addEventListener("click", () => { calMonth = calMonth[1] === 0 ? [calMonth[0] - 1, 11] : [calMonth[0], calMonth[1] - 1]; calSel = null; renderCal(); });
 $("cal-next").addEventListener("click", () => { calMonth = calMonth[1] === 11 ? [calMonth[0] + 1, 0] : [calMonth[0], calMonth[1] + 1]; calSel = null; renderCal(); });
 $("cal-today").addEventListener("click", () => { const t = new Date(Date.now() + WIB_MS); calMonth = [t.getUTCFullYear(), t.getUTCMonth()]; calSel = null; renderCal(); });
-["cal-moon", "cal-agenda"].forEach(id => $(id).addEventListener("change", () => { cal.moon = $("cal-moon").checked; cal.agenda = $("cal-agenda").checked; ls.set(CAL_KEY, cal); renderCal(); }));
+["cal-moon", "cal-agenda", "cal-makro", "cal-musim"].forEach(id => $(id).addEventListener("change", () => { cal.moon = $("cal-moon").checked; cal.agenda = $("cal-agenda").checked; cal.makro = $("cal-makro").checked; cal.musim = $("cal-musim").checked; ls.set(CAL_KEY, cal); renderCal(); }));
 
 /* ---------- SMC chart ---------- */
 const SMC_KEY = "idxs:smc";
