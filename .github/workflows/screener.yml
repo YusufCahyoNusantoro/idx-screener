@@ -2,11 +2,21 @@ name: Update Screener
 
 on:
   schedule:
-    # Jam GitHub pakai UTC. WIB = UTC + 7.
-    - cron: "5 5 * * 1-4"     # 12:05 WIB Senin–Kamis (setelah Sesi 1)
-    - cron: "35 4 * * 5"      # 11:35 WIB Jumat (setelah Sesi 1)
-    - cron: "10 9 * * 1-5"    # 16:10 WIB Senin–Jumat (setelah closing)
-  workflow_dispatch:          # tombol "Run workflow" untuk jalan manual
+    # Cadangan saja: jadwal bawaan GitHub sering telat atau terlewat. Pemicu utama sebaiknya dari cron-job.org.
+    # Jam GitHub pakai UTC (WIB = UTC + 7).
+    # Selama jam istirahat dan setelah closing harga tidak bergerak, jadi run mana pun yang jalan dulu memberi data yang sama.
+    - cron: "5,25,50 5 * * 1-4"    # 12:05, 12:25, 12:50 WIB Senin–Kamis (istirahat 12:00–13:30)
+    - cron: "15 6 * * 1-4"         # 13:15 WIB Senin–Kamis
+    - cron: "35 4 * * 5"           # 11:35 WIB Jumat (istirahat 11:30–14:00)
+    - cron: "0,30 5,6 * * 5"       # 12:00, 12:30, 13:00, 13:30 WIB Jumat
+    - cron: "10,35 9 * * 1-5"      # 16:10, 16:35 WIB (setelah closing)
+    - cron: "5,40 10 * * 1-5"      # 17:05, 17:40 WIB
+  workflow_dispatch:               # tombol "Run workflow" (manual) dan pemicu dari cron-job.org
+    inputs:
+      paksa:
+        description: "Simpan hasil walaupun datanya sama dengan run sebelumnya"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -37,6 +47,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          if { [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.paksa }}" = "false" ]; } && git diff --quiet -- docs/hasil_screener.csv; then
+            echo "Data sama dengan run sebelumnya (pasar sedang istirahat/tutup). Tidak ada yang disimpan."
+            exit 0
+          fi
           git add -A
           git diff --cached --quiet || git commit -m "Update screener $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M') WIB"
           git pull --rebase
