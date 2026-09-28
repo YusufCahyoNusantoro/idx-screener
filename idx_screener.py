@@ -1215,6 +1215,13 @@ TEMPLATE = r'''<!DOCTYPE html>
   .sticky2 { position:sticky; left:38px; z-index:2; box-shadow:1px 0 0 var(--line); }
   thead .sticky1, thead .sticky2 { z-index:4; }
   tbody tr.top10 td { background:var(--top-bg); }
+  tbody tr.grp { cursor:default; }
+  tbody tr.grp td { background:var(--panel2); padding:7px 12px; font-size:0.8rem; font-weight:800; color:var(--ink2); border-bottom:1px solid var(--line); }
+  tbody tr.grp td span { position:sticky; left:12px; }
+  tbody tr.grp:hover td { background:var(--panel2); }
+  .count-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:6px 2px 8px; }
+  .count-row .count-info { margin:0; }
+  .pin-chip { font-size:0.84rem; }
   tbody tr.top10:hover td { background:var(--top-hover); }
   tbody tr.top10 td.sticky1 { box-shadow:inset 4px 0 0 var(--top-line); }
   .top-badge { display:inline-block; margin-left:6px; font-size:0.68rem; font-weight:800; padding:1px 6px; border-radius:6px;
@@ -1295,6 +1302,12 @@ TEMPLATE = r'''<!DOCTYPE html>
   .calc input { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); }
   .calc-out { margin-top:10px; background:var(--accent-soft); border-radius:10px; padding:10px 12px; font-size:0.9rem; }
   .d-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .xh-wrap { position:relative; }
+  .xh-wrap svg.smc-svg { cursor:crosshair; touch-action:pan-y; }
+  .xh-legend { position:absolute; left:10px; top:6px; right:110px; z-index:1; font-size:0.78rem; color:var(--ink2); pointer-events:none;
+    display:flex; flex-wrap:wrap; gap:2px 8px; align-items:baseline; background:color-mix(in srgb, var(--panel2) 82%, transparent); padding:3px 8px; border-radius:8px; width:max-content; max-width:calc(100% - 120px); }
+  .xh-legend b { color:var(--ink); margin-right:4px; }
+  .xl-k { color:var(--muted); font-weight:600; }
   .smc-toggles { margin-top:8px; padding-top:0; border-top:0; gap:6px 14px; }
   .smc-toggles .chip { font-size:0.8rem; }
   .smc-sum { margin:10px 0 0; padding-left:18px; font-size:0.86rem; color:var(--ink2); }
@@ -1376,10 +1389,16 @@ TEMPLATE = r'''<!DOCTYPE html>
   .full-grid { max-width:1500px; margin:0 auto; padding:18px clamp(12px,3vw,28px) 48px; display:grid;
     grid-template-columns:minmax(0,1.75fr) minmax(340px,1fr); gap:16px; align-items:start; }
   .full-col { display:flex; flex-direction:column; gap:14px; min-width:0; }
+  .full-grid2 { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  #full .full-head-in, #full .full-grid { max-width:1880px; }
+  .full-span { grid-column:1 / -1; margin:0; min-width:0; }
+  .full-span > .d-sec:first-child { margin-top:0; }
+  body.has-cmpbar .wrap { padding-bottom:110px; }
+  body.has-cmpbar .full-grid { padding-bottom:110px; }
   .full-col .card { margin:0; }
   .full-col .card > .d-sec:first-child { margin-top:0; }
   .full .hist-wrap { max-height:560px; }
-  @media (max-width:1000px) { .full-grid { grid-template-columns:1fr; } .fh-right { margin-left:0; } }
+  @media (max-width:1000px) { .full-grid, .full-grid2 { grid-template-columns:minmax(0,1fr); } .fh-right { margin-left:0; } }
   @media (max-width:700px) { .full-head { position:static; } }
   .d-head-btns { display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
   .d-nav { display:inline-flex; align-items:center; gap:6px; }
@@ -1503,7 +1522,8 @@ TEMPLATE = r'''<!DOCTYPE html>
     </details>
   </section>
 
-  <div class="count-info" id="count-info" aria-live="polite"></div>
+  <div class="count-row"><div class="count-info" id="count-info" aria-live="polite"></div>
+    <label class="chip pin-chip"><input type="checkbox" id="f-pin"> Sematkan Top 10 di atas</label></div>
   <div class="table-wrap">
     <table id="tbl">
       <thead>
@@ -2040,38 +2060,8 @@ function filtered() {
   return rows;
 }
 
-function render() {
-  const rows = filtered();
-  const watchOn = $("f-watch").checked && !$("search").value.trim();
-  $("watch-btn").classList.toggle("on", watchOn); $("watch-btn").setAttribute("aria-pressed", watchOn);
-  $("watch-count").textContent = watch.size;
-  const topOn = !watchOn && $("f-top").checked && !$("search").value.trim();
-  $("filter-card").classList.toggle("dim", watchOn || topOn || !!$("search").value.trim());
-  const note = $("filter-note");
-  note.textContent = $("search").value.trim() ? "Pencarian aktif: filter pencarian di bawah tidak dipakai sampai kotak cari dikosongkan."
-    : watchOn ? "Mode Watchlist aktif: filter pencarian tidak dipakai. Klik preset mana saja untuk kembali."
-    : topOn ? "Mode Top 10 aktif: filter pencarian tidak dipakai. Hapus centang Hanya Top 10 untuk kembali." : "";
-  note.classList.toggle("show", !!note.textContent);
-  const nAct = ["kd-filter", "sector-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min"].filter(id => $(id).value !== "").length
-    + ["f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen", "f-ms", "f-top"].filter(id => $(id).checked).length;
-  $("fcount").textContent = nAct ? `${nAct} aktif` : "";
-  $("count-info").textContent = $("search").value.trim()
-    ? `${fmtNum(rows.length)} hasil pencarian. Pencarian mengabaikan filter lain. Hapus isi kotak cari untuk kembali ke filter.`
-    : watchOn ? `Watchlist-mu: ${fmtNum(rows.length)} saham. Filter lain diabaikan. Klik preset mana saja untuk kembali.`
-    : topOn ? `Top 10 hari ini: ${fmtNum(rows.length)} saham (skor bobot standar, transaksi minimal Rp 5 M/hari). Filter lain diabaikan; hapus centang untuk kembali.`
-    : `${fmtNum(rows.length)} saham cocok dari ${fmtNum(DATA.length)}. Klik baris untuk melihat detail.`;
-  document.querySelectorAll(".kd-count").forEach(b => b.classList.toggle("on", b.dataset.kd === $("kd-filter").value));
-  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  page = Math.min(Math.max(0, page), pages - 1);
-  const slice = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-  if (!slice.length) {
-    $("tbody").innerHTML = $("search").value.trim()
-      ? `<tr><td colspan="22" class="empty">Kode atau nama "${esc($("search").value.trim())}" tidak ada di data run ini. Mungkin saham itu baru IPO, sedang disuspensi, atau datanya gagal diambil dari Yahoo.</td></tr>`
-      : watchOn ? `<tr><td colspan="22" class="empty">Watchlist masih kosong. Klik bintang ☆ di samping kode saham untuk menambahkannya.</td></tr>`
-      : `<tr><td colspan="22" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
-    const er = $("empty-reset"); if (er) er.addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
-  } else {
-    $("tbody").innerHTML = slice.map(r => `<tr data-t="${r.t}" tabindex="0"${r.top ? ' class="top10"' : ""}>
+function rowHtml(r) {
+  return `<tr data-t="${r.t}" tabindex="0"${r.top ? ' class="top10"' : ""}>
       <td class="sticky1"><button class="star ${watch.has(r.t) ? "on" : ""}" data-star="${r.t}" type="button" aria-label="Watchlist ${r.t}" aria-pressed="${watch.has(r.t)}">★</button></td>
       <td class="sticky2"><div class="tk">${r.t}${r.top ? `<span class="top-badge" title="Top 10 hari ini: peringkat ${r.top} (skor bobot standar, transaksi minimal Rp 5 M/hari)">#${r.top}</span>` : ""}</div><div class="tk-name" title="${esc(r.nm)}">${esc(r.nm) || "&nbsp;"}</div></td>
       <td>${candleSvg(r.ohlc)}</td>
@@ -2090,7 +2080,56 @@ function render() {
       <td>${verdictCell("h1", r.tf)}</td><td>${verdictCell("h2", r.tf)}</td><td>${verdictCell("h4", r.tf)}</td>
       <td>${verdictCell("daily", r.tf)}</td><td>${verdictCell("weekly", r.tf)}</td><td>${verdictCell("monthly", r.tf)}</td>
       <td>${r.cst && r.cst.total ? `${r.cst.count}/${r.cst.total}` : '<span class="muted">-</span>'}</td>
-    </tr>`).join("");
+    </tr>`;
+}
+const PIN_KEY = "idxs:pin";
+function pinActive() {
+  return $("f-pin").checked && !$("search").value.trim() && !$("f-watch").checked && !$("f-top").checked;
+}
+function displayRows() {
+  let rows = filtered(), pinned = [];
+  if (pinActive()) {
+    const w = weights();
+    pinned = DATA.filter(r => r.top).map(r => ({ ...r, score: score(r, w) })).sort((a, b) => a.top - b.top);
+    rows = rows.filter(r => !r.top);
+  }
+  return { pinned, rows };
+}
+function render() {
+  const { pinned, rows } = displayRows();
+  const watchOn = $("f-watch").checked && !$("search").value.trim();
+  $("watch-btn").classList.toggle("on", watchOn); $("watch-btn").setAttribute("aria-pressed", watchOn);
+  $("watch-count").textContent = watch.size;
+  const topOn = !watchOn && $("f-top").checked && !$("search").value.trim();
+  $("filter-card").classList.toggle("dim", watchOn || topOn || !!$("search").value.trim());
+  const note = $("filter-note");
+  note.textContent = $("search").value.trim() ? "Pencarian aktif: filter pencarian di bawah tidak dipakai sampai kotak cari dikosongkan."
+    : watchOn ? "Mode Watchlist aktif: filter pencarian tidak dipakai. Klik preset mana saja untuk kembali."
+    : topOn ? "Mode Top 10 aktif: filter pencarian tidak dipakai. Hapus centang Hanya Top 10 untuk kembali." : "";
+  note.classList.toggle("show", !!note.textContent);
+  const nAct = ["kd-filter", "sector-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min"].filter(id => $(id).value !== "").length
+    + ["f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen", "f-ms", "f-top"].filter(id => $(id).checked).length;
+  $("fcount").textContent = nAct ? `${nAct} aktif` : "";
+  $("count-info").textContent = $("search").value.trim()
+    ? `${fmtNum(rows.length)} hasil pencarian. Pencarian mengabaikan filter lain. Hapus isi kotak cari untuk kembali ke filter.`
+    : watchOn ? `Watchlist-mu: ${fmtNum(rows.length)} saham. Filter lain diabaikan. Klik preset mana saja untuk kembali.`
+    : topOn ? `Top 10 hari ini: ${fmtNum(rows.length)} saham (skor bobot standar, transaksi minimal Rp 5 M/hari). Filter lain diabaikan; hapus centang untuk kembali.`
+    : `${fmtNum(rows.length + (pinActive() ? DATA.filter(r => r.top).length : 0))} saham ditampilkan dari ${fmtNum(DATA.length)}${pinActive() ? " (Top 10 disematkan di atas)" : ""}. Klik baris untuk melihat detail.`;
+  document.querySelectorAll(".kd-count").forEach(b => b.classList.toggle("on", b.dataset.kd === $("kd-filter").value));
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  page = Math.min(Math.max(0, page), pages - 1);
+  const slice = rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  if (page > 0) pinned.length = 0;              // blok Top 10 hanya di halaman pertama
+  if (!slice.length && !pinned.length) {
+    $("tbody").innerHTML = $("search").value.trim()
+      ? `<tr><td colspan="22" class="empty">Kode atau nama "${esc($("search").value.trim())}" tidak ada di data run ini. Mungkin saham itu baru IPO, sedang disuspensi, atau datanya gagal diambil dari Yahoo.</td></tr>`
+      : watchOn ? `<tr><td colspan="22" class="empty">Watchlist masih kosong. Klik bintang ☆ di samping kode saham untuk menambahkannya.</td></tr>`
+      : `<tr><td colspan="22" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
+    const er = $("empty-reset"); if (er) er.addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
+  } else {
+    const grp = (txt) => `<tr class="grp"><td colspan="22"><span>${txt}</span></td></tr>`;
+    $("tbody").innerHTML = (pinned.length ? grp(`Top 10 hari ini <span class="muted">· disematkan di atas, urut peringkat</span>`) + pinned.map(rowHtml).join("")
+      + grp(`Hasil filter <span class="muted">· ${fmtNum(rows.length)} saham lain</span>`) : "") + slice.map(rowHtml).join("");
   }
   $("page-info").textContent = `Halaman ${page + 1} dari ${pages}`;
   $("prev-page").disabled = page <= 0; $("next-page").disabled = page >= pages - 1;
@@ -2213,7 +2252,8 @@ function smcLayers() { return Object.assign({ vp: true, pd: true, st: true, ob: 
 
 function smcChart(r, lay) {
   const S = r.smc, bars = S.b, nb = bars.length, p = r.plan;
-  const W = viewMode === "full" ? 1100 : 720, H = viewMode === "full" ? 500 : 330, L = 8, R = 88, T = 10, B = 22, iw = W - L - R, ih = H - T - B;
+  const full = viewMode === "full";
+  const W = full ? 1440 : 720, H = full ? 560 : 340, L = 8, R = full ? 104 : 92, T = 10, B = 22, iw = W - L - R, ih = H - T - B;
   let max = Math.max(...bars.map(b => b[1])), min = Math.min(...bars.map(b => b[2]));
   if (lay.plan && p) { max = Math.max(max, p.tp); min = Math.min(min, p.sl); }
   const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
@@ -2221,8 +2261,15 @@ function smcChart(r, lay) {
   const y = v => T + (max - v) / (max - min) * ih, x = i => L + i * sw + sw / 2, xl = i => L + i * sw;
   const clampY = v => Math.min(T + ih, Math.max(T, y(v)));
   const up = "var(--up)", dn = "var(--down)";
-  let s = `<svg class="d-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart 120 hari dengan Smart Money Concepts ${esc(r.t)}">`;
-  s += `<defs><clipPath id="cp"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath></defs><g clip-path="url(#cp)">`;
+  let s = `<svg class="d-chart smc-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart 120 hari dengan Smart Money Concepts ${esc(r.t)}" data-g="${[L, T, iw, ih, nb, min, max, W, H, R].join(",")}">`;
+  s += `<defs><clipPath id="cp"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath></defs>`;
+  // skala harga: kelipatan "rapi" (mis. 25, 50, 100) sekitar 6-8 garis
+  const raw = (max - min) / (full ? 11 : 8), mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+  const stepP = [1, 2, 2.5, 5, 10].map(k => k * mag).find(k => k >= raw) || mag * 10;
+  const ticks = []; for (let v = Math.ceil(min / stepP) * stepP; v <= max; v += stepP) ticks.push(v);
+  ticks.forEach(v => s += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1" opacity="0.7"/>`);
+  s += `<line x1="${L + iw}" x2="${L + iw}" y1="${T}" y2="${T + ih}" stroke="var(--line)"/>`;
+  s += `<g clip-path="url(#cp)">`;
   if (lay.pd && S.pd) {
     const [hi, lo] = S.pd, mid = (hi + lo) / 2;
     s += `<rect x="${L}" y="${clampY(hi)}" width="${iw}" height="${Math.max(0, clampY(mid) - clampY(hi))}" fill="${dn}" opacity="0.06"/>`;
@@ -2280,19 +2327,40 @@ function smcChart(r, lay) {
     });
   }
   s += "</g>";
-  // right-side labels
-  const labs = [];
-  const last = bars[nb - 1][3]; labs.push([last, fmtNum(last), "var(--ink)"]);
-  if (lay.plan && p) { labs.push([p.tp, "TP " + fmtNum(p.tp), up]); labs.push([p.sl, "SL " + fmtNum(p.sl), dn]); }
-  if (lay.vp && S.vp) labs.push([S.vp.poc, "POC " + fmtNum(S.vp.poc), "var(--orange)"]);
-  if (lay.pd && S.pd) { labs.push([S.pd[0], "Premium", dn]); labs.push([(S.pd[0] + S.pd[1]) / 2, "EQ " + fmtNum((S.pd[0] + S.pd[1]) / 2), "var(--muted)"]); labs.push([S.pd[1], "Discount", up]); }
-  const used = [];
-  labs.forEach(([v, t, col]) => {
-    if (v > max || v < min) return; let yy = y(v) + 4;
-    if (used.some(u => Math.abs(u - yy) < 12)) return; used.push(yy);
-    s += `<text x="${W - R + 6}" y="${yy.toFixed(1)}" font-size="10.5" font-weight="700" fill="${col}">${t}</text>`;
+  // skala harga di kanan (gaya TradingView/Stockbit): angka bertingkat + kotak label untuk level penting
+  const last = bars[nb - 1][3], prevC = nb > 1 ? bars[nb - 2][3] : bars[nb - 1][0], lastCol = last >= prevC ? up : dn;
+  s += `<line x1="${L}" x2="${L + iw}" y1="${y(last).toFixed(1)}" y2="${y(last).toFixed(1)}" stroke="${lastCol}" stroke-width="1" stroke-dasharray="2 3" opacity="0.9"/>`;
+  const tags = [[last, fmtNum(last), lastCol, true]];
+  if (lay.plan && p) { tags.push([p.tp, "TP " + fmtNum(p.tp), up]); tags.push([p.sl, "SL " + fmtNum(p.sl), dn]); }
+  if (lay.vp && S.vp) tags.push([S.vp.poc, "POC " + fmtNum(S.vp.poc), "var(--orange)"]);
+  if (lay.pd && S.pd) tags.push([(S.pd[0] + S.pd[1]) / 2, "EQ " + fmtNum((S.pd[0] + S.pd[1]) / 2), "var(--muted)"]);
+  const placed = [];
+  tags.forEach(([v, t, col, main]) => {
+    if (v > max || v < min) return;
+    let yy = y(v); while (placed.some(u => Math.abs(u - yy) < 15)) yy += 15; placed.push(yy);
+    const wTag = R - 6, x0 = L + iw + 3;
+    s += main
+      ? `<rect x="${x0}" y="${(yy - 8).toFixed(1)}" width="${wTag}" height="16" rx="3" fill="${col}"/><text x="${x0 + 6}" y="${(yy + 4).toFixed(1)}" font-size="11" font-weight="800" fill="#fff">${t}</text>`
+      : `<rect x="${x0}" y="${(yy - 8).toFixed(1)}" width="${wTag}" height="16" rx="3" fill="var(--panel)" stroke="${col}"/><text x="${x0 + 6}" y="${(yy + 4).toFixed(1)}" font-size="10.5" font-weight="700" fill="${col}">${t}</text>`;
   });
+  const pdMarks = lay.pd && S.pd ? [y(S.pd[0]) + 8, y(S.pd[1]) - 8] : [];
+  ticks.forEach(v => { const yy = y(v); if (placed.some(u => Math.abs(u - yy) < 12) || pdMarks.some(u => Math.abs(u - yy) < 11)) return;
+    s += `<text x="${L + iw + 8}" y="${(yy + 4).toFixed(1)}" font-size="10.5" fill="var(--muted)">${fmtNum(v)}</text>`; });
+  if (lay.pd && S.pd) {   // penanda zona di skala kanan, atas dan bawah
+    const yP = y(S.pd[0]) + 12, yD = y(S.pd[1]) - 4;
+    if (!placed.some(u => Math.abs(u - yP) < 13)) s += `<text x="${L + iw + 8}" y="${Math.max(T + 10, yP).toFixed(1)}" font-size="9.5" font-weight="700" fill="${dn}">▲ Premium</text>`;
+    if (!placed.some(u => Math.abs(u - yD) < 13)) s += `<text x="${L + iw + 8}" y="${Math.min(T + ih, yD).toFixed(1)}" font-size="9.5" font-weight="700" fill="${up}">▼ Discount</text>`;
+  }
   s += `<text x="${L}" y="${H - 6}" font-size="10" fill="var(--muted)">${esc(S.d0)}</text><text x="${L + iw}" y="${H - 6}" font-size="10" text-anchor="end" fill="var(--muted)">${esc(S.d1)}</text>`;
+  s += `<g class="xh" pointer-events="none" style="display:none">
+    <rect class="xh-band" y="${T}" height="${ih}" fill="var(--ink)" opacity="0.06"/>
+    <line class="xh-v" y1="${T}" y2="${T + ih}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>
+    <line class="xh-h" x1="${L}" x2="${L + iw}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>
+    <rect class="xh-pbox" x="${L + iw + 3}" width="${R - 6}" height="18" rx="3" fill="var(--ink)"/>
+    <text class="xh-ptxt" x="${L + iw + 9}" font-size="11" font-weight="800" fill="var(--panel)"></text>
+    <rect class="xh-dbox" y="${H - 20}" width="96" height="18" rx="3" fill="var(--ink)"/>
+    <text class="xh-dtxt" y="${H - 7}" font-size="10.5" font-weight="700" fill="var(--panel)" text-anchor="middle"></text>
+  </g>`;
   return s + "</svg>";
 }
 
@@ -2321,9 +2389,50 @@ function smcSummary(r) {
   return out;
 }
 
+const HARI3 = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"], BLN3 = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+function attachCrosshair(r, box) {
+  const S = r.smc, svg = box.querySelector("svg.smc-svg"), leg = box.querySelector(".xh-legend"); if (!svg || !S) return;
+  const [L, T, iw, ih, nb, min, max, W, H] = svg.dataset.g.split(",").map(Number);
+  const base = Date.parse(S.d0 + "T00:00:00Z"), sw = iw / nb;
+  const g = svg.querySelector(".xh"), vL = g.querySelector(".xh-v"), hL = g.querySelector(".xh-h"), band = g.querySelector(".xh-band");
+  const pBox = g.querySelector(".xh-pbox"), pTxt = g.querySelector(".xh-ptxt"), dBox = g.querySelector(".xh-dbox"), dTxt = g.querySelector(".xh-dtxt");
+  const idx = r.t === "IHSG";
+  const fp = v => idx ? fmtDec(v, 2) : fmtNum(v);
+  const tglOf = i => new Date(base + (S.do ? S.do[i] : i) * 86400000);
+  const legend = i => {
+    const b = S.b[i], prev = i > 0 ? S.b[i - 1][3] : null, chg = prev ? (b[3] / prev - 1) * 100 : null, d = tglOf(i), c = b[3] >= b[0] ? "pos" : "neg";
+    const vol = !idx && S.v && S.v[i] != null ? ` <span class="xl-k">Vol</span> ${fmtNum(S.v[i])} lot` : "";
+    leg.innerHTML = `<b>${HARI3[d.getUTCDay()]}, ${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}</b>
+      <span class="xl-k">O</span> <span class="${c}">${fp(b[0])}</span> <span class="xl-k">H</span> <span class="${c}">${fp(b[1])}</span>
+      <span class="xl-k">L</span> <span class="${c}">${fp(b[2])}</span> <span class="xl-k">C</span> <span class="${c}">${fp(b[3])}</span>
+      ${chg == null ? "" : `<span class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "+" : ""}${fmtDec(chg, 2)}%</span>`}${vol}`;
+  };
+  legend(nb - 1);
+  const toSvg = e => { const rc = svg.getBoundingClientRect(); const pt = e.touches ? e.touches[0] : e; return [(pt.clientX - rc.left) * W / rc.width, (pt.clientY - rc.top) * H / rc.height]; };
+  const move = e => {
+    const [sx, sy] = toSvg(e);
+    if (sx < L || sx > L + iw || sy < T || sy > T + ih) { hide(); return; }
+    const i = Math.max(0, Math.min(nb - 1, Math.floor((sx - L) / sw))), cx = L + i * sw + sw / 2;
+    g.style.display = "";
+    vL.setAttribute("x1", cx); vL.setAttribute("x2", cx);
+    band.setAttribute("x", L + i * sw); band.setAttribute("width", Math.max(1, sw));
+    hL.setAttribute("y1", sy); hL.setAttribute("y2", sy);
+    pBox.setAttribute("y", sy - 9); pTxt.setAttribute("y", sy + 4);
+    pTxt.textContent = fp(max - (sy - T) / ih * (max - min));
+    const d = tglOf(i), dx = Math.max(L + 48, Math.min(L + iw - 48, cx));
+    dBox.setAttribute("x", dx - 48); dTxt.setAttribute("x", dx);
+    dTxt.textContent = `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`;
+    legend(i);
+    if (e.cancelable && e.touches) e.preventDefault();
+  };
+  const hide = () => { g.style.display = "none"; legend(nb - 1); };
+  svg.addEventListener("mousemove", move); svg.addEventListener("mouseleave", hide);
+  svg.addEventListener("touchstart", move, { passive: false }); svg.addEventListener("touchmove", move, { passive: false }); svg.addEventListener("touchend", hide);
+}
 function renderSmc(r) {
   const lay = smcLayers();
-  $("smc-box").innerHTML = smcChart(r, lay);
+  $("smc-box").innerHTML = `<div class="xh-wrap"><div class="xh-legend" aria-live="off"></div>${smcChart(r, lay)}</div>`;
+  attachCrosshair(r, $("smc-box"));
   $("smc-toggles").innerHTML = SMC_LAYERS.map(([k, n]) => `<label class="chip"><input type="checkbox" data-layer="${k}" ${lay[k] ? "checked" : ""}> ${n}</label>`).join("");
   $("smc-toggles").querySelectorAll("input").forEach(cb => cb.addEventListener("change", () => {
     const cur = smcLayers(); cur[cb.dataset.layer] = cb.checked; ls.set(SMC_KEY, cur); renderSmc(r);
@@ -2543,6 +2652,7 @@ function toggleCmp(t) {
 }
 function renderCmpBar() {
   const bar = $("cmp-bar"); if (!bar) return;
+  document.body.classList.toggle("has-cmpbar", cmp.length > 0);
   if (!cmp.length) { bar.classList.remove("show"); return; }
   bar.innerHTML = `<span><b>Bandingkan (${cmp.length}/${CMP_MAX}):</b> ${cmp.map(esc).join(", ")}</span>
     <button class="icon-btn" id="cmp-open" type="button" ${cmp.length < 2 ? "disabled title=\"Pilih minimal 2 saham\"" : ""}>Buka perbandingan</button>
@@ -2698,7 +2808,7 @@ function renderCompare() {
 
 /* ---------- detail saham: panel kanan & layar penuh ---------- */
 let viewMode = "panel", navList = [];
-function currentNav(t) { const l = filtered().map(r => r.t); return l.includes(t) ? l : [t]; }
+function currentNav(t) { const { pinned, rows } = displayRows(); const l = pinned.map(r => r.t).concat(rows.map(r => r.t)); return l.includes(t) ? l : [t]; }
 function detailParts(r, r0, w) {
   const up = r.chg >= 0, c = r._ck, p = r.plan, tf = r.tf || {};
   const comp = [["Trend", r.trend, w.trend], ["Breakout", r.brk, w.brk], ["Price action", r.pa, w.pa], ["Momentum", r.mom, w.mom]];
@@ -2755,18 +2865,18 @@ function openDetail(t, mode, opt = {}) {
         ${r.top ? `<span class="top-badge">Top 10 #${r.top}</span>` : ""}
         <span class="fh-right">${P.star}${P.cmpb}${navHtml(t)}</span>
       </div></div>
-      <div class="full-grid">
-        <div class="full-col">
-          <section class="card">${P.chart}</section>
-          <section class="card">${P.sim}</section>
-          <section class="card">${P.hist}</section>
-        </div>
+      <div class="full-grid full-grid2">
+        <section class="card full-span">${P.chart}</section>
         <div class="full-col">
           <section class="card"><div class="muted" style="font-size:0.82rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.</div>${P.kond}${P.struktur}</section>
           <section class="card">${P.plan}</section>
+        </div>
+        <div class="full-col">
           <section class="card">${P.checklist}</section>
           <section class="card">${P.skor}${P.tf}${P.lain}${P.foot}</section>
         </div>
+        <section class="card full-span">${P.sim}</section>
+        <section class="card full-span">${P.hist}</section>
       </div>`;
     $("full").classList.add("open"); document.body.classList.add("noscroll");
     if (!opt.fromPop) {
@@ -2909,6 +3019,8 @@ if (location.protocol === "file:") {
   $("sector-filter").innerHTML = '<option value="">Semua sektor</option>' + Object.keys(cnt).filter(k => k !== "-").sort()
     .map(k => `<option value="${esc(k)}">${esc(k)} (${cnt[k]})</option>`).join("") + (cnt["-"] ? `<option value="-">Tanpa sektor (${cnt["-"]})</option>` : "");
 })();
+$("f-pin").checked = ls.get(PIN_KEY, true);
+$("f-pin").addEventListener("change", () => { ls.set(PIN_KEY, $("f-pin").checked); page = 0; render(); });
 renderMarket(); load(); render(); renderCal(); renderJournal();
 renderCmpBar();
 (() => { const f = $("filt"); f.open = !!ls.get("idxs:filt", false); f.addEventListener("toggle", () => ls.set("idxs:filt", f.open)); })();
