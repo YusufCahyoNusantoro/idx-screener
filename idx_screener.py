@@ -1351,6 +1351,32 @@ TEMPLATE = r'''<!DOCTYPE html>
   .tk-chip:hover { border-color:var(--accent); color:var(--accent); }
   @media (max-width:700px) { .cal-cell { min-height:64px; } .cal-moon small, .cal-ev { display:none; } .cal-ev + .cal-ev { display:none; } }
 
+  /* layar penuh */
+  .full { position:fixed; inset:0; z-index:25; background:var(--bg); overflow-y:auto; display:none; }
+  .full.open { display:block; }
+  body.noscroll { overflow:hidden; }
+  .full-head { position:sticky; top:0; z-index:3; background:var(--panel); border-bottom:1px solid var(--line); box-shadow:var(--shadow);
+    padding-top:env(safe-area-inset-top,0px); }
+  .full-head-in { max-width:1500px; margin:0 auto; padding:12px clamp(12px,3vw,28px); display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap; }
+  .fh-id { display:flex; flex-direction:column; line-height:1.2; }
+  .fh-tk { font-size:1.45rem; font-weight:800; letter-spacing:-0.01em; }
+  .fh-name { font-size:0.82rem; color:var(--muted); }
+  .fh-price { font-size:1.25rem; font-weight:800; }
+  .fh-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .full-grid { max-width:1500px; margin:0 auto; padding:18px clamp(12px,3vw,28px) 48px; display:grid;
+    grid-template-columns:minmax(0,1.75fr) minmax(340px,1fr); gap:16px; align-items:start; }
+  .full-col { display:flex; flex-direction:column; gap:14px; min-width:0; }
+  .full-col .card { margin:0; }
+  .full-col .card > .d-sec:first-child { margin-top:0; }
+  .full .hist-wrap { max-height:560px; }
+  @media (max-width:1000px) { .full-grid { grid-template-columns:1fr; } .fh-right { margin-left:0; } }
+  @media (max-width:700px) { .full-head { position:static; } }
+  .d-head-btns { display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+  .d-nav { display:inline-flex; align-items:center; gap:6px; }
+  .d-nav .icon-btn { padding:6px 11px; }
+  .d-nav .icon-btn:disabled { opacity:.35; cursor:default; }
+  .d-pos { font-size:0.8rem; min-width:48px; text-align:center; }
+
   /* guide */
   .guide-item { border:1px solid var(--line); border-radius:10px; margin-bottom:8px; overflow:hidden; background:var(--panel); }
   .guide-item summary { cursor:pointer; padding:11px 14px; font-weight:700; font-size:0.9rem; list-style:none; display:flex; gap:8px; align-items:center; }
@@ -1518,7 +1544,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <div class="guide-body">
         <p>1. Lihat strip biru tua di atas. Kalau IHSG sedang turun, kurangi agresivitas atau tunggu dulu.</p>
         <p>2. Pilih satu gaya screening, misalnya "Tren naik rapi".</p>
-        <p>3. Klik baris saham untuk membuka detailnya: chart dengan garis entry, stop loss, dan target, checklist syarat, serta kalkulator lot.</p>
+        <p>3. Klik baris saham untuk membuka detailnya di panel kanan. Tombol ‹ › (atau panah kiri/kanan di keyboard) pindah ke saham berikutnya di hasil filter, dan tombol "⤢ Layar penuh" membuka tampilan dua kolom: chart besar dan riwayat di kiri, struktur, rencana, dan checklist di kanan. Tampilan layar penuh punya link sendiri (misalnya …/idx-screener/#s=PTBA) yang bisa di-bookmark.</p>
         <p>4. Tandai saham incaran dengan bintang ☆, lalu klik tombol "★ Watchlist saya" untuk melihat semuanya sekaligus, apa pun filternya.</p>
         <p>5. Cocokkan dengan chart di aplikasi trading-mu sebelum entry. Checklist yang banyak terpenuhi menambah keyakinan, tapi tidak menjamin harga naik.</p>
       </div>
@@ -1687,6 +1713,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   </section>
 </div>
 
+<div class="full" id="full" role="dialog" aria-modal="true" aria-labelledby="d-title"></div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" tabindex="-1"></aside>
 
@@ -2134,7 +2161,7 @@ function smcLayers() { return Object.assign({ vp: true, pd: true, st: true, ob: 
 
 function smcChart(r, lay) {
   const S = r.smc, bars = S.b, nb = bars.length, p = r.plan;
-  const W = 720, H = 330, L = 8, R = 88, T = 10, B = 22, iw = W - L - R, ih = H - T - B;
+  const W = viewMode === "full" ? 1100 : 720, H = viewMode === "full" ? 500 : 330, L = 8, R = 88, T = 10, B = 22, iw = W - L - R, ih = H - T - B;
   let max = Math.max(...bars.map(b => b[1])), min = Math.min(...bars.map(b => b[2]));
   if (lay.plan && p) { max = Math.max(max, p.tp); min = Math.min(min, p.sl); }
   const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
@@ -2444,26 +2471,21 @@ function renderHist(r) {
 }
 
 /* ---------- drawer ---------- */
-function openDrawer(t) {
-  const r0 = DATA.find(x => x.t === t); if (!r0) return;
-  const w = weights(), r = { ...r0, score: score(r0, w) }; openT = t;
+/* ---------- detail saham: panel kanan & layar penuh ---------- */
+let viewMode = "panel", navList = [];
+function currentNav(t) { const l = filtered().map(r => r.t); return l.includes(t) ? l : [t]; }
+function detailParts(r, r0, w) {
   const up = r.chg >= 0, c = r._ck, p = r.plan, tf = r.tf || {};
-  const calc = ls.get(CALC, { modal: 10000000, risk: 1 });
   const comp = [["Trend", r.trend, w.trend], ["Breakout", r.brk, w.brk], ["Price action", r.pa, w.pa], ["Momentum", r.mom, w.mom]];
   const tfNames = [["h1", "1 jam"], ["h2", "2 jam"], ["h4", "4 jam"], ["daily", "Harian"], ["weekly", "Mingguan"], ["monthly", "Bulanan"]];
-  $("drawer").innerHTML = `
-    <div class="d-head">
-      <div><div class="d-tk" id="d-title">${r.t}</div><div class="d-name">${esc(r.nm)}${r.sector && r.sector !== "-" ? ". " + esc(r.sector) : ""}</div></div>
-      <button class="icon-btn" id="d-close" type="button">Tutup</button>
-    </div>
-    <div class="d-price">${fmtNum(r.p)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(r.chg, 2)}%</span></div>
-    <div class="muted" style="font-size:0.8rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.${r.top ? ` <span class="top-badge">Top 10 #${r.top}</span>` : ""}</div>
-    <div class="d-sec">
-      ${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}
-      <div style="margin-top:6px">${badges(r)}</div>
-    </div>
-    ${msBlock(r)}
-    ${r.smc ? `<div class="d-sec"><h3>Chart 120 hari dengan Smart Money Concepts</h3>
+  const sub = `${esc(r.nm)}${r.sector && r.sector !== "-" ? `${r.nm ? " · " : ""}${esc(r.sector)}` : ""}`;
+  return {
+    sub, up,
+    price: `${fmtNum(r.p)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(r.chg, 2)}%</span>`,
+    meta: `Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.${r.top ? ` <span class="top-badge">Top 10 #${r.top}</span>` : ""}`,
+    kond: `<div class="d-sec">${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}<div style="margin-top:6px">${badges(r)}</div></div>`,
+    struktur: msBlock(r),
+    chart: r.smc ? `<div class="d-sec"><h3>Chart 120 hari dengan Smart Money Concepts</h3>
       <div id="smc-box"></div>
       <div class="chips smc-toggles" id="smc-toggles"></div>
       <ul class="smc-sum">${smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
@@ -2471,25 +2493,110 @@ function openDrawer(t) {
     </div>` : `<div class="d-sec"><h3>Chart 30 hari</h3>${bigChart(r)}
       <div class="legend"><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--orange)"></i>MA50</span>${p ? '<span><i style="background:var(--accent);opacity:.35;height:8px"></i>Area entry</span><span><i style="background:var(--down)"></i>Stop loss</span><span><i style="background:var(--up)"></i>Target</span>' : ""}</div>
       <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Chart SMC 120 hari belum tersedia karena riwayat harga saham ini masih terlalu pendek.</p>
-    </div>`}
-    <div class="d-sec"><h3>Checklist: ${c.pass} dari ${c.total} syarat terpenuhi</h3>
-      <ul class="checklist">${c.items.map(([label, ok]) => `<li><span class="ci ${ok === null ? "na" : ok ? "y" : "x"}">${ok === null ? "–" : ok ? "✓" : "✗"}</span><span>${esc(label)}${ok === null ? ' <span class="muted">(data tidak tersedia)</span>' : ""}</span></li>`).join("")}</ul>
-    </div>
-    <div class="d-sec" id="plan-sec"></div>
-    <div class="d-sec" id="hist-sec"></div>
-    <div class="d-sec"><h3>Rincian skor</h3><div class="bars">${comp.map(([n, v, wt]) => `<div class="bar-row"><span>${n}</span><span class="track"><i style="width:${v}%"></i></span><span>${v}/100, bobot ${wt}</span></div>`).join("")}</div></div>
-    <div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>
-    <div class="d-sec"><h3>Data lain</h3><div class="muted" style="font-size:0.86rem">RSI ${fmtDec(r.rsi, 1)}. Volume ${fmtDec(r.vr, 2)}× rata-rata. Transaksi ${fmtValue(r.val)}/hari. Beta ${r.beta == null ? "-" : fmtDec(r.beta, 2)}. ${r.cst && r.cst.total ? `Masuk Top 10 ${r.cst.count} dari ${r.cst.total} hari terakhir.` : ""}</div></div>
-    <div class="d-actions"><button class="icon-btn" id="d-star" type="button">${watch.has(r.t) ? "★ Hapus dari watchlist" : "☆ Tambah ke watchlist"}</button></div>
-    <p class="d-foot">Semua angka dihitung otomatis dari data Yahoo Finance dan bisa tertunda. Cocokkan dengan chart di aplikasi trading-mu sebelum mengambil keputusan.</p>`;
-  $("drawer").classList.add("open"); $("scrim").classList.add("open"); $("drawer").focus();
-  $("d-close").addEventListener("click", closeDrawer);
-  $("d-star").addEventListener("click", () => { toggleWatch(r.t); openDrawer(r.t); });
+    </div>`,
+    checklist: `<div class="d-sec"><h3>Checklist: ${c.pass} dari ${c.total} syarat terpenuhi</h3>
+      <ul class="checklist">${c.items.map(([label, ok]) => `<li><span class="ci ${ok === null ? "na" : ok ? "y" : "x"}">${ok === null ? "–" : ok ? "✓" : "✗"}</span><span>${esc(label)}${ok === null ? ' <span class="muted">(data tidak tersedia)</span>' : ""}</span></li>`).join("")}</ul></div>`,
+    plan: '<div class="d-sec" id="plan-sec"></div>',
+    hist: '<div class="d-sec" id="hist-sec"></div>',
+    skor: `<div class="d-sec"><h3>Rincian skor</h3><div class="bars">${comp.map(([n, v, wt]) => `<div class="bar-row"><span>${n}</span><span class="track"><i style="width:${v}%"></i></span><span>${v}/100, bobot ${wt}</span></div>`).join("")}</div></div>`,
+    tf: `<div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>`,
+    lain: `<div class="d-sec"><h3>Data lain</h3><div class="muted" style="font-size:0.86rem">RSI ${fmtDec(r.rsi, 1)}. Volume ${fmtDec(r.vr, 2)}× rata-rata. Transaksi ${fmtValue(r.val)}/hari. Beta ${r.beta == null ? "-" : fmtDec(r.beta, 2)}. ${r.cst && r.cst.total ? `Masuk Top 10 ${r.cst.count} dari ${r.cst.total} hari terakhir.` : ""}</div></div>`,
+    star: `<button class="icon-btn" id="d-star" type="button">${watch.has(r.t) ? "★ Hapus dari watchlist" : "☆ Tambah ke watchlist"}</button>`,
+    foot: '<p class="d-foot">Semua angka dihitung otomatis dari data Yahoo Finance dan bisa tertunda. Cocokkan dengan chart di aplikasi trading-mu sebelum mengambil keputusan.</p>',
+  };
+}
+function navHtml(t) {
+  const i = navList.indexOf(t), n = navList.length;
+  if (n <= 1) return "";
+  return `<span class="d-nav"><button class="icon-btn" id="d-prev" type="button" ${i <= 0 ? "disabled" : ""} aria-label="Saham sebelumnya">‹</button><span class="muted d-pos">${i + 1} / ${n}</span><button class="icon-btn" id="d-next" type="button" ${i >= n - 1 ? "disabled" : ""} aria-label="Saham berikutnya">›</button></span>`;
+}
+function openDrawer(t) { openDetail(t, "panel"); }
+function openDetail(t, mode, opt = {}) {
+  const r0 = DATA.find(x => x.t === t); if (!r0) return;
+  const w = weights(), r = { ...r0, score: score(r0, w) };
+  if (!opt.keepNav) navList = currentNav(t);
+  viewMode = mode; openT = t;
+  const P = detailParts(r, r0, w);
+  if (mode === "full") {
+    $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); $("drawer").innerHTML = "";
+    $("full").innerHTML = `
+      <div class="full-head"><div class="full-head-in">
+        <button class="icon-btn" id="d-close" type="button">← Kembali ke daftar</button>
+        <div class="fh-id"><span class="fh-tk" id="d-title">${r.t}</span><span class="fh-name">${P.sub}</span></div>
+        <span class="fh-price">${P.price}</span>
+        ${r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : ""}
+        ${r.top ? `<span class="top-badge">Top 10 #${r.top}</span>` : ""}
+        <span class="fh-right">${P.star}${navHtml(t)}</span>
+      </div></div>
+      <div class="full-grid">
+        <div class="full-col">
+          <section class="card">${P.chart}</section>
+          <section class="card">${P.hist}</section>
+        </div>
+        <div class="full-col">
+          <section class="card"><div class="muted" style="font-size:0.82rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.</div>${P.kond}${P.struktur}</section>
+          <section class="card">${P.plan}</section>
+          <section class="card">${P.checklist}</section>
+          <section class="card">${P.skor}${P.tf}${P.lain}${P.foot}</section>
+        </div>
+      </div>`;
+    $("full").classList.add("open"); document.body.classList.add("noscroll");
+    if (!opt.fromPop) {
+      const h = "#s=" + t;
+      if (location.hash.startsWith("#s=")) history.replaceState({ s: t }, "", h); else history.pushState({ s: t }, "", h);
+    }
+    $("full").scrollTop = 0; $("d-close").focus();
+  } else {
+    hideFull(true);
+    $("drawer").innerHTML = `
+      <div class="d-head">
+        <div><div class="d-tk" id="d-title">${r.t}</div><div class="d-name">${P.sub}</div></div>
+        <div class="d-head-btns">${navHtml(t)}<button class="icon-btn" id="d-full" type="button" title="Buka layar penuh">⤢ Layar penuh</button><button class="icon-btn" id="d-close" type="button">Tutup</button></div>
+      </div>
+      <div class="d-price">${P.price}</div>
+      <div class="muted" style="font-size:0.8rem">${P.meta}</div>
+      ${P.kond}${P.struktur}${P.chart}${P.checklist}${P.plan}${P.hist}${P.skor}${P.tf}${P.lain}
+      <div class="d-actions">${P.star}</div>${P.foot}`;
+    $("drawer").classList.add("open"); $("scrim").classList.add("open");
+    if (!opt.keepFocus) $("drawer").focus();
+    $("d-full").addEventListener("click", () => openDetail(t, "full", { keepNav: true }));
+  }
+  $("d-close").addEventListener("click", mode === "full" ? closeFull : closeDrawer);
+  $("d-star").addEventListener("click", () => { toggleWatch(t); openDetail(t, mode, { keepNav: true, fromPop: true, keepFocus: true }); });
+  const pv = $("d-prev"), nx = $("d-next");
+  if (pv) pv.addEventListener("click", () => stepDetail(-1));
+  if (nx) nx.addEventListener("click", () => stepDetail(1));
   renderPlan(r0, r);
   renderHist(r0);
 }
+function stepDetail(d) {
+  const i = navList.indexOf(openT), j = i + d;
+  if (i < 0 || j < 0 || j >= navList.length) return;
+  openDetail(navList[j], viewMode, { keepNav: true, keepFocus: true });
+}
+function hideFull(silent) {
+  if (!$("full").classList.contains("open")) return;
+  $("full").classList.remove("open"); $("full").innerHTML = ""; document.body.classList.remove("noscroll");
+  if (!silent && location.hash.startsWith("#s=")) history.replaceState(null, "", location.pathname + location.search);
+}
+function closeFull() {
+  const t = openT;
+  if (history.state && history.state.s) { history.back(); return; }   // popstate akan menutup tampilan
+  hideFull(); openT = null;
+  const tr = document.querySelector(`tr[data-t="${t}"]`); if (tr) tr.focus();
+}
+window.addEventListener("popstate", () => {
+  const m = location.hash.match(/^#s=([A-Z0-9]+)$/);
+  if (m && DATA.some(r => r.t === m[1])) openDetail(m[1], "full", { keepNav: navList.includes(m[1]), fromPop: true });
+  else if ($("full").classList.contains("open")) {
+    const t = openT; hideFull(true); openT = null;
+    const tr = document.querySelector(`tr[data-t="${t}"]`); if (tr) tr.focus();
+  }
+});
+
 function openIhsg() {
   const m = MARKET.ihsg; if (!m) return;
+  hideFull(true); viewMode = "panel"; navList = [];
   openT = "IHSG";
   const up = m.chg >= 0, tf = m.tf || {}, b = MARKET.breadth;
   const r = { t: "IHSG", p: m.p, smc: m.smc, plan: null };
@@ -2540,7 +2647,13 @@ $("tbody").addEventListener("click", e => {
 });
 $("tbody").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("tr[data-t]")) openDrawer(e.target.dataset.t); });
 $("scrim").addEventListener("click", closeDrawer);
-document.addEventListener("keydown", e => { if (e.key === "Escape" && openT) closeDrawer(); });
+document.addEventListener("keydown", e => {
+  if (!openT) return;
+  if (e.key === "Escape") { if ($("full").classList.contains("open")) closeFull(); else closeDrawer(); return; }
+  if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && openT !== "IHSG" && !(e.target && e.target.closest && e.target.closest("input, select, textarea"))) {
+    e.preventDefault(); stepDetail(e.key === "ArrowLeft" ? -1 : 1);
+  }
+});
 
 /* ---------- new data check (no auto reload) ---------- */
 function checkUpdate() {
@@ -2562,6 +2675,7 @@ if (location.protocol === "file:") {
     .map(k => `<option value="${esc(k)}">${esc(k)} (${cnt[k]})</option>`).join("") + (cnt["-"] ? `<option value="-">Tanpa sektor (${cnt["-"]})</option>` : "");
 })();
 renderMarket(); load(); render(); renderCal(); renderJournal();
+(() => { const m = location.hash.match(/^#s=([A-Z0-9]+)$/); if (m && DATA.some(r => r.t === m[1])) openDetail(m[1], "full", { fromPop: true }); })();
 </script>
 </body>
 </html>
