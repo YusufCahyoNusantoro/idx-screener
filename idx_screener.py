@@ -764,6 +764,8 @@ def smc(d, L=5, win=120, ctx=260):
     eq_out = [[cl(p1), p2 - s0, rp(pr), nm] for p1, p2, pr, nm in eq if p2 >= s0][-4:]
     return {
         "b": [[rp(v) for v in row] for row in d[["Open", "High", "Low", "Close"]].iloc[-win:].values],
+        "v": ([int(round(x / 100)) if np.isfinite(x) else 0 for x in d["Volume"].iloc[-win:].to_numpy(float)]
+              if "Volume" in d else None),        # volume harian dalam lot
         "d0": tgl[s0], "d1": tgl[-1],
         "do": [(x - d.index[s0]).days for x in d.index[s0:]],
         "ev": ev_out, "ob": ob_out, "fvg": fvg_out, "eq": eq_out,
@@ -874,7 +876,9 @@ def update_konsistensi(rows, tanggal):
         except Exception:
             riw = {}
     top = sorted([r for r in rows if r["val"] >= 5e9], key=skor, reverse=True)[:10]
-    riw[tanggal] = [r["t"] for r in top]          # run berulang di hari sama = ditimpa
+    for i, r in enumerate(top, 1):
+        r["top"] = i                               # peringkat Top 10 hari ini
+    riw[tanggal] = [r["t"] for r in top]          # dicatat per tanggal candle bursa; run berulang = ditimpa
     tgl = sorted(riw)[-10:]
     riw = {k: riw[k] for k in tgl}
     RIWAYAT.write_text(json.dumps(riw, indent=1), encoding="utf-8")
@@ -1046,7 +1050,8 @@ def main():
         for k in ("_ma20", "_atr", "_ph", "_d"):
             r.pop(k, None)
 
-    update_konsistensi(rows, now.strftime("%Y-%m-%d"))
+    tgl_bursa = max(r["tgl"] for r in rows)       # tanggal candle terakhir, bukan tanggal run (akhir pekan tidak dihitung)
+    update_konsistensi(rows, tgl_bursa)
     out_html = Path(args.output).resolve()
     pasar = konteks_pasar(ke_tanggal(ihsg) if ihsg is not None else None, rows, ihsg_jam)
     tulis_html(rows, now, status, len(gagal), not args.no_intraday, out_html, not args.no_arsip, pasar)
@@ -1074,7 +1079,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     --line:#E1E4E8; --accent:#2E3A87; --accent-soft:#E8EAF7; --up:#0E9F6E; --up-soft:#E3F6EE;
     --down:#D64545; --down-soft:#FBE9E9; --amber:#9A6212; --amber-soft:#FBF1DE; --orange:#B8430E;
     --orange-soft:#FDEBDD; --blue:#2952C9; --blue-soft:#E4ECFD; --row-hover:#F7F8FB;
-    --shadow:0 1px 2px rgba(20,33,61,.06);
+    --shadow:0 1px 2px rgba(20,33,61,.06); --top-bg:#FFF6DB; --top-hover:#FFEFC2; --top-line:#E2A400; --top-ink:#7A5600;
     box-sizing:border-box;
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
   }
@@ -1083,14 +1088,14 @@ TEMPLATE = r'''<!DOCTYPE html>
       --bg:#0F1522; --panel:#161E2E; --panel2:#1C2638; --ink:#E6E9EF; --ink2:#C3C9D6; --muted:#8E98AD;
       --line:#263041; --accent:#9AA8FF; --accent-soft:#232C4D; --up:#34C38F; --up-soft:#15302A;
       --down:#F07171; --down-soft:#3A1E24; --amber:#E7B45A; --amber-soft:#35291A; --orange:#F29A63;
-      --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none;
+      --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
     }
   }
   :root[data-theme="dark"] {
     --bg:#0F1522; --panel:#161E2E; --panel2:#1C2638; --ink:#E6E9EF; --ink2:#C3C9D6; --muted:#8E98AD;
     --line:#263041; --accent:#9AA8FF; --accent-soft:#232C4D; --up:#34C38F; --up-soft:#15302A;
     --down:#F07171; --down-soft:#3A1E24; --amber:#E7B45A; --amber-soft:#35291A; --orange:#F29A63;
-    --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none;
+    --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
   }
   html { scroll-padding-top:env(safe-area-inset-top,0px); }
   *, *::before, *::after { box-sizing:border-box; }
@@ -1199,6 +1204,11 @@ TEMPLATE = r'''<!DOCTYPE html>
   .sticky1 { position:sticky; left:0; z-index:2; width:38px; min-width:38px; padding-left:10px !important; padding-right:0 !important; }
   .sticky2 { position:sticky; left:38px; z-index:2; box-shadow:1px 0 0 var(--line); }
   thead .sticky1, thead .sticky2 { z-index:4; }
+  tbody tr.top10 td { background:var(--top-bg); }
+  tbody tr.top10:hover td { background:var(--top-hover); }
+  tbody tr.top10 td.sticky1 { box-shadow:inset 4px 0 0 var(--top-line); }
+  .top-badge { display:inline-block; margin-left:6px; font-size:0.68rem; font-weight:800; padding:1px 6px; border-radius:6px;
+    background:var(--top-line); color:#1F1600; vertical-align:2px; cursor:help; }
   .star { background:none; border:0; cursor:pointer; font-size:1.05rem; color:var(--line); padding:2px; line-height:1; }
   .star.on { color:#E2A400; }
   .tk { font-weight:800; letter-spacing:0.01em; }
@@ -1298,6 +1308,17 @@ TEMPLATE = r'''<!DOCTYPE html>
   .j-tbl td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; background:var(--panel); }
   .j-exit { width:90px; padding:5px 7px; border:1px solid var(--line); border-radius:8px; }
   .j-stats { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
+
+  .hist-head { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:8px; }
+  .hist-head h3 { margin:0 auto 0 0; }
+  .hist-head .seg { margin:0; }
+  .hist-wrap { max-height:420px; }
+  .hist-tbl th { position:sticky; top:0; z-index:1; }
+  .hist-tbl td { white-space:nowrap; }
+  .hist-tbl tr.spike td { background:var(--top-bg); }
+  .vbar { display:inline-block; width:44px; height:6px; background:var(--panel2); border-radius:9px; margin-right:6px; vertical-align:middle; overflow:hidden; }
+  .vbar i { display:block; height:100%; background:var(--accent); opacity:.7; }
+  .vx-hi { color:var(--top-ink); font-weight:800; }
 
   /* kalender */
   .cal-head { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; margin-bottom:12px; }
@@ -1408,6 +1429,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <label class="chip"><input type="checkbox" id="f-confirmed"> Pola terkonfirmasi</label>
       <label class="chip"><input type="checkbox" id="f-allgreen"> Strong Buy D/W/M</label>
       <label class="chip"><input type="checkbox" id="f-ms"> Struktur searah naik</label>
+      <label class="chip"><input type="checkbox" id="f-top"> Hanya Top 10 hari ini</label>
     </div>
     <details class="adv" id="adv">
       <summary>Pengaturan lanjutan: bobot skor manual</summary>
@@ -1537,6 +1559,14 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p><b>4. Rencana dan ukuran posisi.</b> Di bagian Rencana, pilih "Berbasis struktur (order block)": entry di order block, stop loss sedikit di bawahnya, target di order block bearish berikutnya atau 2 kali risiko. Kalkulator lot menghitung jumlah lot dari risiko per transaksi.</p>
         <p><b>5. Catat dan evaluasi.</b> Klik "Catat ke jurnal", lalu tutup trade dengan harga keluar. Setelah sekitar 30 trade, bagian Jurnal trading menunjukkan setup mana yang benar-benar menghasilkan untukmu.</p>
         <p>Peringatan kuning muncul untuk saham dengan transaksi di bawah Rp 5 M/hari, karena di saham sepi struktur SMC mudah terbentuk oleh sedikit order besar.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Baris Top 10 dan riwayat harian</summary>
+      <div class="guide-body">
+        <p><b>Baris berwarna kuning</b> dengan label #1 sampai #10 adalah 10 saham dengan skor tertinggi hari ini (bobot standar 30/30/25/15, hanya saham dengan transaksi minimal Rp 5 M/hari). Centang "Hanya Top 10 hari ini" untuk menampilkan kesepuluhnya saja. Kolom Top 10 menghitung berapa hari bursa (dari 10 terakhir) saham itu masuk daftar ini.</p>
+        <p><b>Riwayat harian</b> di panel detail menampilkan harga buka, tertinggi, terendah, tutup, perubahan, volume (lot), perkiraan nilai transaksi, dan perbandingan volume dengan rata-rata 20 hari sebelumnya. Baris kuning menandai hari dengan volume minimal 2 kali rata-rata. Riwayat bisa diunduh sebagai CSV.</p>
+        <p>Data broker summary (broker pembeli dan penjual) tidak tersedia gratis untuk diambil otomatis, jadi tombol di bawah riwayat membuka halaman saham itu di Stockbit untuk dicek manual.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -1853,7 +1883,7 @@ function planCell(r) {
 
 /* ---------- state ---------- */
 const FIELDS = ["search", "kd-filter", "sector-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min"];
-const CHECKS = ["f-watch", "f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen", "f-ms"];
+const CHECKS = ["f-watch", "f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen", "f-ms", "f-top"];
 const W = ["w-trend", "w-brk", "w-pa", "w-mom"];
 function save() {
   const s = { preset: activePreset, sortKey, sortDir, page, min: $("min-score").value, f: {}, c: {}, w: {} };
@@ -1884,7 +1914,7 @@ function applyPreset(name, silent) {
   $("min-score").value = p.minScore; $("min-score-val").textContent = p.minScore;
   const f = p.filters || {};
   $("f-trend").checked = !!f.trend; $("f-breakout").checked = !!f.breakout; $("f-pattern").checked = !!f.pattern;
-  $("f-confirmed").checked = !!f.confirmed; $("f-allgreen").checked = !!f.allgreen; $("f-ms").checked = !!f.ms;
+  $("f-confirmed").checked = !!f.confirmed; $("f-allgreen").checked = !!f.allgreen; $("f-ms").checked = !!f.ms; $("f-top").checked = !!f.top;
   $("rsi-max").value = p.rsiMax ?? ""; $("rsi-min").value = ""; $("price-min").value = ""; $("price-max").value = "";
   $("val-min").value = p.valMin ?? ""; $("streak-min").value = p.streakMin ?? ""; $("kd-filter").value = p.kd || "";
   $("search").value = ""; $("f-watch").checked = false; $("sector-filter").value = "";
@@ -1909,6 +1939,8 @@ function filtered() {
   }
   if ($("f-watch").checked) {   // watchlist: tampilkan semua saham bertanda bintang, filter lain diabaikan
     rows = rows.filter(r => watch.has(r.t));
+  } else if ($("f-top").checked) {   // Top 10 hari ini: selalu 10 saham, filter lain diabaikan
+    rows = rows.filter(r => r.top);
   } else {
   rows = rows.filter(r => r.score >= +$("min-score").value);
   if ($("f-trend").checked) rows = rows.filter(r => r.trendOk);
@@ -1942,10 +1974,12 @@ function render() {
   const watchOn = $("f-watch").checked && !$("search").value.trim();
   $("watch-btn").classList.toggle("on", watchOn); $("watch-btn").setAttribute("aria-pressed", watchOn);
   $("watch-count").textContent = watch.size;
-  $("filter-card").classList.toggle("dim", watchOn);
+  const topOn = !watchOn && $("f-top").checked && !$("search").value.trim();
+  $("filter-card").classList.toggle("dim", watchOn || topOn);
   $("count-info").textContent = $("search").value.trim()
     ? `${fmtNum(rows.length)} hasil pencarian. Pencarian mengabaikan filter lain. Hapus isi kotak cari untuk kembali ke filter.`
     : watchOn ? `Watchlist-mu: ${fmtNum(rows.length)} saham. Filter lain diabaikan. Klik preset mana saja untuk kembali.`
+    : topOn ? `Top 10 hari ini: ${fmtNum(rows.length)} saham (skor bobot standar, transaksi minimal Rp 5 M/hari). Filter lain diabaikan; hapus centang untuk kembali.`
     : `${fmtNum(rows.length)} saham cocok dari ${fmtNum(DATA.length)}. Klik baris untuk melihat detail.`;
   document.querySelectorAll(".kd-count").forEach(b => b.classList.toggle("on", b.dataset.kd === $("kd-filter").value));
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -1958,9 +1992,9 @@ function render() {
       : `<tr><td colspan="22" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
     const er = $("empty-reset"); if (er) er.addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
   } else {
-    $("tbody").innerHTML = slice.map(r => `<tr data-t="${r.t}" tabindex="0">
+    $("tbody").innerHTML = slice.map(r => `<tr data-t="${r.t}" tabindex="0"${r.top ? ' class="top10"' : ""}>
       <td class="sticky1"><button class="star ${watch.has(r.t) ? "on" : ""}" data-star="${r.t}" type="button" aria-label="Watchlist ${r.t}" aria-pressed="${watch.has(r.t)}">★</button></td>
-      <td class="sticky2"><div class="tk">${r.t}</div><div class="tk-name" title="${esc(r.nm)}">${esc(r.nm) || "&nbsp;"}</div></td>
+      <td class="sticky2"><div class="tk">${r.t}${r.top ? `<span class="top-badge" title="Top 10 hari ini: peringkat ${r.top} (skor bobot standar, transaksi minimal Rp 5 M/hari)">#${r.top}</span>` : ""}</div><div class="tk-name" title="${esc(r.nm)}">${esc(r.nm) || "&nbsp;"}</div></td>
       <td>${candleSvg(r.ohlc)}</td>
       <td class="num">${fmtNum(r.p)}</td>
       <td class="num ${r.chg >= 0 ? "pos" : "neg"}">${r.chg >= 0 ? "+" : ""}${fmtDec(r.chg, 2)}%</td>
@@ -2368,6 +2402,47 @@ $("j-export").addEventListener("click", () => {
   el.href = url; el.download = `jurnal_trading_${ymd(new Date())}.csv`; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
+/* ---------- riwayat harian ---------- */
+const HIST_KEY = "idxs:histn";
+function histRows(r) {
+  const S = r.smc; if (!S || !S.b || !S.do) return [];
+  const base = Date.parse(S.d0 + "T00:00:00Z");
+  return S.b.map((b, i) => {
+    const vol = S.v ? S.v[i] : null, prev = i > 0 ? S.b[i - 1][3] : null;
+    const win = S.v ? S.v.slice(Math.max(0, i - 20), i) : [], avg = win.length ? win.reduce((a, x) => a + x, 0) / win.length : null;
+    return { tgl: new Date(base + S.do[i] * 86400000).toISOString().slice(0, 10), o: b[0], h: b[1], l: b[2], c: b[3],
+      chg: prev ? (b[3] / prev - 1) * 100 : null, vol, val: vol != null ? vol * 100 * b[3] : null, vx: avg ? vol / avg : null };
+  }).reverse();
+}
+function renderHist(r) {
+  const box = $("hist-sec"); if (!box) return;
+  const rows = histRows(r);
+  if (!rows.length) { box.innerHTML = '<h3>Riwayat harian</h3><p class="muted" style="margin:0">Riwayat belum tersedia untuk saham ini.</p>'; return; }
+  const n = ls.get(HIST_KEY, 20), shown = rows.slice(0, n), maxV = Math.max(...shown.map(x => x.vol || 0)) || 1;
+  const hari = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+  box.innerHTML = `<div class="hist-head"><h3>Riwayat harian</h3>
+      <div class="seg" role="group" aria-label="Jumlah hari">${[20, 60, rows.length].map(k => `<button type="button" data-n="${k}" class="${n === k || (k === rows.length && n > rows.length) ? "on" : ""}">${k === rows.length ? "Semua (" + k + ")" : k + " hari"}</button>`).join("")}</div>
+      <button class="icon-btn" id="hist-csv" type="button">Unduh CSV</button></div>
+    <div class="table-wrap hist-wrap"><table class="j-tbl hist-tbl"><thead><tr><th>Tanggal</th><th class="num">Buka</th><th class="num">Tertinggi</th><th class="num">Terendah</th><th class="num">Tutup</th><th class="num">Chg%</th><th class="num">Volume (lot)</th><th class="num">Nilai (perkiraan)</th><th class="num" title="Volume dibanding rata-rata 20 hari sebelumnya">× rata-rata</th></tr></thead>
+    <tbody>${shown.map(x => {
+      const d = new Date(x.tgl + "T00:00:00Z"), spike = x.vx != null && x.vx >= 2;
+      return `<tr${spike ? ' class="spike"' : ""}><td>${hari[d.getUTCDay()]}, ${esc(x.tgl)}</td><td class="num">${fmtNum(x.o)}</td><td class="num">${fmtNum(x.h)}</td><td class="num">${fmtNum(x.l)}</td><td class="num"><b>${fmtNum(x.c)}</b></td>
+        <td class="num ${x.chg == null ? "" : x.chg >= 0 ? "pos" : "neg"}">${x.chg == null ? "-" : (x.chg >= 0 ? "+" : "") + fmtDec(x.chg, 2) + "%"}</td>
+        <td class="num"><span class="vbar"><i style="width:${Math.round((x.vol || 0) / maxV * 100)}%"></i></span>${x.vol == null ? "-" : fmtNum(x.vol)}</td>
+        <td class="num">${x.val == null ? "-" : fmtValue(x.val)}</td>
+        <td class="num">${x.vx == null ? "-" : `<span class="${spike ? "vx-hi" : ""}">${fmtDec(x.vx, 1)}×</span>`}</td></tr>`;
+    }).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Baris kuning = volume minimal 2 kali rata-rata 20 hari sebelumnya (hari dengan transaksi tidak biasa). Nilai transaksi dihitung dari volume × harga tutup, jadi hanya perkiraan. Data frekuensi dan broker tidak tersedia dari Yahoo.</p>
+    <div class="d-actions"><a class="icon-btn" href="https://stockbit.com/symbol/${encodeURIComponent(r.t)}" target="_blank" rel="noopener" style="text-decoration:none">Lihat broker summary di Stockbit ↗</a></div>`;
+  box.querySelectorAll("[data-n]").forEach(b => b.addEventListener("click", () => { ls.set(HIST_KEY, +b.dataset.n); renderHist(r); }));
+  $("hist-csv").addEventListener("click", () => {
+    const head = "tanggal,buka,tertinggi,terendah,tutup,chg_persen,volume_lot,nilai_perkiraan,x_rata2";
+    const lines = [head].concat(rows.slice().reverse().map(x => [x.tgl, x.o, x.h, x.l, x.c, x.chg == null ? "" : x.chg.toFixed(2), x.vol ?? "", x.val == null ? "" : Math.round(x.val), x.vx == null ? "" : x.vx.toFixed(2)].join(",")));
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" }), url = URL.createObjectURL(blob), el = document.createElement("a");
+    el.href = url; el.download = `riwayat_${r.t}_${ymd(new Date())}.csv`; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+}
+
 /* ---------- drawer ---------- */
 function openDrawer(t) {
   const r0 = DATA.find(x => x.t === t); if (!r0) return;
@@ -2382,7 +2457,7 @@ function openDrawer(t) {
       <button class="icon-btn" id="d-close" type="button">Tutup</button>
     </div>
     <div class="d-price">${fmtNum(r.p)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(r.chg, 2)}%</span></div>
-    <div class="muted" style="font-size:0.8rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.</div>
+    <div class="muted" style="font-size:0.8rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.${r.top ? ` <span class="top-badge">Top 10 #${r.top}</span>` : ""}</div>
     <div class="d-sec">
       ${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}
       <div style="margin-top:6px">${badges(r)}</div>
@@ -2401,6 +2476,7 @@ function openDrawer(t) {
       <ul class="checklist">${c.items.map(([label, ok]) => `<li><span class="ci ${ok === null ? "na" : ok ? "y" : "x"}">${ok === null ? "–" : ok ? "✓" : "✗"}</span><span>${esc(label)}${ok === null ? ' <span class="muted">(data tidak tersedia)</span>' : ""}</span></li>`).join("")}</ul>
     </div>
     <div class="d-sec" id="plan-sec"></div>
+    <div class="d-sec" id="hist-sec"></div>
     <div class="d-sec"><h3>Rincian skor</h3><div class="bars">${comp.map(([n, v, wt]) => `<div class="bar-row"><span>${n}</span><span class="track"><i style="width:${v}%"></i></span><span>${v}/100, bobot ${wt}</span></div>`).join("")}</div></div>
     <div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>
     <div class="d-sec"><h3>Data lain</h3><div class="muted" style="font-size:0.86rem">RSI ${fmtDec(r.rsi, 1)}. Volume ${fmtDec(r.vr, 2)}× rata-rata. Transaksi ${fmtValue(r.val)}/hari. Beta ${r.beta == null ? "-" : fmtDec(r.beta, 2)}. ${r.cst && r.cst.total ? `Masuk Top 10 ${r.cst.count} dari ${r.cst.total} hari terakhir.` : ""}</div></div>
@@ -2410,6 +2486,7 @@ function openDrawer(t) {
   $("d-close").addEventListener("click", closeDrawer);
   $("d-star").addEventListener("click", () => { toggleWatch(r.t); openDrawer(r.t); });
   renderPlan(r0, r);
+  renderHist(r0);
 }
 function openIhsg() {
   const m = MARKET.ihsg; if (!m) return;
