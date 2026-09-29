@@ -831,6 +831,23 @@ def smc(d, L=5, win=120, ctx=260):
     }
 
 
+def pak_ohlcv(df, n=150):
+    """Candle terakhir untuk file data per saham: b=[[o,h,l,c]], v=volume (lot), ts=waktu (detik UTC)."""
+    if df is None or len(df) == 0:
+        return None
+    df = df.dropna(subset=["Close"]).iloc[-n:]
+    if len(df) < 10:
+        return None
+    last = float(df["Close"].iloc[-1])
+    rp = (lambda x: round(float(x))) if last >= 50 else (lambda x: round(float(x), 2))
+    idx = pd.DatetimeIndex(df.index)
+    if idx.tz is None:
+        idx = idx.tz_localize(WIB)
+    return {"b": [[rp(v) for v in row] for row in df[["Open", "High", "Low", "Close"]].values],
+            "v": [int(round(x / 100)) if np.isfinite(x) else 0 for x in df["Volume"].to_numpy(float)],
+            "ts": [int(t.timestamp()) for t in idx]}
+
+
 def struktur_ringkas(d, L=3):
     """Arah struktur (1 naik, -1 turun, 0 belum jelas) + kejadian BOS/CHoCH terakhir untuk satu timeframe."""
     if d is None or len(d) < 40:
@@ -969,6 +986,19 @@ BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli",
          "Agustus", "September", "Oktober", "November", "Desember"]
 
 
+def tulis_data_tf(tfdata, folder):
+    """Satu file JSON kecil per saham, diambil halaman hanya saat timeframe itu dipilih."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for f in folder.glob("*.json"):
+        f.unlink()
+    n = 0
+    for t, d in tfdata.items():
+        if d:
+            (folder / f"{t}.json").write_text(json.dumps(bersih(d), separators=(",", ":")), encoding="utf-8")
+            n += 1
+    print(f"  Data timeframe tersimpan untuk {n} saham di {folder}")
+
+
 def tulis_html(rows, now, status, n_gagal, pakai_intraday, out_html=OUT_HTML, arsip=True, pasar=None):
     tgl_data = max((r["tgl"] for r in rows), default="-")
     waktu = f"{now.day} {BULAN[now.month - 1]} {now.year}, {now:%H:%M} WIB"
@@ -1057,6 +1087,7 @@ def main():
               else ambil_sektor(list(harian), sektor_daftar))
 
     hari_ini = now.date()
+    tfdata = {}                                   # data timeframe lain per saham -> file data/<KODE>.json
     rows, gagal = [], [t for t in tickers if t not in harian]
     print(f"  Menghitung indikator {len(harian)} saham...")
     for t, d in harian.items():
@@ -1084,8 +1115,23 @@ def main():
         for t, df in jam.items():
             try:
                 tambah_intraday(per_t[t], df)
+                tfdata.setdefault(t, {})
+                for k, fr in (("1h", df), ("4h", gabung_jam(df, 4))):
+                    pk = pak_ohlcv(fr)
+                    if pk:
+                        tfdata[t][k] = pk
             except Exception as e:
                 print(f"  ! intraday {t}: {e}")
+        print(f"  Unduh data 15 menit (60 hari) untuk {len(calon)} saham...")
+        for t, df in unduh(calon, "60d", "15m").items():
+            try:
+                tfdata.setdefault(t, {})
+                for k, fr in (("15m", df), ("45m", gabung_jam(df, 3))):
+                    pk = pak_ohlcv(fr)
+                    if pk:
+                        tfdata[t][k] = pk
+            except Exception as e:
+                print(f"  ! 15m {t}: {e}")
 
     for r in rows:
         c, l, why = kondisi(r)
@@ -1101,6 +1147,11 @@ def main():
                 sw = struktur_ringkas(resample(r["_d"], "W-FRI"), L=3)
                 if sw:
                     r.setdefault("ms", {})["w"] = sw
+                tfdata.setdefault(r["t"], {})
+                for k, fr in (("1w", resample(r["_d"], "W-FRI")), ("1mo", bulanan(r["_d"]))):
+                    pk = pak_ohlcv(fr, 150 if k == "1w" else 120)
+                    if pk:
+                        tfdata[r["t"]][k] = pk
                     r.pop("ohlc", None)            # 30 candle terakhir diambil dari smc["b"] di browser
                     r["x"].pop("m20", None)
                     r["x"].pop("m50", None)
@@ -1112,6 +1163,9 @@ def main():
     tgl_bursa = max(r["tgl"] for r in rows)       # tanggal candle terakhir, bukan tanggal run (akhir pekan tidak dihitung)
     update_konsistensi(rows, tgl_bursa)
     out_html = Path(args.output).resolve()
+    for r in rows:
+        r["tfx"] = sorted(tfdata.get(r["t"], {}).keys())
+    tulis_data_tf(tfdata, Path(args.output).resolve().parent / "data")
     pasar = konteks_pasar(ke_tanggal(ihsg) if ihsg is not None else None, rows, ihsg_jam,
                           ke_tanggal(ihsg10) if ihsg10 is not None else None)
     tulis_html(rows, now, status, len(gagal), not args.no_intraday, out_html, not args.no_arsip, pasar)
@@ -1139,7 +1193,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     --line:#E1E4E8; --accent:#2E3A87; --accent-soft:#E8EAF7; --up:#0E9F6E; --up-soft:#E3F6EE;
     --down:#D64545; --down-soft:#FBE9E9; --amber:#9A6212; --amber-soft:#FBF1DE; --orange:#B8430E;
     --orange-soft:#FDEBDD; --blue:#2952C9; --blue-soft:#E4ECFD; --row-hover:#F7F8FB;
-    --shadow:0 1px 2px rgba(20,33,61,.06); --field-bg:#FFFFFF; --field-line:#D3D8E0; --field-ph:#8A93A6; --top-bg:#FFF6DB; --top-hover:#FFEFC2; --top-line:#E2A400; --top-ink:#7A5600;
+    --shadow:0 1px 2px rgba(20,33,61,.06); --moon-dark:#C9CED8; --moon-line:#AEB5C2; --field-bg:#FFFFFF; --field-line:#D3D8E0; --field-ph:#8A93A6; --top-bg:#FFF6DB; --top-hover:#FFEFC2; --top-line:#E2A400; --top-ink:#7A5600;
     box-sizing:border-box;
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
   }
@@ -1148,14 +1202,14 @@ TEMPLATE = r'''<!DOCTYPE html>
       --bg:#0F1522; --panel:#161E2E; --panel2:#1C2638; --ink:#E6E9EF; --ink2:#C3C9D6; --muted:#8E98AD;
       --line:#263041; --accent:#9AA8FF; --accent-soft:#232C4D; --up:#34C38F; --up-soft:#15302A;
       --down:#F07171; --down-soft:#3A1E24; --amber:#E7B45A; --amber-soft:#35291A; --orange:#F29A63;
-      --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --field-bg:#1E2940; --field-line:#3A4868; --field-ph:#9AA5BC; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
+      --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --moon-dark:#2E3447; --moon-line:#3E465C; --field-bg:#1E2940; --field-line:#3A4868; --field-ph:#9AA5BC; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
     }
   }
   :root[data-theme="dark"] {
     --bg:#0F1522; --panel:#161E2E; --panel2:#1C2638; --ink:#E6E9EF; --ink2:#C3C9D6; --muted:#8E98AD;
     --line:#263041; --accent:#9AA8FF; --accent-soft:#232C4D; --up:#34C38F; --up-soft:#15302A;
     --down:#F07171; --down-soft:#3A1E24; --amber:#E7B45A; --amber-soft:#35291A; --orange:#F29A63;
-    --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --field-bg:#1E2940; --field-line:#3A4868; --field-ph:#9AA5BC; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
+    --orange-soft:#3A2419; --blue:#8AB0FF; --blue-soft:#1C2A48; --row-hover:#1A2335; --shadow:none; --moon-dark:#2E3447; --moon-line:#3E465C; --field-bg:#1E2940; --field-line:#3A4868; --field-ph:#9AA5BC; --top-bg:#2B2614; --top-hover:#352E17; --top-line:#F2C94C; --top-ink:#F2C94C;
   }
   html { scroll-padding-top:env(safe-area-inset-top,0px); }
   *, *::before, *::after { box-sizing:border-box; }
@@ -1167,7 +1221,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   a { color:var(--accent); }
   button, input, select { font:inherit; color:inherit; }
   :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
-  .wrap { max-width:1500px; margin:0 auto; padding:20px clamp(12px,3vw,28px) 48px; }
+  .wrap { max-width:1880px; margin:0 auto; padding:20px clamp(12px,3vw,28px) 48px; }
 
   /* header */
   .top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
@@ -1179,6 +1233,13 @@ TEMPLATE = r'''<!DOCTYPE html>
   .icon-btn { border:1px solid var(--line); background:var(--panel); border-radius:10px; padding:7px 12px;
     cursor:pointer; font-size:0.85rem; font-weight:600; color:var(--ink2); }
   .icon-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .tabs { display:inline-flex; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:3px; gap:2px; }
+  .tab-btn { border:0; background:transparent; color:var(--ink2); font-weight:700; font-size:0.86rem; padding:7px 14px; border-radius:9px; cursor:pointer; }
+  .tab-btn:hover { color:var(--accent); }
+  .tab-btn.on { background:var(--panel); color:var(--accent); box-shadow:var(--shadow); }
+  :root[data-theme="dark"] .tab-btn.on { background:var(--accent-soft); }
+  .view[hidden] { display:none !important; }
+  .pg-size { margin-left:6px; padding:5px 8px; border:1px solid var(--field-line); border-radius:8px; background:var(--field-bg); color:var(--ink); }
   .update-bar { display:none; align-items:center; justify-content:space-between; gap:12px; background:var(--accent);
     color:#fff; padding:10px 16px; border-radius:12px; margin-bottom:14px; font-weight:600; font-size:0.9rem; }
   .update-bar button { background:#fff; color:#2E3A87; border:0; border-radius:8px; padding:6px 14px; font-weight:700; cursor:pointer; }
@@ -1259,7 +1320,7 @@ TEMPLATE = r'''<!DOCTYPE html>
 
   /* table */
   .count-info { color:var(--muted); font-size:0.86rem; margin:6px 2px 8px; }
-  .table-wrap { overflow:auto; max-height:78vh; border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); }
+  .table-wrap { overflow:auto; max-height:calc(100vh - 96px); border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); }
   table { border-collapse:separate; border-spacing:0; width:100%; }
   thead th { position:sticky; top:0; z-index:3; background:var(--panel2); color:var(--muted); text-align:left;
     padding:10px 12px; font-size:0.78rem; font-weight:700; border-bottom:1px solid var(--line); white-space:nowrap; cursor:pointer; user-select:none; }
@@ -1278,6 +1339,9 @@ TEMPLATE = r'''<!DOCTYPE html>
   tbody tr.grp { cursor:default; }
   tbody tr.grp td { background:var(--panel2); padding:7px 12px; font-size:0.8rem; font-weight:800; color:var(--ink2); border-bottom:1px solid var(--line); }
   tbody tr.grp td span { position:sticky; left:12px; }
+  tbody tr.grp-top { cursor:pointer; }
+  tbody tr.grp-top:hover td { background:var(--accent-soft); }
+  .grp-toggle { border:0; background:none; font:inherit; font-weight:800; color:var(--ink); cursor:pointer; padding:0; }
   tbody tr.grp:hover td { background:var(--panel2); }
   .count-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:6px 2px 8px; }
   .count-row .count-info { margin:0; }
@@ -1363,6 +1427,15 @@ TEMPLATE = r'''<!DOCTYPE html>
   .calc-out { margin-top:10px; background:var(--accent-soft); border-radius:10px; padding:10px 12px; font-size:0.9rem; }
   .d-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
   .xh-wrap { position:relative; }
+  .chart-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .chart-head h3 { margin:0; }
+  .tf-bar { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .tf-bar button { border:0; background:var(--panel); padding:6px 12px; font-size:0.82rem; font-weight:700; color:var(--ink2); cursor:pointer; border-right:1px solid var(--line); }
+  .tf-bar button:last-child { border-right:0; }
+  .tf-bar button.on { background:var(--accent); color:#fff; }
+  :root[data-theme="dark"] .tf-bar button.on { color:#0F1522; }
+  .tf-bar button:disabled { opacity:.35; cursor:not-allowed; }
+  .tf-msg { padding:60px 16px; text-align:center; color:var(--muted); background:var(--panel2); border-radius:12px; font-size:0.9rem; }
   .xh-wrap svg.smc-svg { cursor:crosshair; touch-action:pan-y; }
   .xh-legend { position:absolute; left:10px; top:6px; right:110px; z-index:1; font-size:0.78rem; color:var(--ink2); pointer-events:none;
     display:flex; flex-wrap:wrap; gap:2px 8px; align-items:baseline; background:color-mix(in srgb, var(--panel2) 82%, transparent); padding:3px 8px; border-radius:8px; width:max-content; max-width:calc(100% - 120px); }
@@ -1387,8 +1460,11 @@ TEMPLATE = r'''<!DOCTYPE html>
   .j-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:10px; background:var(--panel2); border-radius:12px; padding:12px; }
   .j-form input, .j-form select { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
   .j-tbl { width:100%; border-collapse:collapse; font-size:0.84rem; }
-  .j-tbl th { text-align:left; color:var(--muted); font-size:0.76rem; padding:8px 10px; border-bottom:1px solid var(--line); background:var(--panel2); position:static; }
-  .j-tbl td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; background:var(--panel); }
+  .j-tbl th { text-align:center; color:var(--muted); font-size:0.76rem; padding:8px 10px; border-bottom:1px solid var(--line); background:var(--panel2); position:static; }
+  .j-tbl td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:middle; background:var(--panel); text-align:center; }
+  .j-tbl td.num, .j-tbl th.num { text-align:center; }
+  .j-tbl td:first-child, .j-tbl th:first-child { text-align:left; }
+  .j-tbl .ms-row { justify-content:center; }
   .j-exit { width:90px; padding:5px 7px; border:1px solid var(--line); border-radius:8px; }
   .j-stats { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
 
@@ -1411,7 +1487,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   .cal-opts { display:flex; gap:14px; margin-left:auto; }
   .cal-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
   .cal-dow { font-size:0.78rem; font-weight:700; color:var(--muted); text-align:center; padding:2px 0 4px; }
-  .cal-cell { min-height:92px; border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:6px 7px; text-align:left;
+  .cal-cell { position:relative; min-height:92px; border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:6px 7px; text-align:left;
     display:flex; flex-direction:column; gap:3px; cursor:pointer; overflow:hidden; }
   .cal-cell:hover { border-color:var(--accent); }
   .cal-cell.empty { border:0; background:transparent; cursor:default; }
@@ -1420,6 +1496,10 @@ TEMPLATE = r'''<!DOCTYPE html>
   .cal-cell.sel { box-shadow:0 0 0 3px var(--accent-soft); border-color:var(--accent); }
   .cal-d { font-weight:700; font-size:0.86rem; }
   .cal-moon { font-size:1.15rem; line-height:1.1; }
+  .cal-moonic { position:absolute; top:6px; right:7px; line-height:0; }
+  .cal-moon-lab { font-size:0.68rem; color:var(--muted); font-weight:700; margin-top:2px; }
+  .cl-moon { display:inline-block; vertical-align:-3px; line-height:0; }
+  .moon-ic { display:block; }
   .cal-moon small { font-size:0.68rem; color:var(--muted); margin-left:4px; vertical-align:3px; font-weight:600; }
   .cal-ev { display:inline-block; font-size:0.68rem; font-weight:700; padding:1px 7px; border-radius:999px; white-space:nowrap; }
   .ev-msci { background:var(--blue-soft); color:var(--blue); }
@@ -1431,6 +1511,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   :root[data-theme="dark"] .ev-bi, :root[data-theme="dark"] .ev-fomc, :root[data-theme="dark"] .ev-cpi, :root[data-theme="dark"] .ev-nfp, :root[data-theme="dark"] .ev-inflasi { background:#2D2450; color:#B9A5F5; }
   .cal-lean { margin-top:auto; font-size:0.95rem; font-weight:800; line-height:1; }
   .cal-lean.up { color:var(--up); } .cal-lean.dn { color:var(--down); } .cal-lean.n { color:var(--muted); }
+  .cal-lean.weak { opacity:.38; }
   .cal-musim-sum { font-size:0.88rem; color:var(--ink2); margin:0 0 10px; }
   .cal-musim-sum:empty { display:none; }
   .cal-legend { display:flex; flex-wrap:wrap; gap:6px 18px; font-size:0.8rem; color:var(--muted); margin-top:10px; align-items:center; }
@@ -1440,7 +1521,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   .cl-date { flex:0 0 104px; font-weight:700; color:var(--ink2); white-space:nowrap; }
   .tk-chip { border:1px solid var(--line); background:var(--panel2); border-radius:999px; padding:2px 9px; margin:5px 5px 0 0; font-size:0.76rem; font-weight:700; cursor:pointer; }
   .tk-chip:hover { border-color:var(--accent); color:var(--accent); }
-  @media (max-width:700px) { .cal-cell { min-height:64px; } .cal-moon small, .cal-ev { display:none; } .cal-ev + .cal-ev { display:none; } }
+  @media (max-width:700px) { .cal-cell { min-height:64px; } .cal-moon-lab, .cal-ev { display:none; } .cal-moonic svg { width:16px; height:16px; } }
 
   /* layar penuh */
   .full { position:fixed; inset:0; z-index:25; background:var(--bg); overflow-y:auto; display:none; }
@@ -1514,9 +1595,12 @@ TEMPLATE = r'''<!DOCTYPE html>
     </div>
     <div class="top-actions">
       <button class="icon-btn" id="theme-btn" type="button" aria-label="Ganti tema terang atau gelap">Tema gelap</button>
-      <a class="icon-btn" href="#kalender" style="text-decoration:none">Kalender</a>
-      <a class="icon-btn" href="#jurnal" style="text-decoration:none">Jurnal</a>
-      <a class="icon-btn" href="#panduan" style="text-decoration:none">Panduan</a>
+      <nav class="tabs" aria-label="Halaman">
+        <button class="tab-btn" type="button" data-view="screener">Screener</button>
+        <button class="tab-btn" type="button" data-view="kalender">Kalender</button>
+        <button class="tab-btn" type="button" data-view="jurnal">Jurnal</button>
+        <button class="tab-btn" type="button" data-view="panduan">Panduan</button>
+      </nav>
     </div>
   </header>
 
@@ -1525,6 +1609,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <button type="button" id="update-btn">Muat data baru</button>
   </div>
 
+  <div class="view" id="v-screener">
   <section class="market" id="market" aria-label="Kondisi pasar"></section>
 
   <section class="card" aria-label="Preset">
@@ -1620,11 +1705,16 @@ TEMPLATE = r'''<!DOCTYPE html>
     </table>
   </div>
   <div class="pager">
+    <label class="muted" style="font-size:0.84rem;margin-right:auto">Baris per halaman
+      <select id="page-size" class="pg-size"><option>25</option><option>50</option><option>100</option></select></label>
     <span class="muted" id="page-info" style="font-size:0.84rem"></span>
     <button id="prev-page" type="button">Sebelumnya</button>
     <button id="next-page" type="button">Berikutnya</button>
   </div>
 
+  </div>
+
+  <div class="view" id="v-kalender" hidden>
   <section class="card cal-card" id="kalender" aria-label="Kalender">
     <div class="cal-head">
       <h2>Kalender</h2>
@@ -1643,12 +1733,15 @@ TEMPLATE = r'''<!DOCTYPE html>
     </div>
     <p class="cal-musim-sum" id="cal-musim-sum"></p>
     <div class="cal-grid" id="cal-grid"></div>
-    <div class="cal-legend"><span><b class="cal-lean up">▲</b> condong naik</span><span><b class="cal-lean dn">▼</b> condong turun</span><span><b class="cal-lean n">·</b> tidak ada kecenderungan</span><span><b class="cal-lean up">▲+</b> kecenderungan kuat</span>
+    <div class="cal-legend"><span><b class="cal-lean up">▲</b><b class="cal-lean dn">▼</b> condong naik/turun (signifikan)</span><span><b class="cal-lean up">▲+</b> sangat signifikan</span><span><b class="cal-lean up weak">▲</b><b class="cal-lean dn weak">▼</b> lemah, bisa kebetulan</span><span><b class="cal-lean n">·</b> tidak ada kecenderungan</span>
       <span><span class="cal-ev ev-bi">BI</span> <span class="cal-ev ev-fomc">FOMC</span> <span class="cal-ev ev-cpi">CPI AS</span> <span class="cal-ev ev-nfp">NFP AS</span> <span class="cal-ev ev-inflasi">Inflasi RI</span> data ekonomi</span></div>
     <ul class="cal-list" id="cal-list"></ul>
-    <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Waktu fase bulan dalam WIB, dihitung dengan rumus astronomi. Agenda MSCI, FTSE, GDX, batas laporan keuangan, BI, The Fed, CPI, dan NFP diambil dari jadwal resmi; tanggal inflasi BPS adalah perkiraan hari kerja pertama bulan. Tanggal bisa berubah, jadi cek pengumuman terbaru. <b>Pola musiman</b> dihitung dari data IHSG 10 tahun: panah hanya muncul kalau persentase hari naik berbeda signifikan dari 50% secara statistik (tingkat keyakinan 95%; "+" untuk 99%). Ini pola masa lalu, bukan prediksi. Klik tanggal untuk melihat angkanya.</p>
+    <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Waktu fase bulan dalam WIB, dihitung dengan rumus astronomi. Agenda MSCI, FTSE, GDX, batas laporan keuangan, BI, The Fed, CPI, dan NFP diambil dari jadwal resmi; tanggal inflasi BPS adalah perkiraan hari kerja pertama bulan. Tanggal bisa berubah, jadi cek pengumuman terbaru. <b>Pola musiman</b> dihitung dari data IHSG 10 tahun: panah tebal berarti persentase hari naik berbeda signifikan dari 50% secara statistik (tingkat keyakinan 95%; "+" untuk 99%), panah samar berarti kecenderungan lemah yang bisa saja kebetulan. Ikon bulan di setiap tanggal menunjukkan bentuk bulan hari itu. Ini pola masa lalu, bukan prediksi. Klik tanggal untuk melihat angkanya.</p>
   </section>
 
+  </div>
+
+  <div class="view" id="v-jurnal" hidden>
   <section class="card" id="jurnal" aria-label="Jurnal trading">
     <div class="cal-head"><h2>Jurnal trading</h2>
       <div class="cal-opts"><button class="icon-btn" id="j-export" type="button">Unduh CSV</button></div></div>
@@ -1658,6 +1751,9 @@ TEMPLATE = r'''<!DOCTYPE html>
     <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Jurnal tersimpan di browser ini saja, tidak ikut ke GitHub atau perangkat lain. Unduh CSV secara berkala sebagai cadangan. R = hasil dibagi risiko awal (entry − stop loss): +2R berarti untung 2 kali risiko.</p>
   </section>
 
+  </div>
+
+  <div class="view" id="v-panduan" hidden>
   <details class="notice" style="margin-top:18px">
     <summary>Tentang data dan batasan</summary>
     <div>__DISCLAIMER__</div>
@@ -1673,7 +1769,7 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p>2. Pilih satu gaya screening, misalnya "Tren naik rapi".</p>
         <p>3. Klik baris saham untuk membuka detailnya di panel kanan. Tombol ‹ › (atau panah kiri/kanan di keyboard) pindah ke saham berikutnya di hasil filter, dan tombol "⤢ Layar penuh" membuka tampilan dua kolom: chart besar dan riwayat di kiri, struktur, rencana, dan checklist di kanan. Tampilan layar penuh punya link sendiri (misalnya …/idx-screener/#s=PTBA) yang bisa di-bookmark.</p>
         <p>4. Tandai saham incaran dengan bintang ☆, lalu klik tombol "★ Watchlist saya" untuk melihat semuanya sekaligus, apa pun filternya.</p>
-        <p>5. Cocokkan dengan chart di aplikasi trading-mu sebelum entry. Checklist yang banyak terpenuhi menambah keyakinan, tapi tidak menjamin harga naik.</p>
+        <p>5. Kalender, Jurnal, dan Panduan ada di tab kanan atas. Cocokkan dengan chart di aplikasi trading-mu sebelum entry. Checklist yang banyak terpenuhi menambah keyakinan, tapi tidak menjamin harga naik.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -1701,7 +1797,7 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p>Bagian Kalender (tombol "Kalender" di kanan atas) menampilkan fase bulan (🌑 bulan baru, 🌓 kuartal awal, 🌕 purnama, 🌗 kuartal akhir) dalam WIB, serta agenda pasar: review MSCI, FTSE, GDX, dan batas penyampaian laporan keuangan. Klik tanggal untuk melihat detailnya; klik kode saham di agenda untuk membuka panel detailnya.</p>
         <p>Fase bulan juga bisa ditampilkan di chart SMC sebagai lingkaran kecil di bawah candle (kuning = purnama, gelap = bulan baru). Penelitian menemukan return rata-rata pasar global sedikit lebih rendah di sekitar purnama dibanding bulan baru, tapi efeknya kecil dan tidak membuktikan fase bulan bisa menentukan titik pembalikan saham tertentu. Pakai sebagai konteks, bukan sinyal utama.</p>
         <p><b>Kalender ekonomi</b> (label ungu): keputusan suku bunga BI, keputusan The Fed (FOMC, ditaruh di tanggal WIB karena diumumkan dini hari), CPI dan NFP Amerika (dirilis malam WIB, dampaknya di BEI keesokan harinya), serta inflasi Indonesia dari BPS. Di hari-hari ini pasar sering bergejolak, jadi pertimbangkan ukuran posisi yang lebih kecil.</p>
-        <p><b>Pola musiman IHSG</b> (▲ ▼ · di pojok bawah tanggal): dihitung dari data IHSG 10 tahun berdasarkan hari dalam seminggu dan posisi hari di awal/akhir bulan. ▲ atau ▼ hanya muncul kalau persentase hari naik berbeda signifikan dari 50% secara statistik (95%); "+" berarti sangat signifikan (99%). Klik tanggal untuk melihat angkanya, dan lihat ringkasan kinerja bulan itu di atas kalender. Ini pola masa lalu, bukan ramalan; selisihnya biasanya kecil.</p>
+        <p><b>Pola musiman IHSG</b> (▲ ▼ · di pojok bawah tanggal): dihitung dari data IHSG 10 tahun berdasarkan hari dalam seminggu dan posisi hari di awal/akhir bulan. ▲ atau ▼ tebal muncul kalau persentase hari naik berbeda signifikan dari 50% secara statistik (95%); "+" berarti sangat signifikan (99%). Panah samar berarti ada sedikit kecenderungan tapi tidak signifikan, jadi bisa saja kebetulan. Klik tanggal untuk melihat angkanya, dan lihat ringkasan kinerja bulan itu di atas kalender. Ini pola masa lalu, bukan ramalan; selisihnya biasanya kecil.</p>
         <p><b>Menambah agenda sendiri:</b> buat file <code>kalender.json</code> di repo berisi daftar seperti <code>[{"tgl": "2026-11-05", "jenis": "lain", "judul": "RUPS XXXX", "ket": "catatan", "saham": ["XXXX"]}]</code>. Jenis bisa msci, ftse, gdx, lapkeu, atau lain. Agenda muncul setelah run berikutnya.</p>
       </div>
     </details>
@@ -1848,6 +1944,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       </div>
     </details>
   </section>
+  </div>
 </div>
 
 <div class="full" id="full" role="dialog" aria-modal="true" aria-labelledby="d-title"></div>
@@ -1860,7 +1957,7 @@ TEMPLATE = r'''<!DOCTYPE html>
 const DATA = __DATA__;
 const MARKET = __MARKET__;
 const GEN = "__GEN__";
-const PAGE_SIZE = 25;
+let PAGE_SIZE = 25;
 const KD_ORDER = { ok: 0, rev: 1, wait: 2, hot: 3, n: 4, bad: 5 };
 const KD_NAME = { ok: "Kandidat kuat", wait: "Tunggu", hot: "Tunggu pullback", rev: "Pantau pembalikan", n: "Pantau", bad: "Hindari dulu" };
 const PRESETS = {
@@ -2202,8 +2299,9 @@ function render() {
       : `<tr><td colspan="22" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
     const er = $("empty-reset"); if (er) er.addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
   } else {
-    const grp = (txt) => `<tr class="grp"><td colspan="22"><span>${txt}</span></td></tr>`;
-    $("tbody").innerHTML = (pinned.length ? grp(`Top 10 hari ini <span class="muted">· disematkan di atas, urut peringkat</span>`) + pinned.map(rowHtml).join("")
+    const grp = (txt, cls = "") => `<tr class="grp ${cls}"><td colspan="22"><span>${txt}</span></td></tr>`;
+    const topOpen = ls.get("idxs:topopen", true);
+    $("tbody").innerHTML = (pinned.length ? grp(`<button type="button" class="grp-toggle" aria-expanded="${topOpen}">${topOpen ? "▾" : "▸"} Top 10 hari ini</button> <span class="muted">· ${topOpen ? "disematkan di atas, urut peringkat. Klik untuk menutup" : `${pinned.length} saham disembunyikan. Klik untuk membuka`}</span>`, "grp-top") + (topOpen ? pinned.map(rowHtml).join("") : "")
       + grp(`Hasil filter <span class="muted">· ${fmtNum(rows.length)} saham lain</span>`) : "") + slice.map(rowHtml).join("");
   }
   $("page-info").textContent = `Halaman ${page + 1} dari ${pages}`;
@@ -2281,8 +2379,9 @@ function musimHari(key) {
   const ev = cands.filter(c => c[1] && c[1].n >= 30).map(([lab, st]) => { const pr = st.up / st.n; return { lab, st, pr, z: (pr - 0.5) / Math.sqrt(0.25 / st.n) }; });
   if (!ev.length) return null;
   const best = ev.slice().sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
-  const lean = Math.abs(best.z) >= 1.96 ? (best.z > 0 ? 1 : -1) : 0, kuat = Math.abs(best.z) >= 2.58;
-  return { lean, kuat, best, all: ev };
+  const az = Math.abs(best.z), dir = best.z > 0 ? 1 : -1;
+  const lean = az >= 1.96 ? dir : 0, kuat = az >= 2.58, lemah = az < 1.96 && az >= 0.6 ? dir : 0;
+  return { lean, kuat, lemah, best, all: ev };
 }
 function musimTeks(st) { return `naik ${fmtDec(st.up / st.n * 100, 0)}% dari ${fmtNum(st.n)} kali, rata-rata ${st.avg >= 0 ? "+" : ""}${fmtDec(st.avg, 2)}%`; }
 const BULAN_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -2294,15 +2393,33 @@ let cal = Object.assign({ moon: true, agenda: true, makro: true, musim: true }, 
 let calMonth = (() => { const t = new Date(Date.now() + WIB_MS); return [t.getUTCFullYear(), t.getUTCMonth()]; })();
 let calSel = null;
 
+const SYNODIC = 29.530588853;
+function moonSvg(age, size = 22) {          // age: umur bulan dalam hari sejak bulan baru
+  const p = ((age % SYNODIC) + SYNODIC) % SYNODIC / SYNODIC, r = size / 2 - 1, c = size / 2;
+  const illum = (1 - Math.cos(2 * Math.PI * p)) / 2, rx = r * Math.abs(Math.cos(2 * Math.PI * p));
+  const lit = "#EFE7CF", dark = "var(--moon-dark)";
+  let path = "";
+  if (illum > 0.02 && illum < 0.98) {
+    const wax = p < 0.5, cres = p < 0.25 || p > 0.75;
+    path = wax
+      ? `M${c},${c - r} A${r},${r} 0 0 1 ${c},${c + r} A${rx},${r} 0 0 ${cres ? 0 : 1} ${c},${c - r} Z`
+      : `M${c},${c - r} A${r},${r} 0 0 0 ${c},${c + r} A${rx},${r} 0 0 ${cres ? 1 : 0} ${c},${c - r} Z`;
+  }
+  return `<svg class="moon-ic" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">
+    <circle cx="${c}" cy="${c}" r="${r}" fill="${illum >= 0.98 ? lit : dark}" stroke="var(--moon-line)" stroke-width="0.8"/>
+    ${path ? `<path d="${path}" fill="${lit}"/>` : ""}</svg>`;
+}
+function moonAgeAt(t, newMoons) { let last = null; for (const nm of newMoons) { if (nm <= t) last = nm; else break; } return last ? (t - last) / 86400000 : null; }
 function calData(y, m) {
   const from = new Date(Date.UTC(y, m, 1) - WIB_MS - 86400000), to = new Date(Date.UTC(y, m + 1, 1) - WIB_MS + 86400000);
   const moons = {}; moonPhases(from, to).forEach(p => { (moons[ymd(p.t)] = moons[ymd(p.t)] || []).push(p); });
+  const nms = moonPhases(new Date(from.getTime() - 32 * 86400000), to).filter(p => p.q === 0).map(p => p.t.getTime());
   const ev = {}; AGENDA.forEach(a => { (ev[a.tgl] = ev[a.tgl] || []).push(a); });
-  return { moons, ev };
+  return { moons, ev, nms };
 }
 
 function renderCal() {
-  const [y, m] = calMonth, { moons, ev } = calData(y, m);
+  const [y, m] = calMonth, { moons, ev, nms } = calData(y, m);
   const today = ymd(new Date()), first = new Date(Date.UTC(y, m, 1)), days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
   const lead = (first.getUTCDay() + 6) % 7;             // Senin = kolom pertama
   $("cal-title").textContent = `${BULAN_ID[m]} ${y}`;
@@ -2318,9 +2435,13 @@ function renderCal() {
     const ms = cal.musim ? musimHari(key) : null;
     h += `<button type="button" class="cal-cell${wd >= 5 ? " weekend" : ""}${key === today ? " today" : ""}${key === calSel ? " sel" : ""}" data-day="${key}">
       <span class="cal-d">${d}</span>
-      ${mo.map(p => `<span class="cal-moon" title="${MOON_NAME[p.q]} ${hm(p.t)} WIB">${MOON_ICON[p.q]}<small>${p.q === 0 || p.q === 2 ? MOON_NAME[p.q] : ""}</small></span>`).join("")}
+      ${cal.moon ? (() => { const age = moonAgeAt(Date.UTC(y, m, d, 5), nms); if (age == null) return "";
+        const il = Math.round((1 - Math.cos(2 * Math.PI * (age / SYNODIC))) / 2 * 100);
+        return `<span class="cal-moonic" title="Umur bulan ${fmtDec(age, 1)} hari, bagian bulan yang terang ${il}%${mo.length ? `. ${mo.map(p => MOON_NAME[p.q] + " " + hm(p.t) + " WIB").join(", ")}` : ""}">${moonSvg(age)}</span>`; })() : ""}
+      ${mo.filter(p => p.q === 0 || p.q === 2).map(p => `<span class="cal-moon-lab">${MOON_NAME[p.q]} ${hm(p.t)}</span>`).join("")}
       ${es.map(a => `<span class="cal-ev ev-${esc(a.jenis)}" title="${esc(a.judul)}">${esc(JENIS[a.jenis] || JENIS.lain)}</span>`).join("")}
-      ${ms ? `<span class="cal-lean ${ms.lean > 0 ? "up" : ms.lean < 0 ? "dn" : "n"}" title="${esc(ms.best.lab)}: ${esc(musimTeks(ms.best.st))}">${ms.lean > 0 ? "▲" : ms.lean < 0 ? "▼" : "·"}${ms.kuat ? "+" : ""}</span>` : ""}
+      ${ms ? (() => { const d = ms.lean || ms.lemah, cls = d > 0 ? "up" : d < 0 ? "dn" : "n";
+        return `<span class="cal-lean ${cls}${!ms.lean && ms.lemah ? " weak" : ""}" title="${esc(ms.best.lab)}: ${esc(musimTeks(ms.best.st))}${!ms.lean && ms.lemah ? " (lemah, bisa kebetulan)" : ""}">${d > 0 ? "▲" : d < 0 ? "▼" : "·"}${ms.kuat ? "+" : ""}</span>`; })() : ""}
     </button>`;
   }
   $("cal-grid").innerHTML = h;
@@ -2334,9 +2455,9 @@ function renderCal() {
   const list = items.filter(i => !calSel || i.tgl === calSel).sort((a, b) => a.tgl.localeCompare(b.tgl) || (a.moon ? -1 : 1));
   const tglTxt = k => { const [yy, mm, dd] = k.split("-").map(Number); const w = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay()]; return `${w}, ${dd} ${BULAN_ID[mm - 1].slice(0, 3)}`; };
   $("cal-list").innerHTML = list.length ? list.map(i => i.musim
-    ? `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><b>Pola musiman IHSG:</b> ${i.musim.lean ? `condong <b class="${i.musim.lean > 0 ? "pos" : "neg"}">${i.musim.lean > 0 ? "naik" : "turun"}</b>${i.musim.kuat ? " (kuat)" : ""}` : "tidak ada kecenderungan yang signifikan"}.<br>${i.musim.all.map(x => `<span class="muted">${esc(x.lab)}: ${esc(musimTeks(x.st))}.</span>`).join("<br>")}</span></li>`
+    ? `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><b>Pola musiman IHSG:</b> ${i.musim.lean ? `condong <b class="${i.musim.lean > 0 ? "pos" : "neg"}">${i.musim.lean > 0 ? "naik" : "turun"}</b>${i.musim.kuat ? " (kuat)" : " (signifikan)"}` : i.musim.lemah ? `sedikit condong ${i.musim.lemah > 0 ? "naik" : "turun"}, tapi <b>lemah</b> (tidak signifikan, bisa kebetulan)` : "tidak ada kecenderungan"}.<br>${i.musim.all.map(x => `<span class="muted">${esc(x.lab)}: ${esc(musimTeks(x.st))}.</span>`).join("<br>")}</span></li>`
     : i.moon
-    ? `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><b>${MOON_ICON[i.moon.q]} ${MOON_NAME[i.moon.q]}</b> <span class="muted">${hm(i.moon.t)} WIB</span></span></li>`
+    ? `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><b><span class="cl-moon">${moonSvg([0, 7.38, 14.77, 22.15][i.moon.q], 16)}</span> ${MOON_NAME[i.moon.q]}</b> <span class="muted">${hm(i.moon.t)} WIB</span></span></li>`
     : `<li><span class="cl-date">${tglTxt(i.tgl)}</span><span class="cl-body"><span class="cal-ev ev-${esc(i.ev.jenis)}">${esc(JENIS[i.ev.jenis] || JENIS.lain)}</span> <b>${esc(i.ev.judul)}</b>${i.ev.ket ? `<br><span class="muted">${esc(i.ev.ket)}</span>` : ""}${(i.ev.saham || []).length ? `<br>${i.ev.saham.map(t => `<button type="button" class="tk-chip" data-open="${esc(t)}">${esc(t)}</button>`).join("")}` : ""}</span></li>`).join("")
     : `<li class="muted">${calSel ? "Tidak ada fase bulan atau agenda di tanggal ini." : "Tidak ada agenda bulan ini."}</li>`;
   $("cal-list").querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => {
@@ -2348,6 +2469,95 @@ $("cal-next").addEventListener("click", () => { calMonth = calMonth[1] === 11 ? 
 $("cal-today").addEventListener("click", () => { const t = new Date(Date.now() + WIB_MS); calMonth = [t.getUTCFullYear(), t.getUTCMonth()]; calSel = null; renderCal(); });
 ["cal-moon", "cal-agenda", "cal-makro", "cal-musim"].forEach(id => $(id).addEventListener("change", () => { cal.moon = $("cal-moon").checked; cal.agenda = $("cal-agenda").checked; cal.makro = $("cal-makro").checked; cal.musim = $("cal-musim").checked; ls.set(CAL_KEY, cal); renderCal(); }));
 
+/* ---------- SMC di browser (untuk timeframe selain Daily; algoritma sama dengan versi Python) ---------- */
+function smcJS(b, v, L = 5, win = 120) {
+  const n = b.length; if (n < 30) return null;
+  const o = b.map(x => x[0]), h = b.map(x => x[1]), l = b.map(x => x[2]), c = b.map(x => x[3]);
+  const tr = c.map((_, i) => i ? Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])) : h[i] - l[i]);
+  let a = tr.slice(0, 14).reduce((s, x) => s + x, 0) / Math.min(14, n); for (let i = 14; i < n; i++) a = a + (tr[i] - a) / 14;
+  a = a || 1;
+  const mx = (arr, i0, i1) => Math.max(...arr.slice(i0, i1)), mn = (arr, i0, i1) => Math.min(...arr.slice(i0, i1));
+  const pH = [], pL = [];
+  for (let i = L; i < n - L; i++) {
+    if (h[i] >= mx(h, i - L, i + L + 1) && h[i] > mx(h, i - L, i)) pH.push(i);
+    if (l[i] <= mn(l, i - L, i + L + 1) && l[i] < mn(l, i - L, i)) pL.push(i);
+  }
+  const kH = new Map(pH.map(i => [i + L, i])), kL = new Map(pL.map(i => [i + L, i]));
+  let lastH = null, lastL = null, tren = 0; const ev = [], obs = [];
+  for (let i = 0; i < n; i++) {
+    if (kH.has(i)) lastH = [kH.get(i), h[kH.get(i)], false];
+    if (kL.has(i)) lastL = [kL.get(i), l[kL.get(i)], false];
+    if (lastH && !lastH[2] && c[i] > lastH[1]) {
+      ev.push([lastH[0], i, lastH[1], tren === -1 ? "CHoCH" : "BOS", 1]); tren = 1; lastH[2] = true;
+      let k = null; for (let j = i - 1; j >= lastH[0]; j--) if (c[j] < o[j]) { k = j; break; }
+      if (k === null) { k = lastH[0]; for (let j = lastH[0]; j < i; j++) if (l[j] < l[k]) k = j; }
+      obs.push([k, h[k], l[k], 1, false]);
+    }
+    if (lastL && !lastL[2] && c[i] < lastL[1]) {
+      ev.push([lastL[0], i, lastL[1], tren === 1 ? "CHoCH" : "BOS", -1]); tren = -1; lastL[2] = true;
+      let k = null; for (let j = i - 1; j >= lastL[0]; j--) if (c[j] > o[j]) { k = j; break; }
+      if (k === null) { k = lastL[0]; for (let j = lastL[0]; j < i; j++) if (h[j] > h[k]) k = j; }
+      obs.push([k, h[k], l[k], -1, false]);
+    }
+    obs.forEach(ob => { if (!ob[4] && ob[0] < i && ((ob[3] === 1 && c[i] < ob[2]) || (ob[3] === -1 && c[i] > ob[1]))) ob[4] = true; });
+  }
+  let fvg = [];
+  for (let i = 2; i < n; i++) {
+    if (l[i] > h[i - 2] && l[i] - h[i - 2] > 0.15 * a) fvg.push([i - 1, l[i], h[i - 2], 1]);
+    else if (h[i] < l[i - 2] && l[i - 2] - h[i] > 0.15 * a) fvg.push([i - 1, l[i - 2], h[i], -1]);
+  }
+  fvg = fvg.filter(g => !(g[0] + 2 < n && (g[3] === 1 ? mn(l, g[0] + 2, n) <= g[2] : mx(h, g[0] + 2, n) >= g[1])));
+  const eq = [];
+  [[pH, h, "EQH"], [pL, l, "EQL"]].forEach(([arr, src, nm]) => { for (let q = 1; q < arr.length; q++) if (Math.abs(src[arr[q - 1]] - src[arr[q]]) <= 0.1 * a) eq.push([arr[q - 1], arr[q], (src[arr[q - 1]] + src[arr[q]]) / 2, nm]); });
+  win = Math.min(win, n); const s0 = n - win, cl = i => Math.max(0, i - s0);
+  let vp = null;
+  if (v && v.some(x => x > 0)) {
+    const vlo = mn(l, s0, n), vhi = mx(h, s0, n), NB = 24;
+    if (vhi > vlo) {
+      const bins = new Array(NB).fill(0);
+      for (let i = s0; i < n; i++) { const a0 = Math.max(0, Math.min(NB - 1, Math.floor((l[i] - vlo) / (vhi - vlo) * NB))), a1 = Math.max(0, Math.min(NB - 1, Math.floor((h[i] - vlo) / (vhi - vlo) * NB))); for (let k = a0; k <= a1; k++) bins[k] += (v[i] || 0) / (a1 - a0 + 1); }
+      let poc = bins.indexOf(Math.max(...bins)), lo = poc, hi = poc, acc = bins[poc]; const tot = bins.reduce((s, x) => s + x, 0);
+      while (acc < 0.7 * tot && (lo > 0 || hi < NB - 1)) { const nl = lo > 0 ? bins[lo - 1] : -1, nh = hi < NB - 1 ? bins[hi + 1] : -1; if (nh >= nl) acc += bins[++hi]; else acc += bins[--lo]; }
+      const step = (vhi - vlo) / NB, m = Math.max(...bins) || 1;
+      vp = { b: bins.map(x => Math.round(x / m * 100)), lo: vlo, hi: vhi, poc: vlo + (poc + 0.5) * step, vah: vlo + (hi + 1) * step, val: vlo + lo * step };
+    }
+  }
+  const vh = t => !vp ? 0 : (t[2] <= vp.vah && t[1] >= vp.val ? 1 : 0);
+  const act = obs.filter(x => !x[4]);
+  return {
+    b: b.slice(s0), v: v ? v.slice(s0) : null,
+    ev: ev.filter(e => e[1] >= s0).slice(-8).map(e => [cl(e[0]), e[1] - s0, e[2], e[3], e[4], e[1]]),
+    ob: act.filter(x => x[3] === 1).slice(-3).concat(act.filter(x => x[3] === -1).slice(-3)).map(x => [cl(x[0]), x[1], x[2], x[3], vh(x)]),
+    fvg: fvg.filter(g => g[3] === 1).slice(-3).concat(fvg.filter(g => g[3] === -1).slice(-3)).map(g => [cl(g[0]), g[1], g[2], g[3]]),
+    eq: eq.filter(e => e[1] >= s0).slice(-4).map(e => [cl(e[0]), e[1] - s0, e[2], e[3]]),
+    pd: [mx(h, s0, n), mn(l, s0, n)], tr: tren, vp, s0,
+  };
+}
+
+/* ---------- pilihan timeframe chart ---------- */
+const TF_LIST = [["15m", "15m"], ["45m", "45m"], ["1h", "1H"], ["4h", "4H"], ["1d", "D"], ["1w", "W"], ["1mo", "M"]];
+const TF_NAME = { "15m": "15 menit", "45m": "45 menit", "1h": "1 jam", "4h": "4 jam", "1d": "harian", "1w": "mingguan", "1mo": "bulanan" };
+const TF_KEY = "idxs:tf", tfCache = new Map();
+let curTF = ls.get(TF_KEY, "1d");
+const fmtWaktu = (ms, tf) => { const d = new Date(ms + WIB_MS); const t = `${HARI3[d.getUTCDay()]}, ${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}`; return /m$|h$/.test(tf) && tf !== "1mo" ? `${t} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}` : t; };
+function loadTF(t) {
+  if (tfCache.has(t)) return tfCache.get(t);
+  const pr = location.protocol === "file:" ? Promise.reject(new Error("file"))
+    : fetch(`data/${encodeURIComponent(t)}.json?v=${encodeURIComponent(GEN)}`).then(x => { if (!x.ok) throw new Error("HTTP " + x.status); return x.json(); });
+  tfCache.set(t, pr); pr.catch(() => tfCache.delete(t)); return pr;
+}
+function buildTF(raw, tf) {                       // data mentah timeframe -> objek S yang dipakai smcChart
+  const S = smcJS(raw.b, raw.v, tf === "1w" || tf === "1mo" ? 3 : 5, 120); if (!S) return null;
+  const ts = raw.ts.slice(S.s0).map(x => x * 1000);
+  S.ts = ts; S.tf = tf; S.d0 = fmtWaktu(ts[0], tf); S.d1 = fmtWaktu(ts[ts.length - 1], tf);
+  S.ev = S.ev.map(e => [e[0], e[1], e[2], e[3], e[4], fmtWaktu(raw.ts[e[5]] * 1000, tf)]);
+  return S;
+}
+function tfBar(r) {
+  const av = new Set(["1d", ...(r.tfx || [])]);
+  return `<div class="tf-bar" role="group" aria-label="Timeframe chart">${TF_LIST.map(([k, lab]) => `<button type="button" data-tf="${k}" class="${curTF === k ? "on" : ""}" ${av.has(k) ? "" : `disabled title="${k === "1w" || k === "1mo" ? "Belum tersedia untuk saham ini" : "Timeframe intraday hanya untuk 200 saham skor tertinggi"}"`}>${lab}</button>`).join("")}</div>`;
+}
+
 /* ---------- SMC chart ---------- */
 const SMC_KEY = "idxs:smc";
 const SMC_LAYERS = [["vp", "Volume profile"], ["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "MA20/MA50"], ["plan", "Entry/SL/TP"]];
@@ -2356,7 +2566,8 @@ function smcLayers() { return Object.assign({ vp: true, pd: true, st: true, ob: 
 function smcChart(r, lay) {
   const S = r.smc, bars = S.b, nb = bars.length, p = r.plan;
   const full = viewMode === "full";
-  const W = full ? 1440 : 720, H = full ? 560 : 340, L = 8, R = full ? 104 : 92, T = 10, B = 22, iw = W - L - R, ih = H - T - B;
+  const W = full ? 1440 : 720, L = 8, R = full ? 104 : 92, T = 10, B = 22, iw = W - L - R;
+  const ih = full ? 500 : 290, GAP = 8, VH = S.v ? (full ? 80 : 54) : 0, H = T + ih + GAP + VH + B, volTop = T + ih + GAP;
   let max = Math.max(...bars.map(b => b[1])), min = Math.min(...bars.map(b => b[2]));
   if (lay.plan && p) { max = Math.max(max, p.tp); min = Math.min(min, p.sl); }
   const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
@@ -2364,7 +2575,7 @@ function smcChart(r, lay) {
   const y = v => T + (max - v) / (max - min) * ih, x = i => L + i * sw + sw / 2, xl = i => L + i * sw;
   const clampY = v => Math.min(T + ih, Math.max(T, y(v)));
   const up = "var(--up)", dn = "var(--down)";
-  let s = `<svg class="d-chart smc-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart 120 hari dengan Smart Money Concepts ${esc(r.t)}" data-g="${[L, T, iw, ih, nb, min, max, W, H, R].join(",")}">`;
+  let s = `<svg class="d-chart smc-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart ${esc(TF_NAME[S.tf || "1d"])} dengan Smart Money Concepts ${esc(r.t)}" data-g="${[L, T, iw, ih, nb, min, max, W, H, R, GAP, VH].join(",")}">`;
   s += `<defs><clipPath id="cp"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath></defs>`;
   // skala harga: kelipatan "rapi" (mis. 25, 50, 100) sekitar 6-8 garis
   const raw = (max - min) / (full ? 11 : 8), mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
@@ -2455,9 +2666,17 @@ function smcChart(r, lay) {
     if (!placed.some(u => Math.abs(u - yD) < 13)) s += `<text x="${L + iw + 8}" y="${Math.min(T + ih, yD).toFixed(1)}" font-size="9.5" font-weight="700" fill="${up}">▼ Discount</text>`;
   }
   s += `<text x="${L}" y="${H - 6}" font-size="10" fill="var(--muted)">${esc(S.d0)}</text><text x="${L + iw}" y="${H - 6}" font-size="10" text-anchor="end" fill="var(--muted)">${esc(S.d1)}</text>`;
+  if (VH && S.v) {
+    const vmax = Math.max(...S.v, 1);
+    s += `<line x1="${L}" x2="${L + iw}" y1="${volTop - GAP / 2}" y2="${volTop - GAP / 2}" stroke="var(--line)"/>`;
+    S.v.forEach((vv, i) => { const hh = (vv || 0) / vmax * (VH - 4), b = bars[i], col = b && b[3] >= b[0] ? up : dn;
+      if (hh > 0.3) s += `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${(volTop + VH - hh).toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" fill="${col}" opacity="0.55"/>`; });
+    s += `<text x="${L + 6}" y="${volTop + 11}" font-size="10" font-weight="700" fill="var(--muted)">Volume (lot)</text>`;
+    s += `<text x="${L + iw + 8}" y="${volTop + 10}" font-size="10" fill="var(--muted)">${fmtNum(vmax)}</text>`;
+  }
   s += `<g class="xh" pointer-events="none" style="display:none">
-    <rect class="xh-band" y="${T}" height="${ih}" fill="var(--ink)" opacity="0.06"/>
-    <line class="xh-v" y1="${T}" y2="${T + ih}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>
+    <rect class="xh-band" y="${T}" height="${ih + GAP + VH}" fill="var(--ink)" opacity="0.06"/>
+    <line class="xh-v" y1="${T}" y2="${T + ih + GAP + VH}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>
     <line class="xh-h" x1="${L}" x2="${L + iw}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>
     <rect class="xh-pbox" x="${L + iw + 3}" width="${R - 6}" height="18" rx="3" fill="var(--ink)"/>
     <text class="xh-ptxt" x="${L + iw + 9}" font-size="11" font-weight="800" fill="var(--panel)"></text>
@@ -2475,7 +2694,7 @@ function smcSummary(r) {
     const arti = t === "BOS" ? (dr === 1 ? "BOS naik: tren naik berlanjut" : "BOS turun: tren turun berlanjut")
       : (dr === 1 ? "CHoCH naik: tanda awal pembalikan ke atas" : "CHoCH turun: tanda awal pembalikan ke bawah");
     out.push(`Struktur terakhir ${arti} (tembus ${fmtNum(lvl)} pada ${dt}).`);
-  } else out.push("Belum ada perubahan struktur (BOS/CHoCH) dalam 120 hari terakhir.");
+  } else out.push("Belum ada perubahan struktur (BOS/CHoCH) dalam 120 candle terakhir.");
   const inside = (S.ob || []).find(z => pr <= z[1] && pr >= z[2]);
   if (inside) out.push(`Harga sedang berada di dalam order block ${inside[3] === 1 ? "bullish (area permintaan)" : "bearish (area penawaran)"} ${rng(inside[1], inside[2])}.`);
   const obBelow = (S.ob || []).filter(z => z[3] === 1 && z[1] < pr).sort((a, b) => b[1] - a[1])[0];
@@ -2484,10 +2703,10 @@ function smcSummary(r) {
   if (obAbove) out.push(`Order block bearish terdekat di atas harga: ${rng(obAbove[1], obAbove[2])} (${fmtDec((obAbove[2] - pr) / pr * 100, 1)}% di atas). Area yang berpotensi menahan kenaikan.`);
   const gaps = (S.fvg || []).map(z => ({ z, d: z[3] === 1 ? pr - z[1] : z[2] - pr })).filter(o => o.d >= 0).sort((a, b) => a.d - b.d);
   if (gaps[0]) out.push(`FVG ${gaps[0].z[3] === 1 ? "bullish" : "bearish"} terdekat yang belum terisi: ${rng(gaps[0].z[1], gaps[0].z[2])}. Harga sering kembali mengisi celah seperti ini.`);
-  if (S.vp) out.push(`POC (harga dengan volume terbanyak dalam 120 hari) di ${fmtNum(S.vp.poc)}; value area ${fmtNum(S.vp.val)}–${fmtNum(S.vp.vah)}. Harga sekarang ${pr > S.vp.vah ? "di atas value area" : pr < S.vp.val ? "di bawah value area" : "di dalam value area"}.`);
+  if (S.vp) out.push(`POC (harga dengan volume terbanyak dalam 120 candle) di ${fmtNum(S.vp.poc)}; value area ${fmtNum(S.vp.val)}–${fmtNum(S.vp.vah)}. Harga sekarang ${pr > S.vp.vah ? "di atas value area" : pr < S.vp.val ? "di bawah value area" : "di dalam value area"}.`);
   if (S.pd) {
     const pct = Math.round((pr - S.pd[1]) / ((S.pd[0] - S.pd[1]) || 1) * 100);
-    out.push(`Posisi dalam range 120 hari: ${pct}%. ${pct >= 55 ? "Zona premium (relatif mahal)." : pct <= 45 ? "Zona discount (relatif murah)." : "Sekitar equilibrium."}`);
+    out.push(`Posisi dalam range 120 candle: ${pct}%. ${pct >= 55 ? "Zona premium (relatif mahal)." : pct <= 45 ? "Zona discount (relatif murah)." : "Sekitar equilibrium."}`);
   }
   return out;
 }
@@ -2495,17 +2714,18 @@ function smcSummary(r) {
 const HARI3 = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"], BLN3 = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 function attachCrosshair(r, box) {
   const S = r.smc, svg = box.querySelector("svg.smc-svg"), leg = box.querySelector(".xh-legend"); if (!svg || !S) return;
-  const [L, T, iw, ih, nb, min, max, W, H] = svg.dataset.g.split(",").map(Number);
-  const base = Date.parse(S.d0 + "T00:00:00Z"), sw = iw / nb;
+  const [L, T, iw, ih, nb, min, max, W, H, , GAP, VH] = svg.dataset.g.split(",").map(Number);
+  const base = S.ts ? 0 : Date.parse(S.d0 + "T00:00:00Z"), sw = iw / nb;
   const g = svg.querySelector(".xh"), vL = g.querySelector(".xh-v"), hL = g.querySelector(".xh-h"), band = g.querySelector(".xh-band");
   const pBox = g.querySelector(".xh-pbox"), pTxt = g.querySelector(".xh-ptxt"), dBox = g.querySelector(".xh-dbox"), dTxt = g.querySelector(".xh-dtxt");
   const idx = r.t === "IHSG";
   const fp = v => idx ? fmtDec(v, 2) : fmtNum(v);
-  const tglOf = i => new Date(base + (S.do ? S.do[i] : i) * 86400000);
+  const tglOf = i => S.ts ? new Date(S.ts[i] + WIB_MS) : new Date(base + (S.do ? S.do[i] : i) * 86400000);
+  const intra = S.ts && /m$|h$/.test(S.tf || "");
   const legend = i => {
     const b = S.b[i], prev = i > 0 ? S.b[i - 1][3] : null, chg = prev ? (b[3] / prev - 1) * 100 : null, d = tglOf(i), c = b[3] >= b[0] ? "pos" : "neg";
     const vol = !idx && S.v && S.v[i] != null ? ` <span class="xl-k">Vol</span> ${fmtNum(S.v[i])} lot` : "";
-    leg.innerHTML = `<b>${HARI3[d.getUTCDay()]}, ${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}</b>
+    leg.innerHTML = `<b>${HARI3[d.getUTCDay()]}, ${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}${intra ? " " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0") : ""}</b>
       <span class="xl-k">O</span> <span class="${c}">${fp(b[0])}</span> <span class="xl-k">H</span> <span class="${c}">${fp(b[1])}</span>
       <span class="xl-k">L</span> <span class="${c}">${fp(b[2])}</span> <span class="xl-k">C</span> <span class="${c}">${fp(b[3])}</span>
       ${chg == null ? "" : `<span class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "+" : ""}${fmtDec(chg, 2)}%</span>`}${vol}`;
@@ -2514,17 +2734,17 @@ function attachCrosshair(r, box) {
   const toSvg = e => { const rc = svg.getBoundingClientRect(); const pt = e.touches ? e.touches[0] : e; return [(pt.clientX - rc.left) * W / rc.width, (pt.clientY - rc.top) * H / rc.height]; };
   const move = e => {
     const [sx, sy] = toSvg(e);
-    if (sx < L || sx > L + iw || sy < T || sy > T + ih) { hide(); return; }
+    if (sx < L || sx > L + iw || sy < T || sy > T + ih + GAP + VH) { hide(); return; }
     const i = Math.max(0, Math.min(nb - 1, Math.floor((sx - L) / sw))), cx = L + i * sw + sw / 2;
     g.style.display = "";
     vL.setAttribute("x1", cx); vL.setAttribute("x2", cx);
     band.setAttribute("x", L + i * sw); band.setAttribute("width", Math.max(1, sw));
     hL.setAttribute("y1", sy); hL.setAttribute("y2", sy);
     pBox.setAttribute("y", sy - 9); pTxt.setAttribute("y", sy + 4);
-    pTxt.textContent = fp(max - (sy - T) / ih * (max - min));
+    pTxt.textContent = sy <= T + ih ? fp(max - (sy - T) / ih * (max - min)) : (S.v && S.v[i] != null ? fmtNum(S.v[i]) : "");
     const d = tglOf(i), dx = Math.max(L + 48, Math.min(L + iw - 48, cx));
     dBox.setAttribute("x", dx - 48); dTxt.setAttribute("x", dx);
-    dTxt.textContent = `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`;
+    dTxt.textContent = intra ? `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}` : `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`;
     legend(i);
     if (e.cancelable && e.touches) e.preventDefault();
   };
@@ -2532,10 +2752,35 @@ function attachCrosshair(r, box) {
   svg.addEventListener("mousemove", move); svg.addEventListener("mouseleave", hide);
   svg.addEventListener("touchstart", move, { passive: false }); svg.addEventListener("touchmove", move, { passive: false }); svg.addEventListener("touchend", hide);
 }
-function renderSmc(r) {
+function drawSmc(r) {
   const lay = smcLayers();
   $("smc-box").innerHTML = `<div class="xh-wrap"><div class="xh-legend" aria-live="off"></div>${smcChart(r, lay)}</div>`;
   attachCrosshair(r, $("smc-box"));
+  const sum = $("smc-sum"); if (sum) sum.innerHTML = smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("");
+  const tt = $("smc-title"); if (tt) tt.textContent = `Chart ${TF_NAME[(r.smc && r.smc.tf) || "1d"]} dengan Smart Money Concepts`;
+}
+function renderSmc(r) {
+  const tb = $("tf-bar");
+  if (tb && r.t !== "IHSG") {
+    tb.innerHTML = tfBar(r);
+    tb.querySelectorAll("[data-tf]").forEach(bt => bt.addEventListener("click", () => { curTF = bt.dataset.tf; ls.set(TF_KEY, curTF); renderSmc(r); }));
+  }
+  const tf = r.t === "IHSG" || !(r.tfx || []).includes(curTF) ? "1d" : curTF;
+  if (tb) tb.querySelectorAll("[data-tf]").forEach(bt => bt.classList.toggle("on", bt.dataset.tf === tf));
+  if (tf === "1d") drawSmc(r);
+  else {
+    $("smc-box").innerHTML = '<div class="tf-msg">Memuat data ' + esc(TF_NAME[tf]) + "…</div>";
+    loadTF(r.t).then(raw => {
+      if (curTF !== tf) return;
+      const S = raw && raw[tf] ? buildTF(raw[tf], tf) : null;
+      if (!S) { $("smc-box").innerHTML = '<div class="tf-msg">Data ' + esc(TF_NAME[tf]) + " belum cukup untuk saham ini.</div>"; return; }
+      drawSmc({ ...r, smc: S, plan: tf === "1d" ? r.plan : r.plan });
+    }).catch(() => {
+      $("smc-box").innerHTML = `<div class="tf-msg">${location.protocol === "file:" ? "Timeframe selain Daily hanya bisa dibuka di versi online (github.io), karena browser tidak mengizinkan halaman lokal membaca file data." : "Data timeframe ini gagal dimuat. Coba lagi beberapa saat, atau pilih D."}</div>`;
+    });
+  }
+  if (!$("smc-toggles")) return;
+  const lay = smcLayers();
   $("smc-toggles").innerHTML = SMC_LAYERS.map(([k, n]) => `<label class="chip"><input type="checkbox" data-layer="${k}" ${lay[k] ? "checked" : ""}> ${n}</label>`).join("");
   $("smc-toggles").querySelectorAll("input").forEach(cb => cb.addEventListener("change", () => {
     const cur = smcLayers(); cur[cb.dataset.layer] = cb.checked; ls.set(SMC_KEY, cur); renderSmc(r);
@@ -2657,7 +2902,7 @@ function journalForm(r, p, lot, mode) {
     a.push({ id: Date.now(), t: r.t, tgl: $("jf-tgl").value, entry: e, sl, tp: +$("jf-tp").value || null, lot: +$("jf-lot").value || 1,
       setup: $("jf-setup").value, tf: $("jf-tf").value, note: $("jf-note").value.trim(), exit: null, tglExit: null });
     jrSave(a); renderJournal();
-    $("j-form").innerHTML = `<p class="calc-out">Tersimpan di jurnal. Lihat bagian Jurnal trading di halaman utama.</p>`;
+    $("j-form").innerHTML = `<p class="calc-out">Tersimpan di jurnal. Buka tab Jurnal di kanan atas untuk melihatnya.</p>`;
   });
 }
 const rOf = (j, px) => (px - j.entry) / (j.entry - j.sl);
@@ -2923,10 +3168,10 @@ function detailParts(r, r0, w) {
     meta: `Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.${r.top ? ` <span class="top-badge">Top 10 #${r.top}</span>` : ""}`,
     kond: `<div class="d-sec">${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}<div style="margin-top:6px">${badges(r)}</div></div>`,
     struktur: msBlock(r),
-    chart: r.smc ? `<div class="d-sec"><h3>Chart 120 hari dengan Smart Money Concepts</h3>
+    chart: r.smc ? `<div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
       <div id="smc-box"></div>
       <div class="chips smc-toggles" id="smc-toggles"></div>
-      <ul class="smc-sum">${smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+      <ul class="smc-sum" id="smc-sum"></ul>
       <p class="muted" style="font-size:0.78rem;margin:6px 0 0">SMC di sini versi sederhana yang dihitung otomatis, jadi bisa berbeda dari indikator SMC di TradingView atau Stockbit. Garis putus-putus = CHoCH, garis penuh = BOS. Lingkaran kuning di bawah = purnama, lingkaran gelap = bulan baru (ditaruh di hari bursa terdekat).</p>
     </div>` : `<div class="d-sec"><h3>Chart 30 hari</h3>${bigChart(r)}
       <div class="legend"><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--orange)"></i>MA50</span>${p ? '<span><i style="background:var(--accent);opacity:.35;height:8px"></i>Area entry</span><span><i style="background:var(--down)"></i>Stop loss</span><span><i style="background:var(--up)"></i>Target</span>' : ""}</div>
@@ -3089,6 +3334,7 @@ document.querySelectorAll("thead th[data-key]").forEach(th => th.addEventListene
   markPreset(); save(); render();
 }));
 $("tbody").addEventListener("click", e => {
+  if (e.target.closest("tr.grp-top")) { ls.set("idxs:topopen", !ls.get("idxs:topopen", true)); render(); return; }
   const st = e.target.closest("[data-star]"); if (st) { e.stopPropagation(); toggleWatch(st.dataset.star); return; }
   const tr = e.target.closest("tr[data-t]"); if (tr) openDrawer(tr.dataset.t);
 });
@@ -3122,6 +3368,23 @@ if (location.protocol === "file:") {
   $("sector-filter").innerHTML = '<option value="">Semua sektor</option>' + Object.keys(cnt).filter(k => k !== "-").sort()
     .map(k => `<option value="${esc(k)}">${esc(k)} (${cnt[k]})</option>`).join("") + (cnt["-"] ? `<option value="-">Tanpa sektor (${cnt["-"]})</option>` : "");
 })();
+/* ---------- halaman (tab): screener, kalender, jurnal, panduan ---------- */
+const VIEWS = ["screener", "kalender", "jurnal", "panduan"];
+function viewFromHash() { const h = location.hash.replace("#", ""); return VIEWS.includes(h) ? h : "screener"; }
+function showView(v) {
+  VIEWS.forEach(k => { $("v-" + k).hidden = k !== v; });
+  document.querySelectorAll(".tab-btn").forEach(b => { b.classList.toggle("on", b.dataset.view === v); b.setAttribute("aria-current", b.dataset.view === v ? "page" : "false"); });
+  $("cmp-bar").style.visibility = v === "screener" ? "" : "hidden";
+}
+document.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => {
+  const v = b.dataset.view, h = v === "screener" ? location.pathname + location.search : "#" + v;
+  if (viewFromHash() !== v || location.hash.startsWith("#s=") || location.hash.startsWith("#bandingkan=")) history.pushState({ v }, "", h);
+  showView(v); window.scrollTo(0, 0);
+}));
+window.addEventListener("popstate", () => { if (!location.hash.startsWith("#s=") && !location.hash.startsWith("#bandingkan=")) showView(viewFromHash()); });
+showView(viewFromHash());
+PAGE_SIZE = +ls.get("idxs:pgsize", 25) || 25; $("page-size").value = String(PAGE_SIZE);
+$("page-size").addEventListener("change", () => { PAGE_SIZE = +$("page-size").value; ls.set("idxs:pgsize", PAGE_SIZE); page = 0; save(); render(); });
 $("f-pin").checked = ls.get(PIN_KEY, true);
 $("f-pin").addEventListener("change", () => { ls.set(PIN_KEY, $("f-pin").checked); page = 0; render(); });
 renderMarket(); load(); render(); renderCal(); renderJournal();
