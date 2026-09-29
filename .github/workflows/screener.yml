@@ -2,22 +2,19 @@ name: Update Screener
 
 on:
   schedule:
-    # Jadwal GitHub pakai UTC (WIB = UTC + 7). GitHub kadang telat atau melewatkan jadwal,
-    # jadi screener dicoba tiap 10 menit selama jam istirahat dan setelah closing.
-    # Menit dibuat tidak tepat di awal jam (saat server GitHub paling sibuk).
-    # Senin–Kamis, istirahat 12:00–13:30 WIB
-    - cron: "7,17,27,37,47,57 5 * * 1-4"     # 12:07 ... 12:57 WIB
+    # Jadwal GitHub pakai UTC (WIB = UTC + 7). GitHub kadang telat atau melewatkan jadwal.
+    - cron: "7,17,27,37,47,57 5 * * 1-4"     # 12:07 ... 12:57 WIB Senin–Kamis
     - cron: "7,17,27 6 * * 1-4"              # 13:07, 13:17, 13:27 WIB
-    # Jumat, istirahat 11:30–14:00 WIB
-    - cron: "37,47,57 4 * * 5"               # 11:37, 11:47, 11:57 WIB
-    - cron: "7,17,27,37,47,57 5,6 * * 5"     # 12:07 ... 13:57 WIB
-    # Setelah closing (16:00 WIB), Senin–Jumat
+    - cron: "37,47,57 4 * * 5"               # 11:37, 11:47, 11:57 WIB Jumat
+    - cron: "7,17,27,37,47,57 5,6 * * 5"     # 12:07 ... 13:57 WIB Jumat
     - cron: "7,17,27,37,47,57 9,10 * * 1-5"  # 16:07 ... 17:57 WIB
     - cron: "7,37 11 * * 1-5"                # 18:07, 18:37 WIB
   workflow_dispatch:                         # tombol "Run workflow" untuk jalan manual
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: screener
@@ -26,7 +23,10 @@ concurrency:
 jobs:
   screener:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
 
@@ -39,17 +39,25 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Jalankan screener
-        run: python idx_screener.py --output docs/index.html --no-arsip
+        run: python idx_screener.py --output site/index.html --no-arsip
 
-      - name: Simpan hasil ke repo
+      - name: Simpan riwayat kecil ke repo
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          if [ "${{ github.event_name }}" = "schedule" ] && git diff --quiet -- docs/hasil_screener.csv; then
-            echo "Data sama dengan run sebelumnya (pasar sedang istirahat/tutup). Tidak ada yang disimpan."
-            exit 0
-          fi
-          git add -A
-          git diff --cached --quiet || git commit -m "Update screener $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M') WIB"
-          git pull --rebase
-          git push
+          for f in riwayat_top10.json cache_sektor.json daftar_saham.csv daftar_saham_info.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
+          git diff --cached --quiet || git commit -m "Riwayat screener $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M') WIB"
+          git pull --rebase || true
+          git push || true
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Terbitkan ke GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
