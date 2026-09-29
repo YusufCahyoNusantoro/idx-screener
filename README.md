@@ -1,4 +1,4 @@
-# IDX Screener — Teknikal, Struktur Market & SMC
+# Dibalik Saham — Screener Saham IDX (Research & Insight)
 
 Screener semua saham Bursa Efek Indonesia (±950 emiten) dengan data asli dari Yahoo Finance,
 diperbarui otomatis setelah **penutupan Sesi 1** dan setelah **closing** setiap hari bursa.

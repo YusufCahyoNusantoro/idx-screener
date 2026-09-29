@@ -72,7 +72,10 @@ AALI LSIP DSNG TAPG
 ADMR SRTG BIRD
 """.split()
 
-W_DEFAULT = {"trend": 30, "brk": 30, "pa": 25, "mom": 15}   # sama dengan bobot awal di HTML
+LOGO_96 = "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"   # logo Dibalik Saham (ikon rakun), PNG base64
+LOGO_32 = "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"
+
+W_DEFAULT = {"trend": 25, "brk": 20, "pa": 20, "mom": 10, "st": 25}   # sama dengan bobot awal di HTML
 
 KALENDER = BASE / "kalender.json"   # opsional: agenda tambahanmu sendiri (lihat README / panduan)
 
@@ -1129,7 +1132,23 @@ def rencana(r, kd):
 
 def skor(r, w=W_DEFAULT):
     tot = sum(w.values())
-    return (r["trend"] * w["trend"] + r["brk"] * w["brk"] + r["pa"] * w["pa"] + r["mom"] * w["mom"]) / tot
+    return (r["trend"] * w["trend"] + r["brk"] * w["brk"] + r["pa"] * w["pa"] + r["mom"] * w["mom"]
+            + r.get("st", 50) * w.get("st", 0)) / tot
+
+
+def skor_struktur(r):
+    """Komponen Struktur SMC 0–100: Mingguan 40, Harian 40, 4 jam 20 (bullish penuh, belum jelas setengah, bearish 0)."""
+    ms = r.get("ms") or {}
+    def nilai(k, bobot, kosong):
+        t = (ms.get(k) or {}).get("tr")
+        return kosong if t is None else (bobot if t == 1 else bobot / 2 if t == 0 else 0)
+    return round(nilai("w", 40, 20) + nilai("d", 40, 20) + nilai("h4", 20, 10))
+
+
+def uptrend_penuh(r):
+    """Syarat Top 10: badge Uptrend (MA tersusun naik) dan struktur SMC Mingguan & Harian bullish."""
+    ms = r.get("ms") or {}
+    return bool(r.get("trendOk")) and (ms.get("w") or {}).get("tr") == 1 and (ms.get("d") or {}).get("tr") == 1
 
 
 def update_konsistensi(rows, tanggal):
@@ -1139,7 +1158,7 @@ def update_konsistensi(rows, tanggal):
             riw = json.loads(RIWAYAT.read_text(encoding="utf-8"))
         except Exception:
             riw = {}
-    top = sorted([r for r in rows if r["val"] >= 5e9], key=skor, reverse=True)[:10]
+    top = sorted([r for r in rows if r["val"] >= 5e9 and uptrend_penuh(r)], key=skor, reverse=True)[:10]
     for i, r in enumerate(top, 1):
         r["top"] = i                               # peringkat Top 10 hari ini
     riw[tanggal] = [r["t"] for r in top]          # dicatat per tanggal candle bursa; run berulang = ditimpa
@@ -1206,6 +1225,7 @@ def tulis_html(rows, now, status, n_gagal, pakai_intraday, out_html=OUT_HTML, ar
     html = (TEMPLATE
             .replace("__DATA__", json.dumps(bersih(rows), ensure_ascii=False, allow_nan=False))
             .replace("__TITLE__", f"{now:%Y-%m-%d %H:%M}")
+            .replace("__LOGO96__", LOGO_96).replace("__LOGO32__", LOGO_32)
             .replace("__MARKET__", json.dumps(bersih(pasar or {}), ensure_ascii=False, allow_nan=False))
             .replace("__GEN__", now.strftime("%Y-%m-%d %H:%M"))
             .replace("__AGENDA__", json.dumps(muat_agenda(), ensure_ascii=False))
@@ -1348,6 +1368,7 @@ def main():
         r["plans"] = {k: v for k, v in plans.items() if v}
         best = next((k for k in ("K", "S", "A") if plans[k]), None)
         r["plan"] = dict(plans[best], src=best) if best else None
+        r["st"] = skor_struktur(r)
         for k in ("_ma20", "_atr", "_ph", "_d"):
             r.pop(k, None)
 
@@ -1374,7 +1395,9 @@ TEMPLATE = r'''<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>IDX Screener - __TITLE__</title>
+<title>Dibalik Saham · Screener - __TITLE__</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,__LOGO32__">
+<link rel="apple-touch-icon" href="data:image/png;base64,__LOGO96__">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1420,8 +1443,11 @@ TEMPLATE = r'''<!DOCTYPE html>
   .nav-in { max-width:1880px; margin:0 auto; padding:10px clamp(12px,3vw,28px); display:flex; align-items:center; justify-content:space-between; gap:8px 20px; flex-wrap:wrap; }
   .brand { min-width:0; }
   .brand h1 { font-size:1.25rem; font-weight:800; letter-spacing:-0.02em; margin:0; display:flex; align-items:center; gap:0; flex-wrap:wrap; line-height:1.2; }
-  .logo { display:inline-grid; place-items:center; width:26px; height:26px; margin-right:9px; border-radius:8px; background:var(--accent); color:#fff; font-size:0.8rem; }
-  :root[data-theme="dark"] .logo { color:#0F1522; }
+  .logo { width:40px; height:40px; margin-right:11px; border-radius:10px; flex:0 0 auto; box-shadow:0 1px 3px rgba(0,0,0,.18); background:#fff; }
+  .brand-row { display:flex; align-items:center; min-width:0; }
+  .brand-name { display:flex; flex-direction:column; line-height:1.1; }
+  .brand-name .nm { font-size:1.2rem; font-weight:800; letter-spacing:-0.01em; color:var(--ink); }
+  .brand-name .tg { font-size:0.62rem; font-weight:700; letter-spacing:0.14em; color:var(--accent); text-transform:uppercase; margin-top:2px; }
   .brand .meta { color:var(--muted); font-size:0.76rem; margin-top:3px; }
   .wrap { padding-top:18px !important; }
   html { scroll-padding-top:calc(76px + env(safe-area-inset-top,0px)) !important; }
@@ -1820,7 +1846,9 @@ TEMPLATE = r'''<!DOCTYPE html>
 <header class="navbar" id="navbar">
   <div class="nav-in">
     <div class="brand">
-      <h1><span class="logo" aria-hidden="true">▲</span>IDX Screener <span class="status" id="status-chip">__BADGE__</span></h1>
+      <h1 class="brand-row"><img class="logo" src="data:image/png;base64,__LOGO96__" alt="" width="40" height="40">
+        <span class="brand-name"><span class="nm">Dibalik Saham</span><span class="tg">Research &amp; Insight</span></span>
+        <span class="status" id="status-chip">__BADGE__</span></h1>
       <div class="meta">__SUB__</div>
     </div>
     <div class="top-actions">
@@ -1900,10 +1928,11 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>Pengaturan lanjutan: bobot skor manual</summary>
       <div class="hint">Cukup pakai preset di atas. Geser slider hanya kalau kamu sudah paham cara skor dihitung, bukan untuk mencari hasil yang terasa cocok.</div>
       <div class="weights">
-        <div><label for="w-trend">Trend <b id="w-trend-val">30</b></label><input type="range" id="w-trend" min="0" max="100" value="30"></div>
-        <div><label for="w-brk">Breakout <b id="w-brk-val">30</b></label><input type="range" id="w-brk" min="0" max="100" value="30"></div>
-        <div><label for="w-pa">Price action <b id="w-pa-val">25</b></label><input type="range" id="w-pa" min="0" max="100" value="25"></div>
-        <div><label for="w-mom">Momentum (RSI) <b id="w-mom-val">15</b></label><input type="range" id="w-mom" min="0" max="100" value="15"></div>
+        <div><label for="w-trend">Trend <b id="w-trend-val">25</b></label><input type="range" id="w-trend" min="0" max="100" value="25"></div>
+        <div><label for="w-brk">Breakout <b id="w-brk-val">20</b></label><input type="range" id="w-brk" min="0" max="100" value="20"></div>
+        <div><label for="w-pa">Price action <b id="w-pa-val">20</b></label><input type="range" id="w-pa" min="0" max="100" value="20"></div>
+        <div><label for="w-mom">Momentum (RSI) <b id="w-mom-val">10</b></label><input type="range" id="w-mom" min="0" max="100" value="10"></div>
+        <div><label for="w-st">Struktur SMC (W/D/4H) <b id="w-st-val">25</b></label><input type="range" id="w-st" min="0" max="100" value="25"></div>
       </div>
     </details>
     </details>
@@ -2013,6 +2042,13 @@ TEMPLATE = r'''<!DOCTYPE html>
       </div>
     </details>
     <details class="guide-item">
+      <summary>Cara menghitung skor</summary>
+      <div class="guide-body">
+        <p>Skor 0–100 adalah gabungan 5 komponen harian: <b>Trend</b> (harga &gt; MA20, MA20 &gt; MA50, MA50 &gt; MA200, harga &gt; MA200; 25 poin per syarat), <b>Breakout</b> (tembus harga tertinggi 20 hari dan volume di atas rata-rata), <b>Price action</b> (pola candle terakhir), <b>Momentum</b> (zona RSI; 50–70 bernilai penuh), dan <b>Struktur SMC</b> (Mingguan 40, Harian 40, 4 jam 20: penuh kalau bullish, setengah kalau belum jelas, 0 kalau bearish).</p>
+        <p>Bobot standar: Trend 25 · Breakout 20 · Price action 20 · Momentum 10 · Struktur 25. Preset memakai bobotnya sendiri, dan bobot bisa diatur manual di "Pengaturan lanjutan". Top 10 selalu memakai bobot standar. Rincian nilai tiap komponen ada di panel detail, bagian "Rincian skor".</p>
+      </div>
+    </details>
+    <details class="guide-item">
       <summary>Checklist syarat</summary>
       <div class="guide-body">
         <p>Setiap saham diperiksa terhadap 10 syarat: tren tersusun naik, harga di atas MA200, Daily dan Mingguan Buy, RSI 45–70, volume di atas rata-rata, transaksi ≥ Rp 5 M/hari, 1H tidak Sell, risiko ke stop loss ≤ 7%, IHSG tidak sedang turun, dan struktur SMC Mingguan serta Harian bullish.</p>
@@ -2055,7 +2091,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <details class="guide-item">
       <summary>Baris Top 10 dan riwayat harian</summary>
       <div class="guide-body">
-        <p><b>Baris berwarna kuning</b> dengan label #1 sampai #10 adalah 10 saham dengan skor tertinggi hari ini (bobot standar 30/30/25/15, hanya saham dengan transaksi minimal Rp 5 M/hari). Centang "Hanya Top 10 hari ini" untuk menampilkan kesepuluhnya saja. Kolom Top 10 menghitung berapa hari bursa (dari 10 terakhir) saham itu masuk daftar ini.</p>
+        <p><b>Baris berwarna kuning</b> dengan label #1 sampai #10 adalah 10 saham dengan skor tertinggi hari ini (bobot standar), hanya dari saham yang benar-benar uptrend: badge Uptrend (MA20 &gt; MA50 &gt; MA200) dan struktur SMC Mingguan serta Harian bullish (W▲ D▲), dengan transaksi minimal Rp 5 M/hari. Kalau yang lolos kurang dari 10, yang tampil memang lebih sedikit. Centang "Hanya Top 10 hari ini" untuk menampilkan kesepuluhnya saja. Kolom Top 10 menghitung berapa hari bursa (dari 10 terakhir) saham itu masuk daftar ini.</p>
         <p><b>Riwayat harian</b> di panel detail menampilkan harga buka, tertinggi, terendah, tutup, perubahan, volume (lot), perkiraan nilai transaksi, dan perbandingan volume dengan rata-rata 20 hari sebelumnya. Baris kuning menandai hari dengan volume minimal 2 kali rata-rata. Riwayat bisa diunduh sebagai CSV.</p>
         <p>Data broker summary (broker pembeli dan penjual) tidak tersedia gratis untuk diambil otomatis, jadi tombol di bawah riwayat membuka halaman saham itu di Stockbit untuk dicek manual.</p>
       </div>
@@ -2222,21 +2258,21 @@ let PAGE_SIZE = 25;
 const KD_ORDER = { zone: -1, ok: 0, tz: 0.5, rev: 1, wait: 2, hot: 3, n: 4, bad: 5 };
 const KD_NAME = { zone: "Di zona entry", tz: "Tunggu ke zona", ok: "Kandidat kuat", wait: "Tunggu", hot: "Tunggu pullback", rev: "Pantau pembalikan", n: "Pantau", bad: "Hindari dulu" };
 const PRESETS = {
-  struct:   { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:0, filters:{ms:true}, valMin:5, kd:"nobad",
+  struct:   { weights:{trend:20,brk:15,pa:15,mom:10,st:40}, minScore:0, filters:{ms:true}, valMin:5, kd:"nobad",
               desc:"Struktur SMC Mingguan, Harian, dan 4 jam (kalau ada) sama-sama bullish, transaksi minimal Rp 5 M/hari. Cari entry saat harga kembali ke order block bullish atau zona discount, lalu konfirmasi di 1 jam." },
-  golden:   { weights:{trend:60,brk:10,pa:10,mom:20}, minScore:55, filters:{trend:true}, kd:"nobad",
+  golden:   { weights:{trend:45,brk:10,pa:10,mom:15,st:20}, minScore:55, filters:{trend:true}, kd:"nobad",
               desc:"Saham dengan susunan MA20 > MA50 > MA200 dan harga di atas MA20. Cocok untuk ikut tren yang sudah terbentuk." },
-  quality:  { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:40, filters:{}, valMin:5, streakMin:3,
+  quality:  { weights:{trend:25,brk:20,pa:20,mom:10,st:25}, minScore:40, filters:{}, valMin:5, streakMin:3,
               desc:"Transaksi minimal Rp 5 M/hari dan masuk Top 10 minimal 3 dari 10 hari terakhir. Paling aman untuk pemula." },
-  breakout: { weights:{trend:20,brk:50,pa:20,mom:10}, minScore:50, filters:{breakout:true},
+  breakout: { weights:{trend:15,brk:45,pa:15,mom:5,st:20}, minScore:50, filters:{breakout:true},
               desc:"Harga menembus harga tertinggi 20 hari dengan volume minimal 1,5 kali rata-rata. Waspada breakout palsu." },
-  allgreen: { weights:{trend:25,brk:25,pa:25,mom:25}, minScore:0, filters:{allgreen:true},
+  allgreen: { weights:{trend:20,brk:20,pa:20,mom:20,st:20}, minScore:0, filters:{allgreen:true},
               desc:"Daily, Mingguan, dan Bulanan sama-sama Strong Buy. Sering sudah mahal, perhatikan RSI." },
-  reversal: { weights:{trend:10,brk:10,pa:40,mom:40}, minScore:35, filters:{pattern:true, confirmed:true}, rsiMax:45,
+  reversal: { weights:{trend:10,brk:10,pa:40,mom:40,st:0}, minScore:35, filters:{pattern:true, confirmed:true}, rsiMax:45,
               desc:"RSI rendah dengan pola pembalikan yang sudah terkonfirmasi. Lebih berisiko; penurunan bisa berlanjut." },
-  pattern:  { weights:{trend:15,brk:15,pa:55,mom:15}, minScore:40, filters:{pattern:true},
+  pattern:  { weights:{trend:15,brk:15,pa:50,mom:10,st:10}, minScore:40, filters:{pattern:true},
               desc:"Candle terakhir membentuk pola bullish. Pola berlabel \"tunggu\" belum terkonfirmasi." },
-  reset:    { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:40, filters:{},
+  reset:    { weights:{trend:25,brk:20,pa:20,mom:10,st:25}, minScore:40, filters:{},
               desc:"Semua saham dengan skor minimal 40, tanpa filter tambahan." },
 };
 const STORE = "idxs:v2", WATCH = "idxs:watch", CALC = "idxs:calc", THEME = "idxs:theme";
@@ -2409,7 +2445,7 @@ function planCell(r) {
 /* ---------- state ---------- */
 const FIELDS = ["search", "kd-filter", "sector-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min"];
 const CHECKS = ["f-watch", "f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen", "f-ms", "f-top"];
-const W = ["w-trend", "w-brk", "w-pa", "w-mom"];
+const W = ["w-trend", "w-brk", "w-pa", "w-mom", "w-st"];
 function save() {
   const s = { preset: activePreset, sortKey, sortDir, page, min: $("min-score").value, f: {}, c: {}, w: {} };
   FIELDS.forEach(id => s.f[id] = $(id).value); CHECKS.forEach(id => s.c[id] = $(id).checked); W.forEach(id => s.w[id] = $(id).value);
@@ -2434,7 +2470,7 @@ function markPreset() {
 function applyPreset(name, silent) {
   const p = PRESETS[name]; if (!p) return;
   activePreset = name;
-  $("w-trend").value = p.weights.trend; $("w-brk").value = p.weights.brk; $("w-pa").value = p.weights.pa; $("w-mom").value = p.weights.mom;
+  $("w-trend").value = p.weights.trend; $("w-brk").value = p.weights.brk; $("w-pa").value = p.weights.pa; $("w-mom").value = p.weights.mom; $("w-st").value = p.weights.st ?? 25;
   W.forEach(id => $(id + "-val").textContent = $(id).value);
   $("min-score").value = p.minScore; $("min-score-val").textContent = p.minScore;
   const f = p.filters || {};
@@ -2448,8 +2484,8 @@ function applyPreset(name, silent) {
 }
 
 /* ---------- render table ---------- */
-function weights() { return { trend: +$("w-trend").value, brk: +$("w-brk").value, pa: +$("w-pa").value, mom: +$("w-mom").value }; }
-function score(r, w) { const t = w.trend + w.brk + w.pa + w.mom; return t ? (r.trend * w.trend + r.brk * w.brk + r.pa * w.pa + r.mom * w.mom) / t : 0; }
+function weights() { return { trend: +$("w-trend").value, brk: +$("w-brk").value, pa: +$("w-pa").value, mom: +$("w-mom").value, st: +$("w-st").value }; }
+function score(r, w) { const t = w.trend + w.brk + w.pa + w.mom + w.st; return t ? (r.trend * w.trend + r.brk * w.brk + r.pa * w.pa + r.mom * w.mom + (r.st ?? 50) * w.st) / t : 0; }
 function allGreen(tf) { return tf && tf.daily && tf.weekly && tf.monthly && [tf.daily, tf.weekly, tf.monthly].every(d => d.summary === "Strong Buy"); }
 function num(id) { return parseFloat($(id).value); }
 
@@ -2497,7 +2533,7 @@ function filtered() {
 function rowHtml(r) {
   return `<tr data-t="${r.t}" tabindex="0"${r.top ? ' class="top10"' : ""}>
       <td class="sticky1"><button class="star ${watch.has(r.t) ? "on" : ""}" data-star="${r.t}" type="button" aria-label="Watchlist ${r.t}" aria-pressed="${watch.has(r.t)}">★</button></td>
-      <td class="sticky2"><div class="tk">${r.t}${r.top ? `<span class="top-badge" title="Top 10 hari ini: peringkat ${r.top} (skor bobot standar, transaksi minimal Rp 5 M/hari)">#${r.top}</span>` : ""}</div><div class="tk-name" title="${esc(r.nm)}">${esc(r.nm) || "&nbsp;"}</div></td>
+      <td class="sticky2"><div class="tk">${r.t}${r.top ? `<span class="top-badge" title="Top 10 hari ini: peringkat ${r.top} (skor bobot standar, hanya saham uptrend dengan struktur W▲ D▲ dan transaksi minimal Rp 5 M/hari)">#${r.top}</span>` : ""}</div><div class="tk-name" title="${esc(r.nm)}">${esc(r.nm) || "&nbsp;"}</div></td>
       <td>${candleSvg(r.ohlc)}</td>
       <td class="num">${fmtNum(r.p)}</td>
       <td class="num ${r.chg >= 0 ? "pos" : "neg"}">${r.chg >= 0 ? "+" : ""}${fmtDec(r.chg, 2)}%</td>
@@ -2547,7 +2583,7 @@ function render() {
   $("count-info").textContent = $("search").value.trim()
     ? `${fmtNum(rows.length)} hasil pencarian. Pencarian mengabaikan filter lain. Hapus isi kotak cari untuk kembali ke filter.`
     : watchOn ? `Watchlist-mu: ${fmtNum(rows.length)} saham. Filter lain diabaikan. Klik preset mana saja untuk kembali.`
-    : topOn ? `Top 10 hari ini: ${fmtNum(rows.length)} saham (skor bobot standar, transaksi minimal Rp 5 M/hari). Filter lain diabaikan; hapus centang untuk kembali.`
+    : topOn ? `Top 10 hari ini: ${fmtNum(rows.length)} saham (skor bobot standar, hanya saham uptrend dengan struktur W▲ D▲, transaksi minimal Rp 5 M/hari). Filter lain diabaikan; hapus centang untuk kembali.`
     : `${fmtNum(rows.length + (pinActive() ? DATA.filter(r => r.top).length : 0))} saham ditampilkan dari ${fmtNum(DATA.length)}${pinActive() ? " (Top 10 disematkan di atas)" : ""}. Klik baris untuk melihat detail.`;
   document.querySelectorAll(".kd-count").forEach(b => b.classList.toggle("on", b.dataset.kd === $("kd-filter").value));
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -2563,7 +2599,7 @@ function render() {
   } else {
     const grp = (txt, cls = "") => `<tr class="grp ${cls}"><td colspan="22"><span>${txt}</span></td></tr>`;
     const topOpen = ls.get("idxs:topopen", true);
-    $("tbody").innerHTML = (pinned.length ? grp(`<button type="button" class="grp-toggle" aria-expanded="${topOpen}">${topOpen ? "▾" : "▸"} Top 10 hari ini</button> <span class="muted">· ${topOpen ? "disematkan di atas, urut peringkat. Klik untuk menutup" : `${pinned.length} saham disembunyikan. Klik untuk membuka`}</span>`, "grp-top") + (topOpen ? pinned.map(rowHtml).join("") : "")
+    $("tbody").innerHTML = (pinned.length ? grp(`<button type="button" class="grp-toggle" aria-expanded="${topOpen}">${topOpen ? "▾" : "▸"} Top 10 hari ini${pinned.length < 10 ? ` (${pinned.length} saham lolos syarat uptrend)` : ""}</button> <span class="muted">· ${topOpen ? "disematkan di atas, urut peringkat. Klik untuk menutup" : `${pinned.length} saham disembunyikan. Klik untuk membuka`}</span>`, "grp-top") + (topOpen ? pinned.map(rowHtml).join("") : "")
       + grp(`Hasil filter <span class="muted">· ${fmtNum(rows.length)} saham lain</span>`) : "") + slice.map(rowHtml).join("");
   }
   $("page-info").textContent = `Halaman ${page + 1} dari ${pages}`;
@@ -3580,7 +3616,7 @@ let viewMode = "panel", navList = [];
 function currentNav(t) { const { pinned, rows } = displayRows(); const l = pinned.map(r => r.t).concat(rows.map(r => r.t)); return l.includes(t) ? l : [t]; }
 function detailParts(r, r0, w) {
   const up = r.chg >= 0, c = r._ck, p = r.plan, tf = r.tf || {};
-  const comp = [["Trend", r.trend, w.trend], ["Breakout", r.brk, w.brk], ["Price action", r.pa, w.pa], ["Momentum", r.mom, w.mom]];
+  const comp = [["Trend", r.trend, w.trend], ["Breakout", r.brk, w.brk], ["Price action", r.pa, w.pa], ["Momentum", r.mom, w.mom], ["Struktur SMC", r.st ?? 50, w.st]];
   const tfNames = [["h1", "1 jam"], ["h2", "2 jam"], ["h4", "4 jam"], ["daily", "Harian"], ["weekly", "Mingguan"], ["monthly", "Bulanan"]];
   const sub = `${esc(r.nm)}${r.sector && r.sector !== "-" ? `${r.nm ? " · " : ""}${esc(r.sector)}` : ""}`;
   return {
