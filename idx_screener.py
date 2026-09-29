@@ -676,7 +676,7 @@ MAKRO_LIST = [
     ("IDR=X", "USD/IDR", "Kurs rupiah. Naik = rupiah melemah, biasanya menekan saham importir dan memicu jual asing."),
     ("DX-Y.NYB", "Indeks Dolar AS (DXY)", "Kekuatan dolar terhadap mata uang utama. Dolar menguat sering berarti tekanan bagi pasar negara berkembang."),
     ("^TNX", "Yield obligasi AS 10 tahun (%)", "Naik = biaya dana global lebih mahal; sering membuat asing keluar dari pasar negara berkembang."),
-    ("GC=F", "Emas (USD/oz)", "Aset aman. Berpengaruh ke saham emas seperti ANTM, MDKA, BRMS, EMAS."),
+    ("GC=F", "Emas (USD/oz)", "Harga emas dunia per troy ounce. Aset aman; berpengaruh ke saham emas seperti ANTM, MDKA, BRMS, EMAS."),
     ("CL=F", "Minyak WTI (USD/barel)", "Berpengaruh ke saham energi seperti MEDC, ENRG, AKRA, dan ke inflasi."),
     ("MTF=F", "Batubara Rotterdam (USD/ton)", "Acuan harga batubara Eropa. Pembanding untuk saham batubara seperti PTBA, ITMG, ADRO, AADI."),
     ("HG=F", "Tembaga (USD/lb)", "Indikator permintaan industri global. Berpengaruh ke MDKA, AMMN."),
@@ -689,14 +689,25 @@ def data_makro(ihsg):
     """Harga 1 tahun terakhir indikator pasar global dan makro dari Yahoo, plus korelasi 60 hari dengan IHSG."""
     got = unduh([s for s, _, _ in MAKRO_LIST], "1y", "1d", mentah=True)
     ih = ke_tanggal(ihsg)["Close"].pct_change() if ihsg is not None else None
+    daftar = list(MAKRO_LIST)
+    # emas dunia dalam rupiah per gram = USD/oz x USD/IDR / 31,1035 (tanggal yang sama)
+    if got.get("GC=F") is not None and got.get("IDR=X") is not None:
+        g, k = ke_tanggal(got["GC=F"])["Close"], ke_tanggal(got["IDR=X"])["Close"]
+        j = pd.concat([g, k], axis=1, join="inner").dropna()
+        if len(j) >= 30:
+            v = j.iloc[:, 0] * j.iloc[:, 1] / 31.1035
+            got["EMAS_IDR"] = pd.DataFrame({"Open": v, "High": v, "Low": v, "Close": v, "Volume": 0.0})
+            pos = next(i for i, x in enumerate(daftar) if x[0] == "GC=F") + 1
+            daftar.insert(pos, ("EMAS_IDR", "Emas (Rp/gram)",
+                                "Harga emas dunia dirupiahkan: USD/oz × kurs USD/IDR ÷ 31,1035. Bukan harga emas batangan Antam/Pegadaian, yang biasanya lebih tinggi karena ongkos cetak, margin, dan pajak. Naik bisa karena emas dunia naik, rupiah melemah, atau keduanya."))
     out = []
-    for sym, nama, ket in MAKRO_LIST:
+    for sym, nama, ket in daftar:
         df = got.get(sym)
         if df is None or len(df) < 30:
             continue
         df = ke_tanggal(df)
         c = df["Close"].astype(float)
-        dec = 3 if c.iloc[-1] < 20 else 2
+        dec = 0 if sym == "EMAS_IDR" else (3 if c.iloc[-1] < 20 else 2)
         korel = None
         if ih is not None:
             j = pd.concat([c.pct_change(), ih], axis=1, join="inner").dropna().iloc[-60:]
