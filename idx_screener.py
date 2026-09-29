@@ -188,7 +188,9 @@ def status_pasar(now):
 
 
 # ─────────────────────────── ambil data ───────────────────────────
-def unduh(tickers, period, interval, chunk=40):
+def unduh(tickers, period, interval, chunk=40, mentah=False):
+    if mentah:                                   # simbol non-IDX (kurs, komoditas, indeks global) apa adanya
+        return _unduh(tickers, period, interval, chunk, threads=True, mentah=True)
     out = _unduh(tickers, period, interval, chunk, threads=True)
     sisa = [t for t in tickers if t not in out]
     if sisa:   # coba ulang yang gagal (mis. 'database is locked' dari cache yfinance atau pembatasan sementara)
@@ -203,11 +205,11 @@ def unduh(tickers, period, interval, chunk=40):
     return out
 
 
-def _unduh(tickers, period, interval, chunk, threads):
+def _unduh(tickers, period, interval, chunk, threads, mentah=False):
     out = {}
     for i in range(0, len(tickers), chunk):
         part = tickers[i:i + chunk]
-        syms = [t if t.startswith("^") else t + ".JK" for t in part]
+        syms = [t if (mentah or t.startswith("^")) else t + ".JK" for t in part]
         try:
             data = yf.download(syms, period=period, interval=interval, group_by="ticker",
                                auto_adjust=False, threads=threads, progress=False)
@@ -670,6 +672,43 @@ def musim_ihsg(d):
     return out
 
 
+MAKRO_LIST = [
+    ("IDR=X", "USD/IDR", "Kurs rupiah. Naik = rupiah melemah, biasanya menekan saham importir dan memicu jual asing."),
+    ("DX-Y.NYB", "Indeks Dolar AS (DXY)", "Kekuatan dolar terhadap mata uang utama. Dolar menguat sering berarti tekanan bagi pasar negara berkembang."),
+    ("^TNX", "Yield obligasi AS 10 tahun (%)", "Naik = biaya dana global lebih mahal; sering membuat asing keluar dari pasar negara berkembang."),
+    ("GC=F", "Emas (USD/oz)", "Aset aman. Berpengaruh ke saham emas seperti ANTM, MDKA, BRMS, EMAS."),
+    ("CL=F", "Minyak WTI (USD/barel)", "Berpengaruh ke saham energi seperti MEDC, ENRG, AKRA, dan ke inflasi."),
+    ("MTF=F", "Batubara Rotterdam (USD/ton)", "Acuan harga batubara Eropa. Pembanding untuk saham batubara seperti PTBA, ITMG, ADRO, AADI."),
+    ("HG=F", "Tembaga (USD/lb)", "Indikator permintaan industri global. Berpengaruh ke MDKA, AMMN."),
+    ("^GSPC", "S&P 500", "Bursa saham AS, penentu arah sentimen global."),
+    ("^HSI", "Hang Seng", "Bursa Hong Kong, cerminan sentimen Asia dan Tiongkok."),
+]
+
+
+def data_makro(ihsg):
+    """Harga 1 tahun terakhir indikator pasar global dan makro dari Yahoo, plus korelasi 60 hari dengan IHSG."""
+    got = unduh([s for s, _, _ in MAKRO_LIST], "1y", "1d", mentah=True)
+    ih = ke_tanggal(ihsg)["Close"].pct_change() if ihsg is not None else None
+    out = []
+    for sym, nama, ket in MAKRO_LIST:
+        df = got.get(sym)
+        if df is None or len(df) < 30:
+            continue
+        df = ke_tanggal(df)
+        c = df["Close"].astype(float)
+        dec = 3 if c.iloc[-1] < 20 else 2
+        korel = None
+        if ih is not None:
+            j = pd.concat([c.pct_change(), ih], axis=1, join="inner").dropna().iloc[-60:]
+            if len(j) >= 30:
+                korel = round(float(j.iloc[:, 0].corr(j.iloc[:, 1])), 2)
+        d0 = c.index[0]
+        out.append({"sym": sym, "nama": nama, "ket": ket, "dec": dec, "d0": d0.strftime("%Y-%m-%d"),
+                    "do": [(t - d0).days for t in c.index], "c": [round(float(x), dec) for x in c],
+                    "korel": korel})
+    return out
+
+
 def konteks_pasar(ihsg, rows, ihsg_jam=None, ihsg_panjang=None):
     """Ringkasan IHSG + napas pasar (persentase saham likuid di atas MA20)."""
     m = {"ihsg": None, "breadth": None}
@@ -708,6 +747,11 @@ def konteks_pasar(ihsg, rows, ihsg_jam=None, ihsg_panjang=None):
         m["musim"] = musim_ihsg(ihsg_panjang if ihsg_panjang is not None else ihsg)
     except Exception as e:
         print(f"  ! musim IHSG: {e}")
+    try:
+        print("  Unduh data pasar global & makro...")
+        m["makro"] = data_makro(ihsg)
+    except Exception as e:
+        print(f"  ! makro: {e}")
     likuid = [r for r in rows if r["val"] >= 1e9 and r["x"].get("m20l")]
     if likuid:
         naik = sum(1 for r in likuid if r["p"] > r["x"]["m20l"])
@@ -1117,7 +1161,7 @@ def main():
                 tambah_intraday(per_t[t], df)
                 tfdata.setdefault(t, {})
                 for k, fr in (("1h", df), ("4h", gabung_jam(df, 4))):
-                    pk = pak_ohlcv(fr)
+                    pk = pak_ohlcv(fr, 330)
                     if pk:
                         tfdata[t][k] = pk
             except Exception as e:
@@ -1127,7 +1171,7 @@ def main():
             try:
                 tfdata.setdefault(t, {})
                 for k, fr in (("15m", df), ("45m", gabung_jam(df, 3))):
-                    pk = pak_ohlcv(fr)
+                    pk = pak_ohlcv(fr, 330)
                     if pk:
                         tfdata[t][k] = pk
             except Exception as e:
@@ -1148,8 +1192,8 @@ def main():
                 if sw:
                     r.setdefault("ms", {})["w"] = sw
                 tfdata.setdefault(r["t"], {})
-                for k, fr in (("1w", resample(r["_d"], "W-FRI")), ("1mo", bulanan(r["_d"]))):
-                    pk = pak_ohlcv(fr, 150 if k == "1w" else 120)
+                for k, fr in (("1d", r["_d"]), ("1w", resample(r["_d"], "W-FRI")), ("1mo", bulanan(r["_d"]))):
+                    pk = pak_ohlcv(fr, {"1d": 330, "1w": 280, "1mo": 120}[k])
                     if pk:
                         tfdata[r["t"]][k] = pk
                     r.pop("ohlc", None)            # 30 candle terakhir diambil dari smc["b"] di browser
@@ -1320,7 +1364,7 @@ TEMPLATE = r'''<!DOCTYPE html>
 
   /* table */
   .count-info { color:var(--muted); font-size:0.86rem; margin:6px 2px 8px; }
-  .table-wrap { overflow:auto; max-height:calc(100vh - 96px); border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); }
+  .table-wrap { overflow-x:auto; overflow-y:visible; border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); }
   table { border-collapse:separate; border-spacing:0; width:100%; }
   thead th { position:sticky; top:0; z-index:3; background:var(--panel2); color:var(--muted); text-align:left;
     padding:10px 12px; font-size:0.78rem; font-weight:700; border-bottom:1px solid var(--line); white-space:nowrap; cursor:pointer; user-select:none; }
@@ -1479,6 +1523,19 @@ TEMPLATE = r'''<!DOCTYPE html>
   .vbar i { display:block; height:100%; background:var(--accent); opacity:.7; }
   .vx-hi { color:var(--top-ink); font-weight:800; }
 
+  /* makro */
+  .makro-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
+  .mk-card { display:flex; flex-direction:column; gap:3px; text-align:left; border:1px solid var(--line); background:var(--panel); border-radius:12px; padding:10px 12px; cursor:pointer; color:var(--ink); }
+  .mk-card:hover { border-color:var(--accent); }
+  .mk-card.on { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  .mk-name { font-size:0.8rem; font-weight:700; color:var(--ink2); }
+  .mk-val { font-size:1.25rem; font-weight:800; }
+  .mk-chg { font-size:0.76rem; display:flex; gap:8px; flex-wrap:wrap; }
+  .mk-spark { width:100%; height:48px; margin:2px 0; }
+  .mk-kor { font-size:0.74rem; color:var(--muted); }
+  .mk-big { margin-top:14px; border-top:1px solid var(--line); padding-top:12px; }
+  #makro-card { margin-bottom:14px; }
+
   /* kalender */
   .cal-head { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; margin-bottom:12px; }
   .cal-head h2 { margin:0; }
@@ -1554,6 +1611,14 @@ TEMPLATE = r'''<!DOCTYPE html>
   .d-nav .icon-btn { padding:6px 11px; }
   .d-nav .icon-btn:disabled { opacity:.35; cursor:default; }
   .d-pos { font-size:0.8rem; min-width:48px; text-align:center; }
+
+  .to-top { position:fixed; right:calc(20px + env(safe-area-inset-right,0px)); bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:30;
+    display:none; align-items:center; gap:6px; border:0; border-radius:999px; padding:11px 16px; font-weight:800; font-size:0.88rem;
+    background:var(--accent); color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.25); cursor:pointer; }
+  .to-top.show { display:inline-flex; }
+  .to-top:hover { filter:brightness(1.08); }
+  :root[data-theme="dark"] .to-top { color:#0F1522; }
+  body.has-cmpbar .to-top { bottom:calc(84px + env(safe-area-inset-bottom,0px)); }
 
   /* perbandingan */
   .cmp-bar { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:19; display:none;
@@ -1715,6 +1780,12 @@ TEMPLATE = r'''<!DOCTYPE html>
   </div>
 
   <div class="view" id="v-kalender" hidden>
+  <section class="card" id="makro-card" aria-label="Pasar global dan makro">
+    <div class="cal-head"><h2>Pasar global &amp; makro</h2><span class="muted" style="font-size:0.82rem">1 tahun terakhir · klik kartu untuk grafik besar</span></div>
+    <div class="makro-grid" id="makro"></div>
+    <div id="makro-big"></div>
+    <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Data dari Yahoo Finance dan bisa tertunda. <b>Hubungan dengan IHSG</b> adalah korelasi perubahan harian 60 hari terakhir: mendekati +1 berarti biasanya bergerak searah dengan IHSG, mendekati −1 berlawanan arah, mendekati 0 hampir tidak berhubungan. BI Rate dan inflasi Indonesia tidak tersedia di Yahoo, jadi jadwal rilisnya ada di kalender di bawah.</p>
+  </section>
   <section class="card cal-card" id="kalender" aria-label="Kalender">
     <div class="cal-head">
       <h2>Kalender</h2>
@@ -1826,6 +1897,14 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p><b>Saham mirip:</b> di panel detail, bagian "Saham mirip" menampilkan 5 saham di sektor yang sama dengan pergerakan harga harian paling mirip dalam 60 hari terakhir (korelasi), lengkap dengan kinerja 20 hari, struktur, dan kondisinya. Kalimat di bawahnya memberi tahu apakah saham ini lebih kuat, sejalan, atau tertinggal dari saham-saham miripnya.</p>
         <p><b>Bandingkan:</b> klik "+ Bandingkan" di panel detail (maksimal 4 saham). Bar di bawah layar menampilkan pilihanmu; klik "Buka perbandingan". Halaman perbandingan berisi chart kinerja dalam % sejak titik awal yang sama (20, 60, atau 120 hari) dengan IHSG sebagai pembanding, serta tabel berdampingan: kondisi, struktur W/D/4H, BOS/CHoCH terakhir, posisi premium/discount, order block terdekat, POC, RSI, checklist, dan lainnya. Link halamannya (…/#bandingkan=PTBA,ITMG) bisa dibagikan.</p>
         <p>Saham yang tertinggal dari saham miripnya bisa jadi kandidat menyusul, tapi bisa juga tertinggal karena alasan khusus (berita, kinerja keuangan). Cek dulu sebelum entry.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>MA200, RSI, MACD, dan pasar global</summary>
+      <div class="guide-body">
+        <p><b>MA20/50/200</b> (lapisan di chart): rata-rata harga 20, 50, dan 200 candle. Harga di atas MA200 menandakan tren jangka panjang naik. MA200 butuh 200 candle sebelumnya, jadi di versi online dihitung dari data tambahan; di timeframe dengan data pendek (misalnya 4H atau bulanan) MA200 bisa belum tersedia.</p>
+        <p><b>RSI 14</b> (panel di bawah volume): kekuatan kenaikan 0–100. Di atas 70 = sudah panas, di bawah 30 = jenuh jual. <b>MACD 12,26,9</b>: garis biru (MACD) memotong ke atas garis oranye (sinyal) sering dianggap tanda momentum naik; batang hijau/merah adalah selisih keduanya. Nilai keduanya ikut tampil saat kursor di chart.</p>
+        <p><b>Pasar global &amp; makro</b> (di tab Kalender): kurs USD/IDR, indeks dolar, yield obligasi AS 10 tahun, emas, minyak, batubara, tembaga, S&amp;P 500, dan Hang Seng selama 1 tahun, lengkap dengan perubahan 1 hari (1H), 1 bulan (1B), 1 tahun (1T), dan seberapa erat hubungannya dengan IHSG. Klik kartu untuk grafik besar.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -1950,6 +2029,7 @@ TEMPLATE = r'''<!DOCTYPE html>
 <div class="full" id="full" role="dialog" aria-modal="true" aria-labelledby="d-title"></div>
 <div class="full" id="cmpv" role="dialog" aria-modal="true" aria-label="Bandingkan saham"></div>
 <div class="cmp-bar" id="cmp-bar" role="region" aria-label="Saham yang akan dibandingkan"></div>
+<button type="button" class="to-top" id="to-top" aria-label="Kembali ke paling atas">↑ Ke atas</button>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" tabindex="-1"></aside>
 
@@ -2542,7 +2622,7 @@ let curTF = ls.get(TF_KEY, "1d");
 const fmtWaktu = (ms, tf) => { const d = new Date(ms + WIB_MS); const t = `${HARI3[d.getUTCDay()]}, ${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}`; return /m$|h$/.test(tf) && tf !== "1mo" ? `${t} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}` : t; };
 function loadTF(t) {
   if (tfCache.has(t)) return tfCache.get(t);
-  const pr = location.protocol === "file:" ? Promise.reject(new Error("file"))
+  const pr = location.protocol === "file:" || typeof fetch !== "function" ? Promise.reject(new Error("file"))
     : fetch(`data/${encodeURIComponent(t)}.json?v=${encodeURIComponent(GEN)}`).then(x => { if (!x.ok) throw new Error("HTTP " + x.status); return x.json(); });
   tfCache.set(t, pr); pr.catch(() => tfCache.delete(t)); return pr;
 }
@@ -2558,16 +2638,100 @@ function tfBar(r) {
   return `<div class="tf-bar" role="group" aria-label="Timeframe chart">${TF_LIST.map(([k, lab]) => `<button type="button" data-tf="${k}" class="${curTF === k ? "on" : ""}" ${av.has(k) ? "" : `disabled title="${k === "1w" || k === "1mo" ? "Belum tersedia untuk saham ini" : "Timeframe intraday hanya untuk 200 saham skor tertinggi"}"`}>${lab}</button>`).join("")}</div>`;
 }
 
+/* ---------- indikator: MA, RSI, MACD (dihitung dari seluruh data lalu dipotong ke candle yang terlihat) ---------- */
+function indSMA(c, n) { const o = new Array(c.length).fill(null); let s = 0; for (let i = 0; i < c.length; i++) { s += c[i]; if (i >= n) s -= c[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
+function indEMA(c, n) { const o = new Array(c.length).fill(null), k = 2 / (n + 1); let e = null; for (let i = 0; i < c.length; i++) { if (c[i] == null) continue; e = e == null ? c[i] : c[i] * k + e * (1 - k); if (i >= n - 1) o[i] = e; } return o; }
+function indRSI(c, n = 14) {
+  const o = new Array(c.length).fill(null); let g = 0, l = 0;
+  for (let i = 1; i < c.length; i++) { const d = c[i] - c[i - 1], up = Math.max(d, 0), dn = Math.max(-d, 0);
+    if (i <= n) { g += up / n; l += dn / n; if (i === n) o[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l); }
+    else { g = (g * (n - 1) + up) / n; l = (l * (n - 1) + dn) / n; o[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l); } }
+  return o;
+}
+function indicators(closes, nb) {
+  const e12 = indEMA(closes, 12), e26 = indEMA(closes, 26);
+  const macd = closes.map((_, i) => e12[i] != null && e26[i] != null ? e12[i] - e26[i] : null);
+  const firstM = macd.findIndex(v => v != null), sig = new Array(closes.length).fill(null);
+  if (firstM >= 0) { const e = indEMA(macd.slice(firstM), 9); e.forEach((v, i) => sig[firstM + i] = v); }
+  const cut = a => a.slice(-nb);
+  return { ma20: cut(indSMA(closes, 20)), ma50: cut(indSMA(closes, 50)), ma200: cut(indSMA(closes, 200)), rsi: cut(indRSI(closes)),
+    macd: cut(macd), sig: cut(sig), hist: cut(macd.map((v, i) => v != null && sig[i] != null ? v - sig[i] : null)) };
+}
+
+/* ---------- pasar global & makro ---------- */
+let makroSel = null;
+function makroSeries(m) { const base = Date.parse(m.d0 + "T00:00:00Z"); return m.c.map((v, i) => ({ t: base + m.do[i] * 86400000, v })); }
+const fmtM = (v, dec) => Number(v).toLocaleString("id-ID", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+function chgOf(c, k) { const n = c.length; if (n <= k) return null; return (c[n - 1] / c[n - 1 - k] - 1) * 100; }
+function korelTxt(k) {
+  if (k == null) return "-";
+  const a = Math.abs(k), kuat = a >= 0.5 ? "kuat" : a >= 0.2 ? "sedang" : "lemah";
+  return `${k >= 0 ? "+" : ""}${fmtDec(k, 2)} (${a < 0.2 ? "hampir tidak berhubungan" : `${kuat}, ${k > 0 ? "searah" : "berlawanan"}`})`;
+}
+function sparkSvg(c, w = 220, h = 54) {
+  const mn = Math.min(...c), mx = Math.max(...c), rg = (mx - mn) || 1, up = c[c.length - 1] >= c[0];
+  const pts = c.map((v, i) => `${(i / (c.length - 1) * w).toFixed(1)},${(h - 3 - (v - mn) / rg * (h - 6)).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="mk-spark" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${up ? "var(--up)" : "var(--down)"}" stroke-width="1.6"/></svg>`;
+}
+function renderMakro() {
+  const box = $("makro"); if (!box) return;
+  const M = MARKET.makro || [];
+  if (!M.length) { box.innerHTML = '<p class="muted" style="margin:0">Data pasar global belum tersedia di run ini.</p>'; $("makro-big").innerHTML = ""; return; }
+  box.innerHTML = M.map(m => {
+    const c = m.c, last = c[c.length - 1], d1 = chgOf(c, 1), d20 = chgOf(c, 21), dy = (last / c[0] - 1) * 100;
+    const chip = (v, lab) => v == null ? "" : `<span class="${v >= 0 ? "pos" : "neg"}">${lab} ${v >= 0 ? "+" : ""}${fmtDec(v, 2)}%</span>`;
+    return `<button type="button" class="mk-card${makroSel === m.sym ? " on" : ""}" data-mk="${esc(m.sym)}">
+      <span class="mk-name">${esc(m.nama)}</span>
+      <span class="mk-val">${fmtM(last, m.dec)}</span>
+      <span class="mk-chg">${chip(d1, "1H")} ${chip(d20, "1B")} ${chip(dy, "1T")}</span>
+      ${sparkSvg(c)}
+      <span class="mk-kor">Hubungan dengan IHSG: <b>${esc(korelTxt(m.korel))}</b></span>
+    </button>`;
+  }).join("");
+  box.querySelectorAll("[data-mk]").forEach(b => b.addEventListener("click", () => { makroSel = makroSel === b.dataset.mk ? null : b.dataset.mk; renderMakro(); }));
+  const m = M.find(x => x.sym === makroSel), big = $("makro-big");
+  if (!m) { big.innerHTML = ""; return; }
+  const ser = makroSeries(m), c = m.c, W = 1400, H = 300, L = 8, R = 90, T = 12, B = 24, iw = W - L - R, ih = H - T - B;
+  let mn = Math.min(...c), mx = Math.max(...c); const pad = (mx - mn) * 0.06 || 1; mn -= pad; mx += pad;
+  const x = i => L + i / (c.length - 1) * iw, y = v => T + (mx - v) / (mx - mn) * ih;
+  const raw = (mx - mn) / 6, mag = Math.pow(10, Math.floor(Math.log10(raw || 1))), st = [1, 2, 2.5, 5, 10].map(k => k * mag).find(k => k >= raw) || mag * 10;
+  let g = ""; for (let v = Math.ceil(mn / st) * st; v <= mx; v += st) g += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)"/><text x="${L + iw + 8}" y="${(y(v) + 4).toFixed(1)}" font-size="11" fill="var(--muted)">${fmtM(v, m.dec > 2 ? 2 : 0)}</text>`;
+  const up = c[c.length - 1] >= c[0], col = up ? "var(--up)" : "var(--down)";
+  const pts = c.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const fd = t => { const d = new Date(t); return `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+  big.innerHTML = `<div class="mk-big"><div class="hist-head"><h3>${esc(m.nama)}</h3><span class="muted" id="mk-leg">${fd(ser[ser.length - 1].t)}: <b>${fmtM(c[c.length - 1], m.dec)}</b></span></div>
+    <p class="d-why" style="margin:0 0 8px">${esc(m.ket)}</p>
+    <svg class="d-chart" id="mk-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik ${esc(m.nama)} 1 tahun">
+      ${g}<polygon points="${L},${T + ih} ${pts} ${L + iw},${T + ih}" fill="${col}" opacity="0.08"/><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2"/>
+      <rect x="${L + iw + 3}" y="${(y(c[c.length - 1]) - 9).toFixed(1)}" width="${R - 6}" height="18" rx="3" fill="${col}"/><text x="${L + iw + 9}" y="${(y(c[c.length - 1]) + 4).toFixed(1)}" font-size="11" font-weight="800" fill="#fff">${fmtM(c[c.length - 1], m.dec)}</text>
+      <line id="mk-v" y1="${T}" y2="${T + ih}" stroke="var(--ink2)" stroke-dasharray="4 3" style="display:none"/><circle id="mk-dot" r="4" fill="${col}" style="display:none"/>
+      <text x="${L}" y="${H - 6}" font-size="11" fill="var(--muted)">${fd(ser[0].t)}</text><text x="${L + iw}" y="${H - 6}" font-size="11" text-anchor="end" fill="var(--muted)">${fd(ser[ser.length - 1].t)}</text>
+    </svg></div>`;
+  const svg = $("mk-svg"), vl = $("mk-v"), dot = $("mk-dot"), leg = $("mk-leg");
+  svg.addEventListener("mousemove", e => { const rc = svg.getBoundingClientRect(), sx = (e.clientX - rc.left) * W / rc.width;
+    const i = Math.max(0, Math.min(c.length - 1, Math.round((sx - L) / iw * (c.length - 1))));
+    vl.setAttribute("x1", x(i)); vl.setAttribute("x2", x(i)); vl.style.display = ""; dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(c[i])); dot.style.display = "";
+    leg.innerHTML = `${fd(ser[i].t)}: <b>${fmtM(c[i], m.dec)}</b> <span class="${c[i] >= c[0] ? "pos" : "neg"}">(${c[i] >= c[0] ? "+" : ""}${fmtDec((c[i] / c[0] - 1) * 100, 1)}% sejak awal)</span>`; });
+  svg.addEventListener("mouseleave", () => { vl.style.display = "none"; dot.style.display = "none"; leg.innerHTML = `${fd(ser[ser.length - 1].t)}: <b>${fmtM(c[c.length - 1], m.dec)}</b>`; });
+}
+
 /* ---------- SMC chart ---------- */
 const SMC_KEY = "idxs:smc";
-const SMC_LAYERS = [["vp", "Volume profile"], ["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "MA20/MA50"], ["plan", "Entry/SL/TP"]];
-function smcLayers() { return Object.assign({ vp: true, pd: true, st: true, ob: true, fvg: true, eq: true, moon: true, ma: false, plan: false }, ls.get(SMC_KEY, {})); }
+const SMC_LAYERS = [["vp", "Volume profile"], ["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "MA20/50/200"], ["rsi", "RSI"], ["macd", "MACD"], ["plan", "Entry/SL/TP"]];
+function smcLayers() { return Object.assign({ vp: true, pd: true, st: true, ob: true, fvg: true, eq: true, moon: true, ma: false, rsi: true, macd: true, plan: false }, ls.get(SMC_KEY, {})); }
 
 function smcChart(r, lay) {
   const S = r.smc, bars = S.b, nb = bars.length, p = r.plan;
   const full = viewMode === "full";
   const W = full ? 1440 : 720, L = 8, R = full ? 104 : 92, T = 10, B = 22, iw = W - L - R;
-  const ih = full ? 500 : 290, GAP = 8, VH = S.v ? (full ? 80 : 54) : 0, H = T + ih + GAP + VH + B, volTop = T + ih + GAP;
+  const ind = S.ind || (S.ind = indicators(bars.map(b => b[3]), nb));
+  const ih = full ? 500 : 290, GAP = 8, VH = S.v ? (full ? 80 : 54) : 0, PH = full ? 86 : 58, volTop = T + ih + GAP;
+  const panes = [];
+  if (VH) panes.push({ k: "vol", y0: volTop, h: VH });
+  let yCur = volTop + VH;
+  if (lay.rsi) { panes.push({ k: "rsi", y0: yCur + GAP, h: PH }); yCur += GAP + PH; }
+  if (lay.macd) { panes.push({ k: "macd", y0: yCur + GAP, h: PH }); yCur += GAP + PH; }
+  const bottomY = yCur, H = bottomY + B;
   let max = Math.max(...bars.map(b => b[1])), min = Math.min(...bars.map(b => b[2]));
   if (lay.plan && p) { max = Math.max(max, p.tp); min = Math.min(min, p.sl); }
   const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
@@ -2575,7 +2739,7 @@ function smcChart(r, lay) {
   const y = v => T + (max - v) / (max - min) * ih, x = i => L + i * sw + sw / 2, xl = i => L + i * sw;
   const clampY = v => Math.min(T + ih, Math.max(T, y(v)));
   const up = "var(--up)", dn = "var(--down)";
-  let s = `<svg class="d-chart smc-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart ${esc(TF_NAME[S.tf || "1d"])} dengan Smart Money Concepts ${esc(r.t)}" data-g="${[L, T, iw, ih, nb, min, max, W, H, R, GAP, VH].join(",")}">`;
+  let s = `<svg class="d-chart smc-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart ${esc(TF_NAME[S.tf || "1d"])} dengan Smart Money Concepts ${esc(r.t)}" data-g="${[L, T, iw, ih, nb, min, max, W, H, R, GAP, VH, bottomY].join(",")}" data-panes='${JSON.stringify(panes)}'>`;
   s += `<defs><clipPath id="cp"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath></defs>`;
   // skala harga: kelipatan "rapi" (mis. 25, 50, 100) sekitar 6-8 garis
   const raw = (max - min) / (full ? 11 : 8), mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
@@ -2621,7 +2785,10 @@ function smcChart(r, lay) {
   });
   const path = (arr, col) => { const pts = (arr || []).map((v, i) => v ? `${x(i).toFixed(1)},${y(v).toFixed(1)}` : null).filter(Boolean); return pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="1.5" opacity="0.9"/>` : ""; };
   const smaArr = n => bars.map((b, i) => i < n - 1 ? null : bars.slice(i - n + 1, i + 1).reduce((t, v) => t + v[3], 0) / n);
-  if (lay.ma) s += path(smaArr(20), "var(--blue)") + path(smaArr(50), "var(--orange)");
+  if (lay.ma) {
+    s += path(ind.ma20 || smaArr(20), "var(--blue)") + path(ind.ma50 || smaArr(50), "var(--orange)") + (ind.ma200 ? path(ind.ma200, "#A855F7") : "");
+    s += `<text x="${L + iw - 6}" y="${T + 14}" font-size="10" font-weight="700" text-anchor="end"><tspan fill="var(--blue)">MA20</tspan> <tspan fill="var(--orange)">MA50</tspan>${ind.ma200 && ind.ma200.some(v => v != null) ? ' <tspan fill="#A855F7">MA200</tspan>' : ' <tspan fill="var(--muted)">MA200 butuh data lebih panjang</tspan>'}</text>`;
+  }
   bars.forEach((b, i) => {
     const [op, hi, lo, cl] = b, col = cl >= op ? up : dn, top = Math.min(y(op), y(cl));
     s += `<line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${y(hi).toFixed(1)}" y2="${y(lo).toFixed(1)}" stroke="${col}" stroke-width="0.9"/><rect x="${(x(i) - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0.8, Math.abs(y(cl) - y(op))).toFixed(1)}" fill="${col}"/>`;
@@ -2674,9 +2841,33 @@ function smcChart(r, lay) {
     s += `<text x="${L + 6}" y="${volTop + 11}" font-size="10" font-weight="700" fill="var(--muted)">Volume (lot)</text>`;
     s += `<text x="${L + iw + 8}" y="${volTop + 10}" font-size="10" fill="var(--muted)">${fmtNum(vmax)}</text>`;
   }
+  const lineIn = (arr, y0, h, lo, hi, col, w = 1.4) => { const pts = arr.map((v, i) => v == null ? null : `${x(i).toFixed(1)},${(y0 + (hi - v) / (hi - lo) * h).toFixed(1)}`).filter(Boolean); return pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="${w}"/>` : ""; };
+  panes.forEach(pn => {
+    if (pn.k === "rsi") {
+      const yy = v => pn.y0 + (100 - v) / 100 * pn.h;
+      s += `<rect x="${L}" y="${pn.y0}" width="${iw}" height="${pn.h}" fill="var(--panel2)" opacity="0.35"/>`;
+      s += `<rect x="${L}" y="${yy(70)}" width="${iw}" height="${yy(30) - yy(70)}" fill="#A855F7" opacity="0.07"/>`;
+      [70, 30].forEach(v => s += `<line x1="${L}" x2="${L + iw}" y1="${yy(v)}" y2="${yy(v)}" stroke="var(--muted)" stroke-dasharray="3 3" opacity="0.7"/><text x="${L + iw + 8}" y="${yy(v) + 4}" font-size="10" fill="var(--muted)">${v}</text>`);
+      s += lineIn(ind.rsi, pn.y0, pn.h, 0, 100, "#A855F7", 1.6);
+      const lv = ind.rsi[ind.rsi.length - 1];
+      s += `<text x="${L + 6}" y="${pn.y0 + 12}" font-size="10" font-weight="700" fill="var(--muted)">RSI 14${lv != null ? ` <tspan fill="#A855F7">${fmtDec(lv, 1)}</tspan>` : ""}</text>`;
+    }
+    if (pn.k === "macd") {
+      const vals = [...ind.macd, ...ind.sig, ...ind.hist].filter(v => v != null); if (!vals.length) return;
+      const hi = Math.max(...vals.map(Math.abs)) * 1.1 || 1, lo = -hi, yy = v => pn.y0 + (hi - v) / (hi - lo) * pn.h;
+      s += `<rect x="${L}" y="${pn.y0}" width="${iw}" height="${pn.h}" fill="var(--panel2)" opacity="0.35"/>`;
+      s += `<line x1="${L}" x2="${L + iw}" y1="${yy(0)}" y2="${yy(0)}" stroke="var(--muted)" opacity="0.6"/>`;
+      ind.hist.forEach((v, i) => { if (v == null) return; const y1 = yy(Math.max(0, v)), y2 = yy(Math.min(0, v));
+        s += `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0.6, y2 - y1).toFixed(1)}" fill="${v >= 0 ? up : dn}" opacity="0.5"/>`; });
+      s += lineIn(ind.macd, pn.y0, pn.h, lo, hi, "var(--blue)", 1.5) + lineIn(ind.sig, pn.y0, pn.h, lo, hi, "var(--orange)", 1.3);
+      const lm = ind.macd[ind.macd.length - 1], lsg = ind.sig[ind.sig.length - 1];
+      s += `<text x="${L + 6}" y="${pn.y0 + 12}" font-size="10" font-weight="700" fill="var(--muted)">MACD 12,26,9${lm != null ? ` <tspan fill="var(--blue)">${fmtDec(lm, 2)}</tspan> <tspan fill="var(--orange)">${lsg != null ? fmtDec(lsg, 2) : ""}</tspan>` : ""}</text>`;
+      s += `<text x="${L + iw + 8}" y="${yy(0) + 4}" font-size="10" fill="var(--muted)">0</text>`;
+    }
+  });
   s += `<g class="xh" pointer-events="none" style="display:none">
-    <rect class="xh-band" y="${T}" height="${ih + GAP + VH}" fill="var(--ink)" opacity="0.06"/>
-    <line class="xh-v" y1="${T}" y2="${T + ih + GAP + VH}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>
+    <rect class="xh-band" y="${T}" height="${bottomY - T}" fill="var(--ink)" opacity="0.06"/>
+    <line class="xh-v" y1="${T}" y2="${bottomY}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>
     <line class="xh-h" x1="${L}" x2="${L + iw}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>
     <rect class="xh-pbox" x="${L + iw + 3}" width="${R - 6}" height="18" rx="3" fill="var(--ink)"/>
     <text class="xh-ptxt" x="${L + iw + 9}" font-size="11" font-weight="800" fill="var(--panel)"></text>
@@ -2714,7 +2905,8 @@ function smcSummary(r) {
 const HARI3 = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"], BLN3 = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 function attachCrosshair(r, box) {
   const S = r.smc, svg = box.querySelector("svg.smc-svg"), leg = box.querySelector(".xh-legend"); if (!svg || !S) return;
-  const [L, T, iw, ih, nb, min, max, W, H, , GAP, VH] = svg.dataset.g.split(",").map(Number);
+  const [L, T, iw, ih, nb, min, max, W, H, , GAP, VH, bottomY] = svg.dataset.g.split(",").map(Number);
+  const panes = JSON.parse(svg.dataset.panes || "[]"), ind = S.ind || {};
   const base = S.ts ? 0 : Date.parse(S.d0 + "T00:00:00Z"), sw = iw / nb;
   const g = svg.querySelector(".xh"), vL = g.querySelector(".xh-v"), hL = g.querySelector(".xh-h"), band = g.querySelector(".xh-band");
   const pBox = g.querySelector(".xh-pbox"), pTxt = g.querySelector(".xh-ptxt"), dBox = g.querySelector(".xh-dbox"), dTxt = g.querySelector(".xh-dtxt");
@@ -2728,20 +2920,27 @@ function attachCrosshair(r, box) {
     leg.innerHTML = `<b>${HARI3[d.getUTCDay()]}, ${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}${intra ? " " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0") : ""}</b>
       <span class="xl-k">O</span> <span class="${c}">${fp(b[0])}</span> <span class="xl-k">H</span> <span class="${c}">${fp(b[1])}</span>
       <span class="xl-k">L</span> <span class="${c}">${fp(b[2])}</span> <span class="xl-k">C</span> <span class="${c}">${fp(b[3])}</span>
-      ${chg == null ? "" : `<span class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "+" : ""}${fmtDec(chg, 2)}%</span>`}${vol}`;
+      ${chg == null ? "" : `<span class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "+" : ""}${fmtDec(chg, 2)}%</span>`}${vol}
+      ${ind.rsi && ind.rsi[i] != null ? ` <span class="xl-k">RSI</span> <span style="color:#A855F7">${fmtDec(ind.rsi[i], 1)}</span>` : ""}
+      ${ind.macd && ind.macd[i] != null ? ` <span class="xl-k">MACD</span> <span style="color:var(--blue)">${fmtDec(ind.macd[i], 2)}</span>` : ""}
+      ${ind.ma200 && ind.ma200[i] != null ? ` <span class="xl-k">MA200</span> <span style="color:#A855F7">${fp(ind.ma200[i])}</span>` : ""}`;
   };
   legend(nb - 1);
   const toSvg = e => { const rc = svg.getBoundingClientRect(); const pt = e.touches ? e.touches[0] : e; return [(pt.clientX - rc.left) * W / rc.width, (pt.clientY - rc.top) * H / rc.height]; };
   const move = e => {
     const [sx, sy] = toSvg(e);
-    if (sx < L || sx > L + iw || sy < T || sy > T + ih + GAP + VH) { hide(); return; }
+    if (sx < L || sx > L + iw || sy < T || sy > bottomY) { hide(); return; }
     const i = Math.max(0, Math.min(nb - 1, Math.floor((sx - L) / sw))), cx = L + i * sw + sw / 2;
     g.style.display = "";
     vL.setAttribute("x1", cx); vL.setAttribute("x2", cx);
     band.setAttribute("x", L + i * sw); band.setAttribute("width", Math.max(1, sw));
     hL.setAttribute("y1", sy); hL.setAttribute("y2", sy);
     pBox.setAttribute("y", sy - 9); pTxt.setAttribute("y", sy + 4);
-    pTxt.textContent = sy <= T + ih ? fp(max - (sy - T) / ih * (max - min)) : (S.v && S.v[i] != null ? fmtNum(S.v[i]) : "");
+    const pn = panes.find(q => sy >= q.y0 - GAP && sy <= q.y0 + q.h);
+    pTxt.textContent = sy <= T + ih ? fp(max - (sy - T) / ih * (max - min))
+      : !pn ? "" : pn.k === "vol" ? (S.v && S.v[i] != null ? fmtNum(S.v[i]) : "")
+      : pn.k === "rsi" ? (ind.rsi && ind.rsi[i] != null ? "RSI " + fmtDec(ind.rsi[i], 1) : "")
+      : (ind.macd && ind.macd[i] != null ? fmtDec(ind.macd[i], 2) : "");
     const d = tglOf(i), dx = Math.max(L + 48, Math.min(L + iw - 48, cx));
     dBox.setAttribute("x", dx - 48); dTxt.setAttribute("x", dx);
     dTxt.textContent = intra ? `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}` : `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`;
@@ -2767,12 +2966,21 @@ function renderSmc(r) {
   }
   const tf = r.t === "IHSG" || !(r.tfx || []).includes(curTF) ? "1d" : curTF;
   if (tb) tb.querySelectorAll("[data-tf]").forEach(bt => bt.classList.toggle("on", bt.dataset.tf === tf));
-  if (tf === "1d") drawSmc(r);
+  if (tf === "1d") {
+    drawSmc(r);
+    if (r.t !== "IHSG" && (r.tfx || []).includes("1d")) loadTF(r.t).then(raw => {
+      if (curTF !== "1d" && (r.tfx || []).includes(curTF)) return;
+      const d = raw && raw["1d"]; if (!d || !r.smc) return;
+      const nb = r.smc.b.length, closes = d.b.map(b => b[3]);
+      drawSmc({ ...r, smc: { ...r.smc, ind: indicators(closes, nb) } });
+    }).catch(() => {});
+  }
   else {
     $("smc-box").innerHTML = '<div class="tf-msg">Memuat data ' + esc(TF_NAME[tf]) + "…</div>";
     loadTF(r.t).then(raw => {
       if (curTF !== tf) return;
       const S = raw && raw[tf] ? buildTF(raw[tf], tf) : null;
+      if (S) S.ind = indicators(raw[tf].b.map(b => b[3]), S.b.length);
       if (!S) { $("smc-box").innerHTML = '<div class="tf-msg">Data ' + esc(TF_NAME[tf]) + " belum cukup untuk saham ini.</div>"; return; }
       drawSmc({ ...r, smc: S, plan: tf === "1d" ? r.plan : r.plan });
     }).catch(() => {
@@ -3217,10 +3425,10 @@ function openDetail(t, mode, opt = {}) {
         <section class="card full-span">${P.chart}</section>
         <div class="full-col">
           <section class="card"><div class="muted" style="font-size:0.82rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.</div>${P.kond}${P.struktur}</section>
-          <section class="card">${P.plan}</section>
+          <section class="card">${P.checklist}</section>
         </div>
         <div class="full-col">
-          <section class="card">${P.checklist}</section>
+          <section class="card">${P.plan}</section>
           <section class="card">${P.skor}${P.tf}${P.lain}${P.foot}</section>
         </div>
         <section class="card full-span">${P.sim}</section>
@@ -3241,7 +3449,7 @@ function openDetail(t, mode, opt = {}) {
       </div>
       <div class="d-price">${P.price}</div>
       <div class="muted" style="font-size:0.8rem">${P.meta}</div>
-      ${P.kond}${P.struktur}${P.chart}${P.sim}${P.checklist}${P.plan}${P.hist}${P.skor}${P.tf}${P.lain}
+      ${P.kond}${P.struktur}${P.chart}${P.plan}${P.checklist}${P.sim}${P.hist}${P.skor}${P.tf}${P.lain}
       <div class="d-actions">${P.star}${P.cmpb}</div>${P.foot}`;
     $("drawer").classList.add("open"); $("scrim").classList.add("open");
     if (!opt.keepFocus) $("drawer").focus();
@@ -3385,9 +3593,20 @@ window.addEventListener("popstate", () => { if (!location.hash.startsWith("#s=")
 showView(viewFromHash());
 PAGE_SIZE = +ls.get("idxs:pgsize", 25) || 25; $("page-size").value = String(PAGE_SIZE);
 $("page-size").addEventListener("change", () => { PAGE_SIZE = +$("page-size").value; ls.set("idxs:pgsize", PAGE_SIZE); page = 0; save(); render(); });
+/* ---------- tombol kembali ke atas ---------- */
+(() => {
+  const btn = $("to-top"), cur = () => $("cmpv").classList.contains("open") ? $("cmpv") : $("full").classList.contains("open") ? $("full") : null;
+  const pos = () => { const c = cur(); return c ? c.scrollTop : (window.scrollY || document.documentElement.scrollTop); };
+  const upd = () => btn.classList.toggle("show", pos() > 700);
+  window.addEventListener("scroll", upd, { passive: true }); $("full").addEventListener("scroll", upd, { passive: true }); $("cmpv").addEventListener("scroll", upd, { passive: true });
+  new MutationObserver(upd).observe($("full"), { attributes: true, attributeFilter: ["class"] });
+  new MutationObserver(upd).observe($("cmpv"), { attributes: true, attributeFilter: ["class"] });
+  btn.addEventListener("click", () => { const c = cur(); const opt = { top: 0, behavior: window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" };
+    if (c) c.scrollTo ? c.scrollTo(opt) : (c.scrollTop = 0); else window.scrollTo ? window.scrollTo(opt) : (document.documentElement.scrollTop = 0); });
+})();
 $("f-pin").checked = ls.get(PIN_KEY, true);
 $("f-pin").addEventListener("change", () => { ls.set(PIN_KEY, $("f-pin").checked); page = 0; render(); });
-renderMarket(); load(); render(); renderCal(); renderJournal();
+renderMarket(); load(); render(); renderCal(); renderJournal(); renderMakro();
 renderCmpBar();
 (() => { const f = $("filt"); f.open = !!ls.get("idxs:filt", false); f.addEventListener("toggle", () => ls.set("idxs:filt", f.open)); })();
 (() => {
