@@ -723,6 +723,43 @@ def data_makro(ihsg):
     return out
 
 
+def analisa_emas():
+    """Emas dunia dalam Rp/gram sebagai 'aset' lengkap: OHLC = emas USD/oz x kurs USD/IDR / 31,1035,
+    volume = volume kontrak emas dunia. Dipakai halaman analisa emas (SMC, Fibo, volume profile, rencana)."""
+    got = unduh(["GC=F", "IDR=X"], "2y", "1d", mentah=True)
+    g, k = got.get("GC=F"), got.get("IDR=X")
+    if g is None or k is None:
+        return None, None
+    g, k = ke_tanggal(g), ke_tanggal(k)
+    j = g.join(k[["Close"]].rename(columns={"Close": "K"}), how="inner").dropna(subset=["Close", "K"])
+    if len(j) < 150:
+        return None, None
+    f = j["K"] / 31.1035
+    df = pd.DataFrame({c: j[c] * f for c in ("Open", "High", "Low", "Close")})
+    df["Volume"] = j["Volume"].fillna(0) * 100          # pak_ohlcv membagi 100, jadi angka tampil = jumlah kontrak
+    sm = smc(df)
+    if not sm:
+        return None, None
+    c = df["Close"]
+    r = {"t": "XAUIDR", "nm": "Emas dunia (Rp/gram)", "p": round(float(c.iloc[-1])),
+         "chg": round(float(c.iloc[-1] / c.iloc[-2] - 1) * 100, 2), "tgl": df.index[-1].strftime("%Y-%m-%d"),
+         "smc": sm, "_atr": atr(df), "_ma20": float(c.iloc[-20:].mean()), "vu": "kontrak"}
+    e = sm["ev"][-1] if sm["ev"] else None
+    r["ms"] = {"d": {"tr": sm["tr"], "ev": [e[3], e[4], e[5]] if e else None}}
+    sw = struktur_ringkas(resample(df, "W-FRI"), L=3)
+    if sw:
+        r["ms"]["w"] = sw
+    plans = {"K": rencana_konf(r), "S": rencana_struktur(r, "ok"), "A": rencana(r, "ok")}
+    r["plans"] = {kk: v for kk, v in plans.items() if v}
+    best = next((kk for kk in ("K", "S", "A") if plans[kk]), None)
+    r["plan"] = dict(plans[best], src=best) if best else None
+    tfd = {kk: v for kk, v in (("1d", pak_ohlcv(df, 330)), ("1w", pak_ohlcv(resample(df, "W-FRI"), 280))) if v}
+    r["tfx"] = sorted(tfd)
+    for kk in ("_atr", "_ma20"):
+        r.pop(kk, None)
+    return r, tfd
+
+
 def konteks_pasar(ihsg, rows, ihsg_jam=None, ihsg_panjang=None):
     """Ringkasan IHSG + napas pasar (persentase saham likuid di atas MA20)."""
     m = {"ihsg": None, "breadth": None}
@@ -1377,9 +1414,19 @@ def main():
     out_html = Path(args.output).resolve()
     for r in rows:
         r["tfx"] = sorted(tfdata.get(r["t"], {}).keys())
+    emas_r = None
+    try:
+        print("  Analisa emas dalam rupiah...")
+        emas_r, emas_tf = analisa_emas()
+        if emas_tf:
+            tfdata["XAUIDR"] = emas_tf
+    except Exception as e:
+        print(f"  ! analisa emas: {e}")
     tulis_data_tf(tfdata, Path(args.output).resolve().parent / "data")
     pasar = konteks_pasar(ke_tanggal(ihsg) if ihsg is not None else None, rows, ihsg_jam,
                           ke_tanggal(ihsg10) if ihsg10 is not None else None)
+    if emas_r:
+        pasar["emas"] = emas_r
     tulis_html(rows, now, status, len(gagal), not args.no_intraday, out_html, not args.no_arsip, pasar)
 
     top = sorted(rows, key=skor, reverse=True)[:5]
@@ -1662,6 +1709,12 @@ TEMPLATE = r'''<!DOCTYPE html>
   .calc-out { margin-top:10px; background:var(--accent-soft); border-radius:10px; padding:10px 12px; font-size:0.9rem; }
   .d-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
   .xh-wrap { position:relative; }
+  .frvp-ctl { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; margin:0 0 8px; }
+  .frvp-ctl .icon-btn { padding:6px 12px; font-size:0.82rem; }
+  .frvp-ctl .icon-btn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  :root[data-theme="dark"] .frvp-ctl .icon-btn.on { color:#0F1522; }
+  .frvp-info { font-size:0.82rem; color:var(--ink2); }
+  svg.smc-svg.frvp-on { cursor:col-resize; touch-action:none; }
   .chart-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
   .chart-head h3 { margin:0; }
   .tf-bar { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
@@ -1724,6 +1777,8 @@ TEMPLATE = r'''<!DOCTYPE html>
   .mk-chg { font-size:0.76rem; display:flex; gap:8px; flex-wrap:wrap; }
   .mk-spark { width:100%; height:48px; margin:2px 0; }
   .mk-kor { font-size:0.74rem; color:var(--muted); }
+  .mk-link { font-size:0.74rem; font-weight:700; color:var(--accent); }
+  .mk-an { margin-left:auto; margin-right:12px; }
   .mk-big { margin-top:14px; border-top:1px solid var(--line); padding-top:12px; }
   #makro-card { margin-bottom:14px; }
 
@@ -2108,7 +2163,9 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>MA200, RSI, MACD, dan pasar global</summary>
       <div class="guide-body">
         <p><b>MA20/50/200</b> (lapisan di chart): rata-rata harga 20, 50, dan 200 candle. Harga di atas MA200 menandakan tren jangka panjang naik. MA200 butuh 200 candle sebelumnya, jadi di versi online dihitung dari data tambahan; di timeframe dengan data pendek (misalnya 4H atau bulanan) MA200 bisa belum tersedia.</p>
+        <p><b>Volume profile rentang</b> (tombol di atas chart): klik tombolnya, lalu klik-geser di chart dari candle awal ke candle akhir. Histogram volume khusus rentang itu muncul beserta <b>POC</b> (harga paling ramai), <b>VAH</b> dan <b>VAL</b> (batas atas dan bawah value area, tempat 70% volume terjadi). "Pakai rentang dorongan" langsung memilih dorongan naik terakhir yang dipakai konfluensi. Berfungsi di semua timeframe; di HP cukup sentuh lalu geser.</p>
         <p><b>RSI 14</b> (panel di bawah volume): kekuatan kenaikan 0–100. Di atas 70 = sudah panas, di bawah 30 = jenuh jual. <b>MACD 12,26,9</b>: garis biru (MACD) memotong ke atas garis oranye (sinyal) sering dianggap tanda momentum naik; batang hijau/merah adalah selisih keduanya. Nilai keduanya ikut tampil saat kursor di chart.</p>
+        <p><b>Analisa emas dalam rupiah</b>: di tab Kalender, klik kartu "Emas (Rp/gram)" lalu "Analisa lengkap". Isinya sama seperti analisa saham (chart candle Daily/Mingguan, SMC, Fibo &amp; konfluensi, volume profile rentang, MA, RSI, MACD) dengan rencana entry/SL/TP dalam Rp/gram. Isi harga beli emas batangan hari ini dari Antam/Pegadaian untuk menerjemahkan angka-angka itu ke harga batangan. Volume memakai jumlah kontrak emas dunia.</p>
         <p><b>Pasar global &amp; makro</b> (di tab Kalender): kurs USD/IDR, indeks dolar, yield obligasi AS 10 tahun, emas, minyak, batubara, tembaga, S&amp;P 500, dan Hang Seng selama 1 tahun, lengkap dengan perubahan 1 hari (1H), 1 bulan (1B), 1 tahun (1T), dan seberapa erat hubungannya dengan IHSG. Klik kartu untuk grafik besar.</p>
       </div>
     </details>
@@ -2904,6 +2961,7 @@ function renderMakro() {
       <span class="mk-chg">${chip(d1, "1H")} ${chip(d20, "1B")} ${chip(dy, "1T")}</span>
       ${sparkSvg(c)}
       <span class="mk-kor">Hubungan dengan IHSG: <b>${esc(korelTxt(m.korel))}</b></span>
+      ${m.sym === "EMAS_IDR" && MARKET.emas ? '<span class="mk-link">Klik untuk grafik, lalu "Analisa lengkap" →</span>' : ""}
     </button>`;
   }).join("");
   box.querySelectorAll("[data-mk]").forEach(b => b.addEventListener("click", () => { makroSel = makroSel === b.dataset.mk ? null : b.dataset.mk; renderMakro(); }));
@@ -2917,7 +2975,7 @@ function renderMakro() {
   const up = c[c.length - 1] >= c[0], col = up ? "var(--up)" : "var(--down)";
   const pts = c.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
   const fd = t => { const d = new Date(t); return `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
-  big.innerHTML = `<div class="mk-big"><div class="hist-head"><h3>${esc(m.nama)}</h3><span class="muted" id="mk-leg">${fd(ser[ser.length - 1].t)}: <b>${fmtM(c[c.length - 1], m.dec)}</b></span></div>
+  big.innerHTML = `<div class="mk-big"><div class="hist-head"><h3>${esc(m.nama)}</h3>${m.sym === "EMAS_IDR" && MARKET.emas ? '<button type="button" class="icon-btn mk-an" id="mk-emas">Analisa lengkap: SMC, Fibo, volume profile, rencana →</button>' : ""}<span class="muted" id="mk-leg">${fd(ser[ser.length - 1].t)}: <b>${fmtM(c[c.length - 1], m.dec)}</b></span></div>
     <p class="d-why" style="margin:0 0 8px">${esc(m.ket)}</p>
     <svg class="d-chart" id="mk-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik ${esc(m.nama)} 1 tahun">
       ${g}<polygon points="${L},${T + ih} ${pts} ${L + iw},${T + ih}" fill="${col}" opacity="0.08"/><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2"/>
@@ -2925,12 +2983,31 @@ function renderMakro() {
       <line id="mk-v" y1="${T}" y2="${T + ih}" stroke="var(--ink2)" stroke-dasharray="4 3" style="display:none"/><circle id="mk-dot" r="4" fill="${col}" style="display:none"/>
       <text x="${L}" y="${H - 6}" font-size="11" fill="var(--muted)">${fd(ser[0].t)}</text><text x="${L + iw}" y="${H - 6}" font-size="11" text-anchor="end" fill="var(--muted)">${fd(ser[ser.length - 1].t)}</text>
     </svg></div>`;
+  const eb = $("mk-emas"); if (eb) eb.addEventListener("click", openEmas);
   const svg = $("mk-svg"), vl = $("mk-v"), dot = $("mk-dot"), leg = $("mk-leg");
   svg.addEventListener("mousemove", e => { const rc = svg.getBoundingClientRect(), sx = (e.clientX - rc.left) * W / rc.width;
     const i = Math.max(0, Math.min(c.length - 1, Math.round((sx - L) / iw * (c.length - 1))));
     vl.setAttribute("x1", x(i)); vl.setAttribute("x2", x(i)); vl.style.display = ""; dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(c[i])); dot.style.display = "";
     leg.innerHTML = `${fd(ser[i].t)}: <b>${fmtM(c[i], m.dec)}</b> <span class="${c[i] >= c[0] ? "pos" : "neg"}">(${c[i] >= c[0] ? "+" : ""}${fmtDec((c[i] / c[0] - 1) * 100, 1)}% sejak awal)</span>`; });
   svg.addEventListener("mouseleave", () => { vl.style.display = "none"; dot.style.display = "none"; leg.innerHTML = `${fd(ser[ser.length - 1].t)}: <b>${fmtM(c[c.length - 1], m.dec)}</b>`; });
+}
+
+/* ---------- volume profile rentang tetap (fixed range) ---------- */
+const frvpSel = new Map();        // kunci "KODE|tf" -> {i0, i1} (indeks candle yang terlihat)
+let frvpMode = false;
+function frvpKey(r) { return r.t + "|" + ((r.smc && r.smc.tf) || "1d"); }
+function frvpCalc(S, i0, i1, NB = 30) {
+  const b = S.b, v = S.v; if (!v) return null;
+  i0 = Math.max(0, Math.min(i0, i1)); i1 = Math.min(b.length - 1, Math.max(i0, i1));
+  let lo = Infinity, hi = -Infinity; for (let i = i0; i <= i1; i++) { lo = Math.min(lo, b[i][2]); hi = Math.max(hi, b[i][1]); }
+  if (!(hi > lo)) return null;
+  const bins = new Array(NB).fill(0), step = (hi - lo) / NB;
+  for (let i = i0; i <= i1; i++) { const a0 = Math.max(0, Math.min(NB - 1, Math.floor((b[i][2] - lo) / step))), a1 = Math.max(0, Math.min(NB - 1, Math.floor((b[i][1] - lo) / step)));
+    for (let k = a0; k <= a1; k++) bins[k] += (v[i] || 0) / (a1 - a0 + 1); }
+  const tot = bins.reduce((s, x) => s + x, 0); if (!tot) return null;
+  let poc = bins.indexOf(Math.max(...bins)), lo_i = poc, hi_i = poc, acc = bins[poc];
+  while (acc < 0.7 * tot && (lo_i > 0 || hi_i < NB - 1)) { const nl = lo_i > 0 ? bins[lo_i - 1] : -1, nh = hi_i < NB - 1 ? bins[hi_i + 1] : -1; if (nh >= nl) acc += bins[++hi_i]; else acc += bins[--lo_i]; }
+  return { i0, i1, lo, hi, step, bins, poc: lo + (poc + 0.5) * step, val: lo + lo_i * step, vah: lo + (hi_i + 1) * step, vaLo: lo_i, vaHi: hi_i, tot };
 }
 
 /* ---------- SMC chart ---------- */
@@ -3071,7 +3148,7 @@ function smcChart(r, lay) {
     s += `<line x1="${L}" x2="${L + iw}" y1="${volTop - GAP / 2}" y2="${volTop - GAP / 2}" stroke="var(--line)"/>`;
     S.v.forEach((vv, i) => { const hh = (vv || 0) / vmax * (VH - 4), b = bars[i], col = b && b[3] >= b[0] ? up : dn;
       if (hh > 0.3) s += `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${(volTop + VH - hh).toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" fill="${col}" opacity="0.55"/>`; });
-    s += `<text x="${L + 6}" y="${volTop + 11}" font-size="10" font-weight="700" fill="var(--muted)">Volume (lot)</text>`;
+    s += `<text x="${L + 6}" y="${volTop + 11}" font-size="10" font-weight="700" fill="var(--muted)">Volume (${r.vu || "lot"})</text>`;
     s += `<text x="${L + iw + 8}" y="${volTop + 10}" font-size="10" fill="var(--muted)">${fmtNum(vmax)}</text>`;
   }
   const lineIn = (arr, y0, h, lo, hi, col, w = 1.4) => { const pts = arr.map((v, i) => v == null ? null : `${x(i).toFixed(1)},${(y0 + (hi - v) / (hi - lo) * h).toFixed(1)}`).filter(Boolean); return pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="${w}"/>` : ""; };
@@ -3098,6 +3175,18 @@ function smcChart(r, lay) {
       s += `<text x="${L + iw + 8}" y="${yy(0) + 4}" font-size="10" fill="var(--muted)">0</text>`;
     }
   });
+  const FR = frvpSel.get(frvpKey(r)), FV = FR ? frvpCalc(S, FR.i0, FR.i1) : null;
+  if (FV) {
+    const xa = xl(FV.i0), xb = xl(FV.i1) + sw, wmax = Math.max(40, (xb - xa) * 0.75), bmax = Math.max(...FV.bins) || 1;
+    s += `<rect x="${xa.toFixed(1)}" y="${T}" width="${(xb - xa).toFixed(1)}" height="${ih}" fill="var(--accent)" opacity="0.05"/>`;
+    s += `<line x1="${xa.toFixed(1)}" x2="${xa.toFixed(1)}" y1="${T}" y2="${T + ih}" stroke="var(--accent)" stroke-dasharray="3 3" opacity="0.7"/><line x1="${xb.toFixed(1)}" x2="${xb.toFixed(1)}" y1="${T}" y2="${T + ih}" stroke="var(--accent)" stroke-dasharray="3 3" opacity="0.7"/>`;
+    FV.bins.forEach((bv, k) => { const y1 = y(FV.lo + (k + 1) * FV.step), y2 = y(FV.lo + k * FV.step), inVA = k >= FV.vaLo && k <= FV.vaHi;
+      s += `<rect x="${xa.toFixed(1)}" y="${(y1 + 0.5).toFixed(1)}" width="${(bv / bmax * wmax).toFixed(1)}" height="${Math.max(0.8, y2 - y1 - 1).toFixed(1)}" fill="var(--accent)" opacity="${inVA ? 0.42 : 0.18}"/>`; });
+    s += `<line x1="${xa.toFixed(1)}" x2="${xb.toFixed(1)}" y1="${y(FV.poc).toFixed(1)}" y2="${y(FV.poc).toFixed(1)}" stroke="#F97316" stroke-width="1.6"/>`;
+    [[FV.vah, "VAH"], [FV.val, "VAL"]].forEach(([v, n]) => s += `<line x1="${xa.toFixed(1)}" x2="${xb.toFixed(1)}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--accent)" stroke-dasharray="5 3" opacity="0.8"/><text x="${(xb - 4).toFixed(1)}" y="${(y(v) - 3).toFixed(1)}" font-size="9.5" font-weight="700" text-anchor="end" fill="var(--accent)">${n} ${fmtNum(v)}</text>`);
+    s += `<text x="${(xb - 4).toFixed(1)}" y="${(y(FV.poc) - 3).toFixed(1)}" font-size="10" font-weight="800" text-anchor="end" fill="#F97316">POC rentang ${fmtNum(FV.poc)}</text>`;
+  }
+  s += `<rect class="frvp-drag" y="${T}" height="${ih}" fill="var(--accent)" opacity="0.15" style="display:none"/>`;
   s += `<g class="xh" pointer-events="none" style="display:none">
     <rect class="xh-band" y="${T}" height="${bottomY - T}" fill="var(--ink)" opacity="0.06"/>
     <line class="xh-v" y1="${T}" y2="${bottomY}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>
@@ -3149,7 +3238,7 @@ function attachCrosshair(r, box) {
   const intra = S.ts && /m$|h$/.test(S.tf || "");
   const legend = i => {
     const b = S.b[i], prev = i > 0 ? S.b[i - 1][3] : null, chg = prev ? (b[3] / prev - 1) * 100 : null, d = tglOf(i), c = b[3] >= b[0] ? "pos" : "neg";
-    const vol = !idx && S.v && S.v[i] != null ? ` <span class="xl-k">Vol</span> ${fmtNum(S.v[i])} lot` : "";
+    const vol = !idx && S.v && S.v[i] != null ? ` <span class="xl-k">Vol</span> ${fmtNum(S.v[i])} ${r.vu || "lot"}` : "";
     leg.innerHTML = `<b>${HARI3[d.getUTCDay()]}, ${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}${intra ? " " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0") : ""}</b>
       <span class="xl-k">O</span> <span class="${c}">${fp(b[0])}</span> <span class="xl-k">H</span> <span class="${c}">${fp(b[1])}</span>
       <span class="xl-k">L</span> <span class="${c}">${fp(b[2])}</span> <span class="xl-k">C</span> <span class="${c}">${fp(b[3])}</span>
@@ -3181,17 +3270,43 @@ function attachCrosshair(r, box) {
     if (e.cancelable && e.touches) e.preventDefault();
   };
   const hide = () => { g.style.display = "none"; legend(nb - 1); };
+  // volume profile rentang: klik-geser (atau sentuh-geser) saat mode aktif
+  const drag = svg.querySelector(".frvp-drag"); let d0 = null;
+  const idxAt = e => { const [sx] = toSvg(e); return Math.max(0, Math.min(nb - 1, Math.floor((sx - L) / sw))); };
+  const dShow = (a, b2) => { const i0 = Math.min(a, b2), i1 = Math.max(a, b2); drag.setAttribute("x", L + i0 * sw); drag.setAttribute("width", Math.max(sw, (i1 - i0 + 1) * sw)); drag.style.display = ""; };
+  const dStart = e => { if (!frvpMode) return; d0 = idxAt(e); dShow(d0, d0); if (e.cancelable) e.preventDefault(); };
+  const dMove = e => { if (!frvpMode || d0 == null) return; dShow(d0, idxAt(e)); if (e.cancelable) e.preventDefault(); };
+  const dEnd = e => { if (!frvpMode || d0 == null) return; const pt = e.changedTouches ? e.changedTouches[0] : e; const i1 = idxAt(pt); const a = d0; d0 = null;
+    if (Math.abs(i1 - a) >= 2) { frvpSel.set(frvpKey(r), { i0: Math.min(a, i1), i1: Math.max(a, i1) }); frvpMode = false; drawSmc(r); } else drag.style.display = "none"; };
+  svg.addEventListener("mousedown", dStart); svg.addEventListener("mousemove", dMove); svg.addEventListener("mouseup", dEnd);
+  svg.addEventListener("mouseleave", () => { if (d0 != null) { d0 = null; drag.style.display = "none"; } });
+  svg.addEventListener("touchstart", dStart, { passive: false }); svg.addEventListener("touchmove", dMove, { passive: false }); svg.addEventListener("touchend", dEnd);
+  svg.classList.toggle("frvp-on", frvpMode);
   svg.addEventListener("mousemove", move); svg.addEventListener("mouseleave", hide);
   svg.addEventListener("touchstart", move, { passive: false }); svg.addEventListener("touchmove", move, { passive: false }); svg.addEventListener("touchend", hide);
+}
+function frvpControls(r) {
+  const box = $("frvp-ctl"); if (!box) return;
+  const S = r.smc, has = frvpSel.has(frvpKey(r)), kf = S && S.kf, FR = frvpSel.get(frvpKey(r)), FV = FR ? frvpCalc(S, FR.i0, FR.i1) : null;
+  const tgl = i => S.ts ? fmtWaktu(S.ts[i], S.tf) : (S.do ? new Date(Date.parse(S.d0 + "T00:00:00Z") + S.do[i] * 86400000).toISOString().slice(0, 10) : "");
+  box.innerHTML = `<button type="button" class="icon-btn${frvpMode ? " on" : ""}" id="frvp-btn" ${S && S.v ? "" : "disabled"}>${frvpMode ? "Klik-geser di chart…" : "Volume profile rentang"}</button>
+    ${kf && kf.leg && !S.tf ? `<button type="button" class="icon-btn" id="frvp-leg">Pakai rentang dorongan</button>` : ""}
+    ${has ? `<button type="button" class="icon-btn" id="frvp-clear">Hapus rentang</button>` : ""}
+    <span class="frvp-info">${frvpMode ? "Tarik dari candle awal ke candle akhir rentang yang ingin dihitung." : FV ? `<b>Rentang</b> ${esc(tgl(FV.i0))} – ${esc(tgl(FV.i1))} (${FV.i1 - FV.i0 + 1} candle): <b style="color:#F97316">POC ${fmtNum(FV.poc)}</b> · value area ${fmtNum(FV.val)}–${fmtNum(FV.vah)} · harga sekarang ${r.p > FV.vah ? "di atas" : r.p < FV.val ? "di bawah" : "di dalam"} value area.` : ""}</span>`;
+  const bt = $("frvp-btn"); if (bt) bt.addEventListener("click", () => { frvpMode = !frvpMode; drawSmc(r); });
+  const lg = $("frvp-leg"); if (lg) lg.addEventListener("click", () => { frvpSel.set(frvpKey(r), { i0: kf.leg[0], i1: kf.leg[1] }); frvpMode = false; drawSmc(r); });
+  const cl = $("frvp-clear"); if (cl) cl.addEventListener("click", () => { frvpSel.delete(frvpKey(r)); frvpMode = false; drawSmc(r); });
 }
 function drawSmc(r) {
   const lay = smcLayers();
   $("smc-box").innerHTML = `<div class="xh-wrap"><div class="xh-legend" aria-live="off"></div>${smcChart(r, lay)}</div>`;
   attachCrosshair(r, $("smc-box"));
+  frvpControls(r);
   const sum = $("smc-sum"); if (sum) sum.innerHTML = smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("");
   const tt = $("smc-title"); if (tt) tt.textContent = `Chart ${TF_NAME[(r.smc && r.smc.tf) || "1d"]} dengan Smart Money Concepts`;
 }
 function renderSmc(r) {
+  frvpMode = false;
   const tb = $("tf-bar");
   if (tb && r.t !== "IHSG") {
     tb.innerHTML = tfBar(r);
@@ -3611,6 +3726,57 @@ function renderCompare() {
   if (add) add.addEventListener("change", () => { const t = add.value.trim().toUpperCase(); if (DATA.some(r => r.t === t) && !cmp.includes(t)) { toggleCmp(t); openCompare(true); } else add.value = ""; });
 }
 
+/* ---------- analisa emas dalam rupiah (layar penuh) ---------- */
+const ANTAM_KEY = "idxs:antam";
+function openEmas() {
+  const r0 = MARKET.emas; if (!r0) return;
+  const r = { ...r0 };
+  hideCompare(); $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); $("drawer").innerHTML = "";
+  viewMode = "full"; openT = r.t; navList = [];
+  $("full").innerHTML = `
+    <div class="full-head"><div class="full-head-in">
+      <button class="icon-btn" id="d-close" type="button">← Kembali</button>
+      <div class="fh-id"><span class="fh-tk" id="d-title">Emas (Rp/gram)</span><span class="fh-name">Emas dunia dirupiahkan · data ${esc(r.tgl)}</span></div>
+      <span class="fh-price">Rp ${fmtNum(r.p)} <span class="${r.chg >= 0 ? "pos" : "neg"}" style="font-size:1rem">${r.chg >= 0 ? "+" : ""}${fmtDec(r.chg, 2)}%</span></span>
+      <span class="fh-right">${msBlock(r) ? "" : ""}</span>
+    </div></div>
+    <div class="full-grid full-grid2">
+      <section class="card full-span"><div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
+        <div class="frvp-ctl" id="frvp-ctl"></div><div id="smc-box"></div>
+        <div class="chips smc-toggles" id="smc-toggles"></div><ul class="smc-sum" id="smc-sum"></ul>
+        <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Harga = emas dunia (USD/oz) × kurs USD/IDR ÷ 31,1035. Volume = jumlah kontrak emas dunia, karena harga emas dalam rupiah tidak punya data volume sendiri.</p></div></section>
+      <div class="full-col"><section class="card">${msBlock(r)}</section></div>
+      <div class="full-col"><section class="card" id="emas-plan"></section></div>
+    </div>`;
+  $("full").classList.add("open"); document.body.classList.add("noscroll"); $("full").scrollTop = 0;
+  $("d-close").addEventListener("click", closeFull); $("d-close").focus();
+  renderEmasPlan(r);
+}
+function renderEmasPlan(r) {
+  const box = $("emas-plan"); if (!box) return;
+  const P = r.plans || {}, kf = r.smc && r.smc.kf, NAMA = { K: "Konfluensi", S: "Order block", A: "ATR" };
+  let pick = r._pick || (r.plan && r.plan.src) || Object.keys(P)[0];
+  const use = P[pick];
+  r.plan = use ? { ...use, src: pick } : null; renderSmc(r);
+  if (!use) { box.innerHTML = "<h3>Rencana</h3><p class='muted'>Belum ada rencana yang bisa dihitung.</p>"; return; }
+  const mid = (use.e1 + use.e2) / 2, rr = (use.tp - mid) / (mid - use.sl);
+  const antam = +ls.get(ANTAM_KEY, 0) || 0, prem = antam > 0 ? antam / r.p - 1 : null, cv = v => Math.round(v * (1 + prem) / 1000) * 1000;
+  const FK = [["tren", "Struktur bullish"], ["fibo", "Fibo 0,5–0,786"], ["volume", "Volume dorongan"], ["ob", "Order block"], ["fvg", "FVG"], ["ma", "MA20/50"]];
+  box.innerHTML = `<h3>Rencana dalam Rp/gram (contoh, bukan rekomendasi)</h3>
+    <div class="seg" role="group" aria-label="Jenis rencana">${["K", "S", "A"].map(k => `<button type="button" data-ep="${k}" class="${pick === k ? "on" : ""}" ${P[k] ? "" : "disabled"}>${NAMA[k]}</button>`).join("")}</div>
+    ${pick === "K" && kf ? `<div class="kf-box"><div class="kf-head">Skor konfluensi <b>${kf.skor}/6</b></div><div class="kf-list">${FK.map(([k, n]) => `<span class="${kf.fk[k] ? "y" : "x"}">${kf.fk[k] ? "✓" : "✗"} ${n}</span>`).join("")}</div></div>` : kf && !kf.lay ? `<p class="muted" style="font-size:0.8rem">Konfluensi: ${esc(kf.alasan || "belum layak")}</p>` : ""}
+    <div class="plan-box"><div><small>Area entry</small><b>${fmtNum(use.e1)}–${fmtNum(use.e2)}</b></div><div><small>Stop loss</small><b class="neg">${fmtNum(use.sl)}</b></div>
+      <div><small>Target${use.tp2 ? " 1 / 2 / 3" : ""}</small><b class="pos">${fmtNum(use.tp)}${use.tp2 ? ` / ${fmtNum(use.tp2)} / ${fmtNum(use.tp3)}` : ""}</b></div><div><small>Risiko / R:R</small><b>${fmtDec(use.risk, 1)}% · 1:${fmtDec(rr, 1)}</b></div></div>
+    <h3 style="margin-top:14px">Terjemahkan ke harga Antam / Pegadaian</h3>
+    <div class="calc"><div class="f"><label for="antam-in">Harga beli emas batangan hari ini (Rp/gram)</label><input type="number" id="antam-in" min="0" step="1000" placeholder="mis. 2150000" value="${antam || ""}"></div>
+      <div class="f"><label>Selisih dengan emas dunia (premium)</label><input type="text" readonly value="${prem == null ? "-" : (prem >= 0 ? "+" : "") + fmtDec(prem * 100, 1) + "%"}"></div></div>
+    ${prem == null ? `<p class="muted" style="font-size:0.82rem;margin:4px 0 0">Isi harga beli dari situs Antam/Pegadaian/aplikasi emasmu. Selisihnya dipakai untuk menerjemahkan area entry, SL, dan TP di atas ke harga batangan.</p>`
+      : `<div class="plan-box" style="margin-top:8px"><div><small>Entry (harga batangan)</small><b>${fmtNum(cv(use.e1))}–${fmtNum(cv(use.e2))}</b></div><div><small>Stop loss</small><b class="neg">${fmtNum(cv(use.sl))}</b></div><div><small>Target</small><b class="pos">${fmtNum(cv(use.tp))}</b></div><div><small>Harga batangan sekarang</small><b>${fmtNum(antam)}</b></div></div>
+         <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Asumsi: selisih harga batangan terhadap emas dunia tetap sama. Kenyataannya selisih ini bisa berubah, dan harga jual kembali (buyback) biasanya lebih rendah dari harga beli, jadi hitung juga selisih beli-jual sebelum memasang target.</p>`}`;
+  box.querySelectorAll("[data-ep]").forEach(b => b.addEventListener("click", () => { r._pick = b.dataset.ep; renderEmasPlan(r); }));
+  const inp = $("antam-in"); inp.addEventListener("change", () => { ls.set(ANTAM_KEY, +inp.value || 0); renderEmasPlan(r); });
+}
+
 /* ---------- detail saham: panel kanan & layar penuh ---------- */
 let viewMode = "panel", navList = [];
 function currentNav(t) { const { pinned, rows } = displayRows(); const l = pinned.map(r => r.t).concat(rows.map(r => r.t)); return l.includes(t) ? l : [t]; }
@@ -3626,6 +3792,7 @@ function detailParts(r, r0, w) {
     kond: `<div class="d-sec">${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}<div style="margin-top:6px">${badges(r)}</div></div>`,
     struktur: msBlock(r),
     chart: r.smc ? `<div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
+      <div class="frvp-ctl" id="frvp-ctl"></div>
       <div id="smc-box"></div>
       <div class="chips smc-toggles" id="smc-toggles"></div>
       <ul class="smc-sum" id="smc-sum"></ul>
