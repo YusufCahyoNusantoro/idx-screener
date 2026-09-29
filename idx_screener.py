@@ -875,7 +875,13 @@ def smc(d, L=5, win=120, ctx=260):
     fvg_out = ([[cl(i), rp(t_), rp(b_), dr] for i, t_, b_, dr in fvg if dr == 1][-3:] +
                [[cl(i), rp(t_), rp(b_), dr] for i, t_, b_, dr in fvg if dr == -1][-3:])
     eq_out = [[cl(p1), p2 - s0, rp(pr), nm] for p1, p2, pr, nm in eq if p2 >= s0][-4:]
+    try:
+        kf = _konfluensi(o, h, l, c, d["Volume"].to_numpy(float) if "Volume" in d else None,
+                         piv_l, ev, obs, fvg, eq, a, s0)
+    except Exception as e:
+        kf = {"lay": False, "alasan": f"Gagal dihitung: {e}"}
     return {
+        "kf": kf,
         "b": [[rp(v) for v in row] for row in d[["Open", "High", "Low", "Close"]].iloc[-win:].values],
         "v": ([int(round(x / 100)) if np.isfinite(x) else 0 for x in d["Volume"].iloc[-win:].to_numpy(float)]
               if "Volume" in d else None),        # volume harian dalam lot
@@ -883,6 +889,95 @@ def smc(d, L=5, win=120, ctx=260):
         "do": [(x - d.index[s0]).days for x in d.index[s0:]],
         "ev": ev_out, "ob": ob_out, "fvg": fvg_out, "eq": eq_out,
         "pd": [rp(h[s0:].max()), rp(l[s0:].min())], "tr": tren, "vp": vp,
+    }
+
+
+def _konfluensi(o, h, l, c, v, piv_l, ev, obs, fvg, eq, a, s0):
+    """Setup pullback berbasis konfluensi: dorongan naik terakhir (dari BOS/CHoCH naik) ditarik Fibonacci,
+    lalu dicari harga di zona 0,5–0,786 yang paling banyak ditumpuki faktor lain."""
+    n = len(c)
+    price = float(c[-1])
+    if not ev or ev[-1][4] != 1:
+        return {"lay": False, "alasan": "Struktur harian belum bullish (BOS/CHoCH terakhir bukan ke atas)."}
+    brk = ev[-1][1]
+    pls = [pp for pp in piv_l if pp < brk]
+    start = pls[-1] if pls else max(0, brk - 40) + int(np.argmin(l[max(0, brk - 40):brk + 1]))
+    hi_idx = brk + int(np.argmax(h[brk:]))
+    m_idx = start + int(np.argmin(l[start:hi_idx + 1]))
+    if l[m_idx] < l[start]:
+        start = m_idx
+    lo, hi = float(l[start]), float(h[hi_idx])
+    rng = hi - lo
+    if rng < 2 * a:
+        return {"lay": False, "alasan": "Dorongan naik terakhir terlalu kecil untuk ditarik Fibonacci."}
+    if price < lo:
+        return {"lay": False, "alasan": "Harga sudah di bawah awal dorongan naik; struktur naiknya rusak."}
+    fib = {r: hi - r * rng for r in (0, 0.382, 0.5, 0.618, 0.705, 0.786, 0.886, 1)}
+    zlo, zhi = fib[0.786], fib[0.5]
+    NB = 24
+    edges = np.linspace(lo, hi, NB + 1)
+    bins = np.zeros(NB)
+    vv = np.nan_to_num(v, nan=0.0) if v is not None else np.zeros(n)
+    for i in range(start, hi_idx + 1):
+        a0 = int(np.clip((l[i] - lo) / rng * NB, 0, NB - 1))
+        a1 = int(np.clip((h[i] - lo) / rng * NB, 0, NB - 1))
+        bins[a0:a1 + 1] += vv[i] / (a1 - a0 + 1)
+    pi = int(bins.argmax())
+    poc = (edges[pi] + edges[pi + 1]) / 2
+    bmax = bins.max() or 1
+    bin_of = lambda p: int(np.clip((p - lo) / rng * NB, 0, NB - 1))
+    ma20 = float(np.mean(c[-20:]))
+    ma50 = float(np.mean(c[-50:])) if n >= 50 else None
+    tol = 0.25 * a
+    ob_b = [ob for ob in obs if not ob[4] and ob[3] == 1]
+    fvg_b = [g for g in fvg if g[3] == 1]
+    eql = [x for x in eq if x[3] == "EQL"]
+
+    def faktor(pr):
+        return {
+            "fibo": any(abs(pr - fib[r]) <= tol for r in (0.5, 0.618, 0.705, 0.786)),
+            "volume": abs(pr - poc) <= tol or bins[bin_of(pr)] >= 0.7 * bmax,
+            "ob": any(ob[2] - tol <= pr <= ob[1] + tol for ob in ob_b),
+            "fvg": any(g[2] - tol <= pr <= g[1] + tol for g in fvg_b),
+            "ma": any(m is not None and abs(pr - m) <= 1.5 * tol for m in (ma20, ma50)),
+            "tren": True,
+        }
+    grid = np.linspace(zlo, zhi, 41)
+    best = max(grid, key=lambda pr: (sum(faktor(pr).values()), pr))
+    fk = faktor(best)
+    skor = int(sum(fk.values()))
+    e1, e2 = best - 0.35 * a, best + 0.35 * a
+    if e2 > price:
+        e2 = price
+    if e1 >= e2:
+        e1 = e2 - 0.35 * a
+    # SL di bawah penahan terdekat yang masuk akal: dasar OB, Fibo 0,886, atau swing low (dikurangi 0,3 ATR),
+    # dipilih yang tertinggi asalkan minimal 0,8 ATR di bawah area entry; lalu digeser ke bawah EQL kalau ada di antaranya.
+    ob_hit = [ob for ob in ob_b if ob[2] - tol <= best <= ob[1] + tol]
+    cand = [lo - 0.3 * a, fib[0.886] - 0.3 * a] + ([min(ob[2] for ob in ob_hit) - 0.3 * a] if ob_hit else [])
+    ok = [x for x in cand if x <= e1 - 0.8 * a]
+    sl = max(ok) if ok else min(cand)
+    for x in eql:
+        if sl < x[2] < e1:
+            sl = x[2] - 0.3 * a
+    if sl >= e1:
+        sl = e1 - a
+    tp = [hi, hi + 0.272 * rng, hi + 0.618 * rng]
+    e1r, e2r, slr = bulat_bawah(e1), bulat_bawah(e2), bulat_bawah(sl)
+    e2r = max(e1r, e2r)
+    tpr = [bulat_atas(x) for x in tp]
+    mid = (e1r + e2r) / 2
+    risk = mid - slr
+    rr = (tpr[0] - mid) / risk if risk > 0 else 0
+    status = "di_zona" if e1 - 0.1 * a <= price <= e2 + 0.1 * a else ("atas" if price > e2 else "bawah")
+    lay = skor >= 3 and rr >= 1.5 and risk > 0 and slr > 0
+    alasan = "" if lay else (f"Skor konfluensi baru {skor}/6 (minimal 3)." if skor < 3 else f"Risk:reward ke TP1 hanya 1:{rr:.1f} (minimal 1:1,5).")
+    return {
+        "lay": lay, "alasan": alasan, "skor": skor, "fk": fk, "status": status,
+        "e1": e1r, "e2": e2r, "sl": slr, "tp": tpr, "rr": round(rr, 2), "risk": round(risk / mid * 100, 1) if mid else None,
+        "dist": round((price - e2r) / price * 100, 1),
+        "leg": [max(0, start - s0), max(0, hi_idx - s0), round(lo, 2), round(hi, 2)],
+        "fib": {str(k): round(vv_, 2) for k, vv_ in fib.items()}, "poc": round(float(poc), 2), "lvl": round(float(best), 2),
     }
 
 
@@ -949,6 +1044,14 @@ def kondisi(r):
         if pat:
             return "bad", "Hindari dulu", f"Tren harian dan mingguan turun. {pat} belum terkonfirmasi"
         return "bad", "Hindari dulu", "Tren harian dan mingguan masih turun"
+    kf = (r.get("smc") or {}).get("kf") or {}
+    if kf.get("lay"):
+        sepi = " Transaksi di bawah Rp 5 M/hari, pakai lot kecil." if r["val"] < 5e9 else ""
+        z = f"{rupiah(kf['e1'])}–{rupiah(kf['e2'])}"
+        if kf["status"] == "di_zona":
+            return "zone", "Di zona entry", f"Harga di zona konfluensi {z} (skor {kf['skor']}/6). Tunggu konfirmasi candle hijau atau CHoCH naik di 1H.{sepi}"
+        if kf["status"] == "atas":
+            return "tz", "Tunggu ke zona", f"Zona konfluensi {z}, {str(kf['dist']).replace('.', ',')}% di bawah harga (skor {kf['skor']}/6).{sepi}"
     if rs > 75:
         return "hot", "Tunggu pullback", f"RSI {rs_txt} sudah panas. Tunggu harga turun ke area entry"
     if ma20 and a and (r["p"] - ma20) > 2.5 * a:
@@ -967,6 +1070,37 @@ def kondisi(r):
     if turun(d):
         return "n", "Pantau", "Tren harian melemah, mingguan masih bertahan"
     return "n", "Pantau", "Belum ada arah yang jelas"
+
+
+def rencana_struktur(r, kd):
+    """Entry di order block bullish terdekat, SL sedikit di bawahnya, TP di OB bearish/puncak range (min. 1,5R)."""
+    S, a, p = r.get("smc"), r.get("_atr") or 0, r["p"]
+    if kd == "bad" or not S or not S.get("ob") or a <= 0:
+        return None
+    obs_ = sorted([z for z in S["ob"] if z[3] == 1 and z[2] <= p], key=lambda z: -z[1])
+    if not obs_:
+        return None
+    ob = obs_[0]
+    e1 = bulat_bawah(ob[2]); e2 = max(e1, bulat_bawah(min(ob[1], p)))
+    sl = bulat_bawah(ob[2] - 0.3 * a)
+    if sl >= e1:
+        sl = e1 - fraksi(e1)
+    if sl <= 0:
+        return None
+    mid = (e1 + e2) / 2; risk = mid - sl
+    bear = sorted([z for z in S["ob"] if z[3] == -1 and z[2] > p], key=lambda z: z[2])
+    tp = bulat_bawah(bear[0][2]) if bear else (bulat_bawah(S["pd"][0]) if S.get("pd") and S["pd"][0] > p else None)
+    if not tp or (tp - mid) / risk < 1.5:
+        tp = bulat_atas(mid + 2 * risk)
+    return {"e1": e1, "e2": e2, "sl": sl, "tp": tp, "risk": round(risk / mid * 100, 1)}
+
+
+def rencana_konf(r):
+    kf = (r.get("smc") or {}).get("kf")
+    if not kf or not kf.get("lay"):
+        return None
+    return {"e1": kf["e1"], "e2": kf["e2"], "sl": kf["sl"], "tp": kf["tp"][0], "tp2": kf["tp"][1], "tp3": kf["tp"][2],
+            "risk": kf["risk"]}
 
 
 def rencana(r, kd):
@@ -1189,29 +1323,31 @@ def main():
                 print(f"  ! 15m {t}: {e}")
 
     for r in rows:
+        try:                                    # SMC untuk semua saham yang datanya cukup
+            sm = smc(r["_d"])
+            if sm:
+                r["smc"] = sm
+                e = sm["ev"][-1] if sm["ev"] else None
+                r.setdefault("ms", {})["d"] = {"tr": sm["tr"], "ev": [e[3], e[4], e[5]] if e else None}
+                r.pop("ohlc", None)             # 30 candle terakhir diambil dari smc["b"] di browser
+                r["x"].pop("m20", None)
+                r["x"].pop("m50", None)
+            sw = struktur_ringkas(resample(r["_d"], "W-FRI"), L=3)
+            if sw:
+                r.setdefault("ms", {})["w"] = sw
+            tfdata.setdefault(r["t"], {})
+            for k, fr in (("1d", r["_d"]), ("1w", resample(r["_d"], "W-FRI")), ("1mo", bulanan(r["_d"]))):
+                pk = pak_ohlcv(fr, {"1d": 330, "1w": 280, "1mo": 120}[k])
+                if pk:
+                    tfdata[r["t"]][k] = pk
+        except Exception as e:
+            print(f"  ! smc {r['t']}: {e}")
         c, l, why = kondisi(r)
         r["kd"] = {"c": c, "l": l, "why": why}
-        r["plan"] = rencana(r, c)
-        if True:                                # SMC untuk semua saham yang datanya cukup
-            try:
-                sm = smc(r["_d"])
-                if sm:
-                    r["smc"] = sm
-                    e = sm["ev"][-1] if sm["ev"] else None
-                    r.setdefault("ms", {})["d"] = {"tr": sm["tr"], "ev": [e[3], e[4], e[5]] if e else None}
-                sw = struktur_ringkas(resample(r["_d"], "W-FRI"), L=3)
-                if sw:
-                    r.setdefault("ms", {})["w"] = sw
-                tfdata.setdefault(r["t"], {})
-                for k, fr in (("1d", r["_d"]), ("1w", resample(r["_d"], "W-FRI")), ("1mo", bulanan(r["_d"]))):
-                    pk = pak_ohlcv(fr, {"1d": 330, "1w": 280, "1mo": 120}[k])
-                    if pk:
-                        tfdata[r["t"]][k] = pk
-                    r.pop("ohlc", None)            # 30 candle terakhir diambil dari smc["b"] di browser
-                    r["x"].pop("m20", None)
-                    r["x"].pop("m50", None)
-            except Exception as e:
-                print(f"  ! smc {r['t']}: {e}")
+        plans = {"K": rencana_konf(r) if c != "bad" else None, "S": rencana_struktur(r, c), "A": rencana(r, c)}
+        r["plans"] = {k: v for k, v in plans.items() if v}
+        best = next((k for k in ("K", "S", "A") if plans[k]), None)
+        r["plan"] = dict(plans[best], src=best) if best else None
         for k in ("_ma20", "_atr", "_ph", "_d"):
             r.pop(k, None)
 
@@ -1279,12 +1415,20 @@ TEMPLATE = r'''<!DOCTYPE html>
   .wrap { max-width:1880px; margin:0 auto; padding:20px clamp(12px,3vw,28px) 48px; }
 
   /* header */
-  .top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
-  .brand h1 { font-size:1.55rem; font-weight:800; letter-spacing:-0.02em; margin:0; }
-  .brand .meta { color:var(--muted); font-size:0.86rem; margin-top:2px; }
+  .navbar { position:sticky; top:0; z-index:15; border-bottom:1px solid var(--line);
+    background:color-mix(in srgb, var(--panel) 90%, transparent); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+  .nav-in { max-width:1880px; margin:0 auto; padding:10px clamp(12px,3vw,28px); display:flex; align-items:center; justify-content:space-between; gap:8px 20px; flex-wrap:wrap; }
+  .brand { min-width:0; }
+  .brand h1 { font-size:1.25rem; font-weight:800; letter-spacing:-0.02em; margin:0; display:flex; align-items:center; gap:0; flex-wrap:wrap; line-height:1.2; }
+  .logo { display:inline-grid; place-items:center; width:26px; height:26px; margin-right:9px; border-radius:8px; background:var(--accent); color:#fff; font-size:0.8rem; }
+  :root[data-theme="dark"] .logo { color:#0F1522; }
+  .brand .meta { color:var(--muted); font-size:0.76rem; margin-top:3px; }
+  .wrap { padding-top:18px !important; }
+  html { scroll-padding-top:calc(76px + env(safe-area-inset-top,0px)) !important; }
+  @media (max-width:760px) { .navbar { position:static; } .top-actions { width:100%; justify-content:space-between; } .tabs { overflow-x:auto; } }
   .status { display:inline-block; margin-left:8px; vertical-align:4px; font-size:0.72rem; font-weight:700;
     padding:3px 10px; border-radius:999px; background:var(--up-soft); color:var(--up); letter-spacing:0; }
-  .top-actions { display:flex; gap:8px; align-items:center; }
+  .top-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .icon-btn { border:1px solid var(--line); background:var(--panel); border-radius:10px; padding:7px 12px;
     cursor:pointer; font-size:0.85rem; font-weight:600; color:var(--ink2); }
   .icon-btn:hover { border-color:var(--accent); color:var(--accent); }
@@ -1425,6 +1569,16 @@ TEMPLATE = r'''<!DOCTYPE html>
   .kd.bad { background:var(--down-soft); color:var(--down); }
   .kd.rev { background:var(--blue-soft); color:var(--blue); }
   .kd.n { background:var(--panel2); color:var(--muted); }
+  .kd.zone { background:var(--up); color:#fff; }
+  :root[data-theme="dark"] .kd.zone { color:#0B1A14; }
+  .kd.tz { background:var(--blue-soft); color:var(--blue); }
+  .src { display:inline-grid; place-items:center; width:17px; height:17px; border-radius:5px; font-size:0.66rem; font-weight:800; margin-right:6px; vertical-align:1px; cursor:help; }
+  .src-K { background:#D4A017; color:#1F1600; } .src-S { background:var(--blue-soft); color:var(--blue); } .src-A { background:var(--panel2); color:var(--muted); }
+  .kf-box { border:1px solid var(--line); border-radius:10px; padding:8px 12px; margin:0 0 10px; background:var(--panel2); }
+  .kf-head { font-size:0.86rem; margin-bottom:4px; }
+  .kf-list { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:0.8rem; }
+  .kf-list .y { color:var(--up); font-weight:700; } .kf-list .x { color:var(--muted); }
+  .kf-tp { font-size:0.84rem; margin-top:6px; }
   .plan { font-size:0.8rem; line-height:1.45; }
   .plan .sl { color:var(--down); font-weight:600; } .plan .tp { color:var(--up); font-weight:600; }
   .badge { display:inline-block; font-size:0.72rem; padding:2px 8px; border-radius:999px; margin:1px 2px 1px 0; font-weight:600; border:1px solid var(--line); color:var(--ink2); }
@@ -1663,22 +1817,24 @@ TEMPLATE = r'''<!DOCTYPE html>
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
+<header class="navbar" id="navbar">
+  <div class="nav-in">
     <div class="brand">
-      <h1>IDX Screener <span class="status" id="status-chip">__BADGE__</span></h1>
+      <h1><span class="logo" aria-hidden="true">▲</span>IDX Screener <span class="status" id="status-chip">__BADGE__</span></h1>
       <div class="meta">__SUB__</div>
     </div>
     <div class="top-actions">
-      <button class="icon-btn" id="theme-btn" type="button" aria-label="Ganti tema terang atau gelap">Tema gelap</button>
       <nav class="tabs" aria-label="Halaman">
         <button class="tab-btn" type="button" data-view="screener">Screener</button>
         <button class="tab-btn" type="button" data-view="kalender">Kalender</button>
         <button class="tab-btn" type="button" data-view="jurnal">Jurnal</button>
         <button class="tab-btn" type="button" data-view="panduan">Panduan</button>
       </nav>
+      <button class="icon-btn" id="theme-btn" type="button" aria-label="Ganti tema terang atau gelap">Tema gelap</button>
     </div>
-  </header>
+  </div>
+</header>
+<div class="wrap">
 
   <div class="update-bar" id="update-bar" role="status">
     <span id="update-text">Data baru sudah tersedia.</span>
@@ -1714,6 +1870,8 @@ TEMPLATE = r'''<!DOCTYPE html>
         <select id="kd-filter">
           <option value="">Semua kondisi</option>
           <option value="nobad">Kecuali Hindari dulu</option>
+          <option value="zone">Di zona entry</option>
+          <option value="tz">Tunggu ke zona</option>
           <option value="ok">Kandidat kuat</option>
           <option value="wait">Tunggu konfirmasi atau pantulan</option>
           <option value="hot">Tunggu pullback</option>
@@ -1919,6 +2077,16 @@ TEMPLATE = r'''<!DOCTYPE html>
       </div>
     </details>
     <details class="guide-item">
+      <summary>Rencana konfluensi (Fibo + volume + SMC) dan huruf K / S / A</summary>
+      <div class="guide-body">
+        <p><b>Cara kerjanya:</b> aplikasi mengambil dorongan naik terakhir (dari swing low ke puncak setelah BOS/CHoCH naik di Daily), menarik Fibonacci-nya, lalu mencari harga di zona Fibo 0,5–0,786 yang paling banyak ditumpuki faktor lain. Ada 6 faktor: struktur harian bullish, level Fibonacci, volume dorongan (POC atau area ramai dari fixed range volume profile), order block bullish, FVG bullish, dan MA20/MA50.</p>
+        <p><b>Entry</b> = zona dengan skor tertinggi. <b>Stop loss</b> = di bawah penahan terdekat (dasar order block, Fibo 0,886, atau swing low), minimal 0,8 ATR dari zona, dan digeser ke bawah EQL kalau ada. <b>Target</b> bertahap: TP1 puncak dorongan, TP2 Fibo 1,272, TP3 Fibo 1,618. Setup dianggap layak kalau skornya minimal 3/6 dan risk:reward ke TP1 minimal 1:1,5.</p>
+        <p><b>Pilihan otomatis:</b> kolom Rencana memakai sumber terbaik yang tersedia, ditandai huruf <b>K</b> (konfluensi), <b>S</b> (order block), atau <b>A</b> (ATR). Di panel detail, keempat tombolnya (Otomatis, Konfluensi, Order block, ATR) bisa dipilih untuk membandingkan.</p>
+        <p><b>Label Kondisi baru:</b> <b>Di zona entry</b> berarti setup konfluensi layak dan harga sedang di zonanya; tunggu konfirmasi candle hijau atau CHoCH naik di 1H. <b>Tunggu ke zona</b> berarti setup layak tapi harga masih di atas zona; alasannya menyebut jarak zona dari harga.</p>
+        <p>Lapisan chart <b>Fibo &amp; konfluensi</b> (Daily) menampilkan garis Fibonacci, zona 0,5–0,786, zona konfluensi, dan POC dorongan. Nyalakan juga lapisan Entry/SL/TP untuk melihat TP1–TP3 dan SL.</p>
+      </div>
+    </details>
+    <details class="guide-item">
       <summary>Kalkulator lot</summary>
       <div class="guide-body">
         <p>Di panel detail, isi modal dan risiko per transaksi (umumnya 1–2% modal). Kalkulator menghitung jumlah lot supaya kerugian kalau kena stop loss tidak melebihi batas itu. 1 lot = 100 lembar. Isianmu tersimpan di browser ini.</p>
@@ -2003,7 +2171,9 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>Kolom Kondisi</summary>
       <div class="guide-body">
         <p><b>Apa itu:</b> Ringkasan otomatis "sebaiknya diapakan dulu" saham ini, dibaca dari tren harian &amp; mingguan, RSI, jarak harga ke MA20, pola candle, dan timeframe 1H/2H. Alasannya tertulis di bawah label.</p>
-        <p><b>Kandidat kuat</b> (hijau): tren harian dan mingguan naik, RSI 45–70, transaksi minimal Rp 5 M/hari, dan jangka pendek tidak sedang koreksi.<br>
+        <p><b>Di zona entry</b> (hijau penuh): setup konfluensi layak dan harga sedang di zonanya.<br>
+        <b>Tunggu ke zona</b> (biru): setup konfluensi layak, tapi harga masih di atas zona.<br>
+        <b>Kandidat kuat</b> (hijau): tren harian dan mingguan naik, RSI 45–70, transaksi minimal Rp 5 M/hari, dan jangka pendek tidak sedang koreksi.<br>
         <b>Tunggu konfirmasi</b> (kuning): pola candle baru muncul hari ini; tunggu candle berikutnya hijau dan tutup di atas high pola.<br>
         <b>Tunggu pantulan</b> (kuning): tren naik, tapi 1H/2H sedang Sell; tunggu berbalik Buy.<br>
         <b>Tunggu pullback</b> (oranye): RSI di atas 75 atau harga lebih dari 2,5 ATR di atas MA20; rawan koreksi, tunggu turun ke area entry.<br>
@@ -2049,8 +2219,8 @@ const DATA = __DATA__;
 const MARKET = __MARKET__;
 const GEN = "__GEN__";
 let PAGE_SIZE = 25;
-const KD_ORDER = { ok: 0, rev: 1, wait: 2, hot: 3, n: 4, bad: 5 };
-const KD_NAME = { ok: "Kandidat kuat", wait: "Tunggu", hot: "Tunggu pullback", rev: "Pantau pembalikan", n: "Pantau", bad: "Hindari dulu" };
+const KD_ORDER = { zone: -1, ok: 0, tz: 0.5, rev: 1, wait: 2, hot: 3, n: 4, bad: 5 };
+const KD_NAME = { zone: "Di zona entry", tz: "Tunggu ke zona", ok: "Kandidat kuat", wait: "Tunggu", hot: "Tunggu pullback", rev: "Pantau pembalikan", n: "Pantau", bad: "Hindari dulu" };
 const PRESETS = {
   struct:   { weights:{trend:30,brk:30,pa:25,mom:15}, minScore:0, filters:{ms:true}, valMin:5, kd:"nobad",
               desc:"Struktur SMC Mingguan, Harian, dan 4 jam (kalau ada) sama-sama bullish, transaksi minimal Rp 5 M/hari. Cari entry saat harga kembali ke order block bullish atau zona discount, lalu konfirmasi di 1 jam." },
@@ -2154,7 +2324,7 @@ function renderMarket() {
   br += "</div>";
   const cnt = {}; DATA.forEach(r => { if (r.kd) cnt[r.kd.c] = (cnt[r.kd.c] || 0) + 1; });
   let kc = '<div><div class="m-label">Kondisi semua saham (klik untuk menyaring)</div><div class="kd-counts">';
-  ["ok", "wait", "hot", "rev", "n", "bad"].forEach(k => { if (cnt[k]) kc += `<button class="kd-count" data-kd="${k}" type="button">${KD_NAME[k]}<b>${cnt[k]}</b></button>`; });
+  ["zone", "tz", "ok", "wait", "hot", "rev", "n", "bad"].forEach(k => { if (cnt[k]) kc += `<button class="kd-count" data-kd="${k}" type="button">${KD_NAME[k]}<b>${cnt[k]}</b></button>`; });
   kc += "</div></div>";
   $("market").innerHTML = a + br + kc;
   const ic = $("ihsg-card");
@@ -2232,7 +2402,8 @@ function ckCell(r) {
 }
 function planCell(r) {
   const p = r.plan; if (!p) return '<span class="muted">-</span>';
-  return `<div class="plan">Entry <b>${fmtNum(p.e1)}–${fmtNum(p.e2)}</b><br><span class="sl">SL ${fmtNum(p.sl)}</span> · <span class="tp">TP ${fmtNum(p.tp)}</span></div>`;
+  const SRC = { K: "Konfluensi (Fibo + volume + SMC)", S: "Order block", A: "ATR" };
+  return `<div class="plan">${p.src ? `<span class="src src-${p.src}" title="Sumber rencana: ${SRC[p.src]}">${p.src}</span>` : ""}Entry <b>${fmtNum(p.e1)}–${fmtNum(p.e2)}</b><br><span class="sl">SL ${fmtNum(p.sl)}</span> · <span class="tp">TP ${fmtNum(p.tp)}</span></div>`;
 }
 
 /* ---------- state ---------- */
@@ -2728,8 +2899,8 @@ function renderMakro() {
 
 /* ---------- SMC chart ---------- */
 const SMC_KEY = "idxs:smc";
-const SMC_LAYERS = [["vp", "Volume profile"], ["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "MA20/50/200"], ["rsi", "RSI"], ["macd", "MACD"], ["plan", "Entry/SL/TP"]];
-function smcLayers() { return Object.assign({ vp: true, pd: true, st: true, ob: true, fvg: true, eq: true, moon: true, ma: false, rsi: true, macd: true, plan: false }, ls.get(SMC_KEY, {})); }
+const SMC_LAYERS = [["fibo", "Fibo & konfluensi"], ["vp", "Volume profile"], ["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "MA20/50/200"], ["rsi", "RSI"], ["macd", "MACD"], ["plan", "Entry/SL/TP"]];
+function smcLayers() { return Object.assign({ fibo: true, vp: true, pd: true, st: true, ob: true, fvg: true, eq: true, moon: true, ma: false, rsi: true, macd: true, plan: false }, ls.get(SMC_KEY, {})); }
 
 function smcChart(r, lay) {
   const S = r.smc, bars = S.b, nb = bars.length, p = r.plan;
@@ -2744,7 +2915,7 @@ function smcChart(r, lay) {
   if (lay.macd) { panes.push({ k: "macd", y0: yCur + GAP, h: PH }); yCur += GAP + PH; }
   const bottomY = yCur, H = bottomY + B;
   let max = Math.max(...bars.map(b => b[1])), min = Math.min(...bars.map(b => b[2]));
-  if (lay.plan && p) { max = Math.max(max, p.tp); min = Math.min(min, p.sl); }
+  if (lay.plan && p) { max = Math.max(max, p.tp3 || p.tp2 || p.tp); min = Math.min(min, p.sl); }
   const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
   const sw = iw / nb, bw = Math.max(1.4, sw * 0.62);
   const y = v => T + (max - v) / (max - min) * ih, x = i => L + i * sw + sw / 2, xl = i => L + i * sw;
@@ -2773,6 +2944,21 @@ function smcChart(r, lay) {
       s += `<rect x="${(L + iw - w).toFixed(1)}" y="${y1.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, y2 - y1 - 1).toFixed(1)}" fill="var(--accent)" opacity="${inVA ? 0.3 : 0.13}"/>`;
     });
     if (V.poc <= max && V.poc >= min) s += `<line x1="${L}" x2="${L + iw}" y1="${y(V.poc).toFixed(1)}" y2="${y(V.poc).toFixed(1)}" stroke="var(--orange)" stroke-width="1.2" opacity="0.8"/>`;
+  }
+  const KF = S.kf;
+  if (lay.fibo && KF && KF.leg && !S.tf) {
+    const [i0, i1, flo, fhi] = KF.leg, xs = xl(Math.max(0, Math.min(nb - 1, i0))), xe = L + iw;
+    const labX = Math.max(L + 70, xs - 6), fibUsed = [];   // label di kiri awal garis, supaya tidak menumpuk label SMC
+    [["0", 0], ["0.5", 0.5], ["0.618", 0.618], ["0.705", 0.705], ["0.786", 0.786], ["1", 1]].forEach(([k, r]) => {
+      const v = KF.fib[k]; if (v == null || v > max || v < min) return;
+      const gold = r >= 0.618 && r <= 0.786, yy = y(v);
+      s += `<line x1="${xs.toFixed(1)}" x2="${xe}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#D4A017" stroke-width="${gold ? 1.3 : 0.9}" stroke-dasharray="${r === 0 || r === 1 ? "" : "4 3"}" opacity="${gold ? 0.95 : 0.6}"/>`;
+      if (fibUsed.some(u => Math.abs(u - yy) < 11)) return; fibUsed.push(yy);
+      s += `<text x="${labX.toFixed(1)}" y="${(yy + 3.5).toFixed(1)}" font-size="9.5" font-weight="700" text-anchor="end" fill="#D4A017">Fibo ${k} · ${fmtNum(v)}</text>`;
+    });
+    if (KF.fib["0.5"] != null && KF.fib["0.786"] != null) s += `<rect x="${xs.toFixed(1)}" y="${y(KF.fib["0.5"]).toFixed(1)}" width="${(xe - xs).toFixed(1)}" height="${Math.max(1, y(KF.fib["0.786"]) - y(KF.fib["0.5"])).toFixed(1)}" fill="#D4A017" opacity="0.06"/>`;
+    if (KF.lay && KF.e2 <= max && KF.e1 >= min) s += `<rect x="${xs.toFixed(1)}" y="${y(KF.e2).toFixed(1)}" width="${(xe - xs).toFixed(1)}" height="${Math.max(3, y(KF.e1) - y(KF.e2)).toFixed(1)}" fill="var(--up)" opacity="0.22" stroke="var(--up)" stroke-width="1"/><text x="${labX.toFixed(1)}" y="${((y(KF.e1) + y(KF.e2)) / 2 + 16).toFixed(1)}" font-size="10" font-weight="800" text-anchor="end" fill="var(--up)">▶ Zona konfluensi ${KF.skor}/6</text>`;
+    if (KF.poc != null && KF.poc <= max && KF.poc >= min) s += `<line x1="${xs.toFixed(1)}" x2="${xe}" y1="${y(KF.poc).toFixed(1)}" y2="${y(KF.poc).toFixed(1)}" stroke="#D4A017" stroke-width="1.2" stroke-dasharray="1 3"/>${fibUsed.some(u => Math.abs(u - y(KF.poc)) < 11) ? "" : `<text x="${labX.toFixed(1)}" y="${(y(KF.poc) + 3.5).toFixed(1)}" font-size="9.5" text-anchor="end" fill="#D4A017">POC dorongan · ${fmtNum(KF.poc)}</text>`}`;
   }
   const zone = (z, cls) => {
     const [i, top, bot, dr] = z, col = dr === 1 ? up : dn;
@@ -2806,7 +2992,7 @@ function smcChart(r, lay) {
   });
   if (lay.plan && p) {
     s += `<rect x="${L}" y="${y(p.e2).toFixed(1)}" width="${iw}" height="${Math.max(2, y(p.e1) - y(p.e2)).toFixed(1)}" fill="var(--accent)" opacity="0.12"/>`;
-    [[p.tp, up], [p.sl, dn]].forEach(([v, col]) => s += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1.3" stroke-dasharray="6 4"/>`);
+    [[p.tp, up], [p.sl, dn], [p.tp2, up], [p.tp3, up]].forEach(([v, col]) => { if (v != null && v <= max && v >= min) s += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1.3" stroke-dasharray="6 4"/>`; });
   }
   if (lay.moon && S.do && S.d0) {
     const base = Date.parse(S.d0 + "T00:00:00Z"), dates = S.do.map(o => new Date(base + o * 86400000).toISOString().slice(0, 10));
@@ -2823,7 +3009,7 @@ function smcChart(r, lay) {
   const last = bars[nb - 1][3], prevC = nb > 1 ? bars[nb - 2][3] : bars[nb - 1][0], lastCol = last >= prevC ? up : dn;
   s += `<line x1="${L}" x2="${L + iw}" y1="${y(last).toFixed(1)}" y2="${y(last).toFixed(1)}" stroke="${lastCol}" stroke-width="1" stroke-dasharray="2 3" opacity="0.9"/>`;
   const tags = [[last, fmtNum(last), lastCol, true]];
-  if (lay.plan && p) { tags.push([p.tp, "TP " + fmtNum(p.tp), up]); tags.push([p.sl, "SL " + fmtNum(p.sl), dn]); }
+  if (lay.plan && p) { tags.push([p.tp, (p.tp2 ? "TP1 " : "TP ") + fmtNum(p.tp), up]); tags.push([p.sl, "SL " + fmtNum(p.sl), dn]); if (p.tp2) tags.push([p.tp2, "TP2 " + fmtNum(p.tp2), up]); if (p.tp3) tags.push([p.tp3, "TP3 " + fmtNum(p.tp3), up]); }
   if (lay.vp && S.vp) tags.push([S.vp.poc, "POC " + fmtNum(S.vp.poc), "var(--orange)"]);
   if (lay.pd && S.pd) tags.push([(S.pd[0] + S.pd[1]) / 2, "EQ " + fmtNum((S.pd[0] + S.pd[1]) / 2), "var(--muted)"]);
   const placed = [];
@@ -3055,21 +3241,37 @@ function structPlan(r) {
 }
 function renderPlan(r0, r) {
   const box = $("plan-sec"); if (!box) return;
-  const sp = r0.kd && r0.kd.c === "bad" ? null : structPlan(r0), ap = r0.plan;
-  let mode = ls.get(PLAN_KEY, "atr"); if (mode === "smc" && !sp) mode = "atr"; if (mode === "atr" && !ap && sp) mode = "smc";
-  const use = mode === "smc" ? sp : ap;
+  const P = r0.plans || {}, kf = r0.smc && r0.smc.kf;
+  const sp = r0.kd && r0.kd.c === "bad" ? null : (P.S ? { ...P.S, ...(structPlan(r0) || {}) } : structPlan(r0));
+  const avail = { konf: P.K || null, smc: sp, atr: P.A || null };
+  const auto = avail.konf ? "konf" : avail.smc ? "smc" : "atr";
+  let mode = ls.get(PLAN_KEY, "auto"); if (mode !== "auto" && !avail[mode]) mode = "auto";
+  const eff = mode === "auto" ? auto : mode, use = avail[eff];
   r.plan = use; if (r.smc) renderSmc(r);
-  if (!use) { box.innerHTML = `<h3>Rencana</h3><p class="muted" style="margin:0">Tidak ada rencana untuk saham ini (berlabel Hindari dulu, atau tidak ada order block bullish aktif di bawah harga).</p>`; return; }
+  if (!use) { box.innerHTML = `<h3>Rencana</h3><p class="muted" style="margin:0">Tidak ada rencana untuk saham ini (berlabel Hindari dulu, atau datanya kurang).</p>`; return; }
   const calc = ls.get(CALC, { modal: 10000000, risk: 1 }), mid = (use.e1 + use.e2) / 2, rr = (use.tp - mid) / (mid - use.sl);
-  const note = mode === "smc"
-    ? `Entry di order block bullish ${fmtNum(use.e1)}–${fmtNum(use.e2)}${use.hv ? ", yang berada di area volume tinggi (konfirmasi lebih kuat)" : ", yang berada di area volume rendah (konfirmasi lebih lemah)"}. Stop loss sedikit di bawah order block. Target: ${use.src}.${use.dist > 1 ? ` Harga sekarang ${fmtDec(use.dist, 1)}% di atas area entry, jadi rencana ini menunggu pullback.` : ""}`
-    : `Area entry dari MA20 (atau harga − 1 ATR) sampai harga sekarang, stop loss 1 ATR di bawah area entry, target 2 kali risiko.${sp ? "" : " Rencana berbasis struktur tidak tersedia karena tidak ada order block bullish aktif di bawah harga."}`;
+  const why = mode !== "auto" ? "" : eff === "konf" ? "Dipilih otomatis: setup konfluensi layak." :
+    eff === "smc" ? `Dipilih otomatis: ${kf && !kf.lay ? "konfluensi belum layak (" + (kf.alasan || "") + ") " : ""}memakai order block.` :
+    `Dipilih otomatis: ${kf && !kf.lay ? "konfluensi belum layak, " : ""}tidak ada order block bullish aktif di bawah harga, memakai ATR.`;
+  const FK = [["tren", "Struktur harian bullish"], ["fibo", "Fibonacci 0,5–0,786"], ["volume", "Volume dorongan (POC/area ramai)"], ["ob", "Order block bullish"], ["fvg", "FVG bullish"], ["ma", "MA20/MA50"]];
+  const note = eff === "konf"
+    ? `Zona konfluensi di sekitar ${fmtNum(kf.lvl)} dari dorongan naik ${fmtNum(kf.leg[2])} → ${fmtNum(kf.leg[3])}. Stop loss di bawah penahan terdekat (order block, Fibo 0,886, atau swing low). Target bertahap: TP1 puncak dorongan, TP2 Fibo 1,272, TP3 Fibo 1,618.${kf.status === "atas" ? ` Harga sekarang ${fmtDec(kf.dist, 1)}% di atas zona, jadi tunggu harga turun ke zona.` : kf.status === "di_zona" ? " Harga sedang di zona: tunggu konfirmasi candle hijau atau CHoCH naik di 1H." : ""}`
+    : eff === "smc"
+    ? `Entry di order block bullish ${fmtNum(use.e1)}–${fmtNum(use.e2)}${use.hv ? ", yang berada di area volume tinggi (konfirmasi lebih kuat)" : use.hv === false ? ", yang berada di area volume rendah (konfirmasi lebih lemah)" : ""}. Stop loss sedikit di bawah order block.${use.src ? " Target: " + use.src + "." : ""}${use.dist > 1 ? ` Harga sekarang ${fmtDec(use.dist, 1)}% di atas area entry, jadi rencana ini menunggu pullback.` : ""}`
+    : `Area entry dari MA20 (atau harga − 1 ATR) sampai harga sekarang, stop loss 1 ATR di bawah area entry, target 2 kali risiko.`;
+  const kfBox = eff === "konf" ? `<div class="kf-box"><div class="kf-head">Skor konfluensi <b>${kf.skor}/6</b></div>
+      <div class="kf-list">${FK.map(([k, n]) => `<span class="${kf.fk[k] ? "y" : "x"}">${kf.fk[k] ? "✓" : "✗"} ${n}</span>`).join("")}</div>
+      <div class="kf-tp">TP1 <b class="pos">${fmtNum(kf.tp[0])}</b> · TP2 <b class="pos">${fmtNum(kf.tp[1])}</b> · TP3 <b class="pos">${fmtNum(kf.tp[2])}</b></div></div>`
+    : (kf && !kf.lay ? `<p class="muted" style="font-size:0.8rem;margin:0 0 8px">Konfluensi: ${esc(kf.alasan || "belum layak")}</p>` : "");
   box.innerHTML = `<h3>Rencana (contoh, bukan rekomendasi)</h3>
     <div class="seg" role="group" aria-label="Jenis rencana">
-      <button type="button" data-mode="atr" class="${mode === "atr" ? "on" : ""}" ${ap ? "" : "disabled"}>Berbasis ATR</button>
-      <button type="button" data-mode="smc" class="${mode === "smc" ? "on" : ""}" ${sp ? "" : "disabled"}>Berbasis struktur (order block)</button>
+      <button type="button" data-mode="auto" class="${mode === "auto" ? "on" : ""}">Otomatis (terbaik)</button>
+      <button type="button" data-mode="konf" class="${mode === "konf" ? "on" : ""}" ${avail.konf ? "" : 'disabled title="Setup konfluensi belum layak"'}>Konfluensi</button>
+      <button type="button" data-mode="smc" class="${mode === "smc" ? "on" : ""}" ${avail.smc ? "" : "disabled"}>Order block</button>
+      <button type="button" data-mode="atr" class="${mode === "atr" ? "on" : ""}" ${avail.atr ? "" : "disabled"}>ATR</button>
     </div>
-    <p class="plan-note">${esc(note)}</p>
+    ${why ? `<p class="muted" style="font-size:0.8rem;margin:0 0 4px">${esc(why)}</p>` : ""}
+    <p class="plan-note">${esc(note)}</p>${kfBox}
     <div class="plan-box"><div><small>Area entry</small><b>${fmtNum(use.e1)}–${fmtNum(use.e2)}</b></div><div><small>Stop loss</small><b class="neg">${fmtNum(use.sl)}</b></div><div><small>Target</small><b class="pos">${fmtNum(use.tp)}</b></div><div><small>Risiko / R:R</small><b>${fmtDec(use.risk, 1)}% · 1:${fmtDec(rr, 1)}</b></div></div>
     <div class="calc">
       <div class="f"><label for="c-modal">Modal (Rp)</label><input type="number" id="c-modal" min="0" step="100000" value="${calc.modal}"></div>
@@ -3093,7 +3295,7 @@ function renderPlan(r0, r) {
       : "Modal atau risiko terlalu kecil untuk membeli 1 lot dengan stop loss ini.") + warn;
   };
   $("c-modal").addEventListener("input", upd); $("c-risk").addEventListener("input", upd); upd();
-  $("j-add").addEventListener("click", () => journalForm(r0, use, lot, mode));
+  $("j-add").addEventListener("click", () => journalForm(r0, use, lot, eff === "konf" ? "smc" : eff));
 }
 
 /* ---------- jurnal trading (tersimpan di browser ini) ---------- */
