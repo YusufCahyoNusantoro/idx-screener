@@ -1254,7 +1254,7 @@ def tulis_html(rows, now, status, n_gagal, pakai_intraday, out_html=OUT_HTML, ar
     disc = ("📡 Data asli dari Yahoo Finance — biasanya tertunda ±10–15 menit dari harga bursa."
             + (" Candle hari ini <b>belum final</b> (sesi masih/baru berjalan); rasio volume "
                "diproyeksikan ke satu hari penuh." if parsial else "")
-            + (" Kolom 1H/2H/4H dihitung untuk 200 saham skor tertinggi (yang lain tampil -)." if pakai_intraday
+            + (" Kolom 1H/2H/4H dan chart intraday tersedia untuk saham dengan transaksi minimal Rp 1 M/hari dan 200 saham skor tertinggi (yang lain tampil -)." if pakai_intraday
                else " Kolom 1H/2H/4H dimatikan (--no-intraday).")
             + " Halaman akan memberi tahu kalau ada data baru.<br><br>⚠️ Bukan rekomendasi/nasihat keuangan. "
               "Alat bantu penyaringan teknikal saja — tetap lakukan riset &amp; manajemen risiko "
@@ -1354,8 +1354,11 @@ def main():
         sys.exit("Tidak ada data yang berhasil diambil. Cek koneksi internet atau coba lagi beberapa menit lagi.")
 
     if not args.no_intraday:
-        calon = [r["t"] for r in sorted(rows, key=skor, reverse=True) if r["val"] >= 5e8][:args.intraday_top]
-        print(f"  Unduh data 1 jam (60 hari) untuk {len(calon)} saham skor tertinggi...")
+        # semua saham likuid (transaksi >= Rp 1 M/hari) + saham skor tertinggi (transaksi >= Rp 500 juta)
+        teratas = [r["t"] for r in sorted(rows, key=skor, reverse=True) if r["val"] >= 5e8][:args.intraday_top]
+        likuid = [r["t"] for r in rows if r["val"] >= 1e9]
+        calon = list(dict.fromkeys(teratas + likuid))
+        print(f"  Unduh data 1 jam (60 hari) untuk {len(calon)} saham (likuid + skor tertinggi)...")
         jam = unduh(calon, "60d", "60m")
         per_t = {r["t"]: r for r in rows}
         for t, df in jam.items():
@@ -1709,6 +1712,12 @@ TEMPLATE = r'''<!DOCTYPE html>
   .calc-out { margin-top:10px; background:var(--accent-soft); border-radius:10px; padding:10px 12px; font-size:0.9rem; }
   .d-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
   .xh-wrap { position:relative; }
+  .zoom-ctl { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .zoom-ctl button { border:0; border-right:1px solid var(--line); background:var(--panel); color:var(--ink); font-weight:800; font-size:0.95rem; min-width:34px; padding:5px 10px; cursor:pointer; }
+  .zoom-ctl button:hover:not(:disabled) { color:var(--accent); }
+  .zoom-ctl button:disabled { opacity:.35; cursor:default; }
+  .zoom-info { font-size:0.76rem; color:var(--muted); padding:0 10px; }
+  body.chart-panning, body.chart-panning svg.smc-svg { cursor:grabbing !important; user-select:none; }
   .frvp-ctl { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; margin:0 0 8px; }
   .frvp-ctl .icon-btn { padding:6px 12px; font-size:0.82rem; }
   .frvp-ctl .icon-btn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -2107,7 +2116,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>Checklist syarat</summary>
       <div class="guide-body">
         <p>Setiap saham diperiksa terhadap 10 syarat: tren tersusun naik, harga di atas MA200, Daily dan Mingguan Buy, RSI 45–70, volume di atas rata-rata, transaksi ≥ Rp 5 M/hari, 1H tidak Sell, risiko ke stop loss ≤ 7%, IHSG tidak sedang turun, dan struktur SMC Mingguan serta Harian bullish.</p>
-        <p>Angka seperti 8/10 berarti 8 dari 10 syarat terpenuhi. Syarat yang datanya tidak ada (misal 1H di luar 200 saham teratas) tidak dihitung. Hijau = minimal 7, kuning = 5–6, merah = di bawah 5.</p>
+        <p>Angka seperti 8/10 berarti 8 dari 10 syarat terpenuhi. Syarat yang datanya tidak ada (misal 1H untuk saham yang transaksinya di bawah Rp 1 M/hari) tidak dihitung. Hijau = minimal 7, kuning = 5–6, merah = di bawah 5.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -2163,6 +2172,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>MA200, RSI, MACD, dan pasar global</summary>
       <div class="guide-body">
         <p><b>MA20/50/200</b> (lapisan di chart): rata-rata harga 20, 50, dan 200 candle. Harga di atas MA200 menandakan tren jangka panjang naik. MA200 butuh 200 candle sebelumnya, jadi di versi online dihitung dari data tambahan; di timeframe dengan data pendek (misalnya 4H atau bulanan) MA200 bisa belum tersedia.</p>
+        <p><b>Zoom &amp; geser chart</b>: putar roda mouse di atas chart untuk zoom in/out (berpusat di posisi kursor), klik-tahan lalu geser untuk melihat candle sebelumnya, atau pakai tombol − + ◀ ▶ ⟲ di atas chart. Di HP, cubit dua jari untuk zoom. Skala harga, volume, RSI, dan MACD menyesuaikan dengan candle yang terlihat. Timeframe selain Daily menyimpan sampai 220 candle, jadi bisa di-zoom out lebih jauh.</p>
         <p><b>Volume profile rentang</b> (tombol di atas chart): klik tombolnya, lalu klik-geser di chart dari candle awal ke candle akhir. Histogram volume khusus rentang itu muncul beserta <b>POC</b> (harga paling ramai), <b>VAH</b> dan <b>VAL</b> (batas atas dan bawah value area, tempat 70% volume terjadi). "Pakai rentang dorongan" langsung memilih dorongan naik terakhir yang dipakai konfluensi. Berfungsi di semua timeframe; di HP cukup sentuh lalu geser.</p>
         <p><b>RSI 14</b> (panel di bawah volume): kekuatan kenaikan 0–100. Di atas 70 = sudah panas, di bawah 30 = jenuh jual. <b>MACD 12,26,9</b>: garis biru (MACD) memotong ke atas garis oranye (sinyal) sering dianggap tanda momentum naik; batang hijau/merah adalah selisih keduanya. Nilai keduanya ikut tampil saat kursor di chart.</p>
         <p><b>Analisa emas dalam rupiah</b>: di tab Kalender, klik kartu "Emas (Rp/gram)" lalu "Analisa lengkap". Isinya sama seperti analisa saham (chart candle Daily/Mingguan, SMC, Fibo &amp; konfluensi, volume profile rentang, MA, RSI, MACD) dengan rencana entry/SL/TP dalam Rp/gram. Isi harga beli emas batangan hari ini dari Antam/Pegadaian untuk menerjemahkan angka-angka itu ke harga batangan. Volume memakai jumlah kontrak emas dunia.</p>
@@ -2902,7 +2912,7 @@ function loadTF(t) {
   tfCache.set(t, pr); pr.catch(() => tfCache.delete(t)); return pr;
 }
 function buildTF(raw, tf) {                       // data mentah timeframe -> objek S yang dipakai smcChart
-  const S = smcJS(raw.b, raw.v, tf === "1w" || tf === "1mo" ? 3 : 5, 120); if (!S) return null;
+  const S = smcJS(raw.b, raw.v, tf === "1w" || tf === "1mo" ? 3 : 5, 220); if (!S) return null;
   const ts = raw.ts.slice(S.s0).map(x => x * 1000);
   S.ts = ts; S.tf = tf; S.d0 = fmtWaktu(ts[0], tf); S.d1 = fmtWaktu(ts[ts.length - 1], tf);
   S.ev = S.ev.map(e => [e[0], e[1], e[2], e[3], e[4], fmtWaktu(raw.ts[e[5]] * 1000, tf)]);
@@ -2910,7 +2920,7 @@ function buildTF(raw, tf) {                       // data mentah timeframe -> ob
 }
 function tfBar(r) {
   const av = new Set(["1d", ...(r.tfx || [])]);
-  return `<div class="tf-bar" role="group" aria-label="Timeframe chart">${TF_LIST.map(([k, lab]) => `<button type="button" data-tf="${k}" class="${curTF === k ? "on" : ""}" ${av.has(k) ? "" : `disabled title="${k === "1w" || k === "1mo" ? "Belum tersedia untuk saham ini" : "Timeframe intraday hanya untuk 200 saham skor tertinggi"}"`}>${lab}</button>`).join("")}</div>`;
+  return `<div class="tf-bar" role="group" aria-label="Timeframe chart">${TF_LIST.map(([k, lab]) => `<button type="button" data-tf="${k}" class="${curTF === k ? "on" : ""}" ${av.has(k) ? "" : `disabled title="${k === "1w" || k === "1mo" ? "Belum tersedia untuk saham ini" : "Timeframe intraday hanya untuk saham dengan transaksi minimal Rp 1 M/hari dan 200 saham skor tertinggi"}"`}>${lab}</button>`).join("")}</div>`;
 }
 
 /* ---------- indikator: MA, RSI, MACD (dihitung dari seluruh data lalu dipotong ke candle yang terlihat) ---------- */
@@ -2992,6 +3002,46 @@ function renderMakro() {
   svg.addEventListener("mouseleave", () => { vl.style.display = "none"; dot.style.display = "none"; leg.innerHTML = `${fd(ser[ser.length - 1].t)}: <b>${fmtM(c[c.length - 1], m.dec)}</b>`; });
 }
 
+/* ---------- zoom & geser chart ---------- */
+const chartView = new Map();      // kunci "KODE|tf" -> {v0, v1} (rentang candle yang terlihat)
+let panState = null, pinchState = null, rafRedraw = null;
+function viewOf(r, nb) {
+  const V = chartView.get(frvpKey(r)), def = r.smc && r.smc.tf ? Math.min(nb, 120) : nb;
+  let v0 = V ? V.v0 : nb - def, v1 = V ? V.v1 : nb - 1;
+  v1 = Math.min(nb - 1, Math.max(v1, 0)); v0 = Math.max(0, Math.min(v0, v1 - 4));
+  return { v0, v1, n: v1 - v0 + 1 };
+}
+function setView(r, nb, v0, n) {
+  n = Math.max(15, Math.min(nb, Math.round(n))); v0 = Math.round(v0);
+  v0 = Math.max(0, Math.min(v0, nb - n));
+  chartView.set(frvpKey(r), { v0, v1: v0 + n - 1 });
+}
+function redrawSoon(r) { if (rafRedraw) return; rafRedraw = requestAnimationFrame(() => { rafRedraw = null; drawSmc(r); }); }
+function zoomBy(r, f, ic) {
+  const nb = r.smc.b.length, V = viewOf(r, nb), n2 = Math.max(15, Math.min(nb, Math.round(V.n * f)));
+  if (ic == null) ic = V.v0 + V.n / 2;
+  setView(r, nb, ic - (ic - V.v0) * n2 / V.n, n2); redrawSoon(r);
+}
+function panBy(r, d) { const nb = r.smc.b.length, V = viewOf(r, nb); setView(r, nb, V.v0 + d, V.n); redrawSoon(r); }
+window.addEventListener("mousemove", e => {
+  if (!panState) return;
+  const d = Math.round((panState.x - e.clientX) / panState.pxPerBar);
+  const nb = panState.r.smc.b.length; setView(panState.r, nb, panState.v0 + d, panState.n); redrawSoon(panState.r);
+});
+window.addEventListener("mouseup", () => { if (panState) { panState = null; document.body.classList.remove("chart-panning"); } });
+window.addEventListener("touchmove", e => {
+  if (!pinchState || e.touches.length !== 2) return;
+  const dd = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
+  const P = pinchState, nb = P.r.smc.b.length, n2 = Math.max(15, Math.min(nb, Math.round(P.n * P.d / dd)));
+  setView(P.r, nb, P.ic - (P.ic - P.v0) * n2 / P.n, n2); redrawSoon(P.r); e.preventDefault();
+}, { passive: false });
+window.addEventListener("touchend", e => { if (pinchState && e.touches.length < 2) pinchState = null; });
+function tglIdx(S, i) {
+  if (S.ts) return fmtWaktu(S.ts[i], S.tf);
+  if (S.do && S.d0) return new Date(Date.parse(S.d0 + "T00:00:00Z") + S.do[i] * 86400000).toISOString().slice(0, 10);
+  return "";
+}
+
 /* ---------- volume profile rentang tetap (fixed range) ---------- */
 const frvpSel = new Map();        // kunci "KODE|tf" -> {i0, i1} (indeks candle yang terlihat)
 let frvpMode = false;
@@ -3027,15 +3077,16 @@ function smcChart(r, lay) {
   if (lay.rsi) { panes.push({ k: "rsi", y0: yCur + GAP, h: PH }); yCur += GAP + PH; }
   if (lay.macd) { panes.push({ k: "macd", y0: yCur + GAP, h: PH }); yCur += GAP + PH; }
   const bottomY = yCur, H = bottomY + B;
-  let max = Math.max(...bars.map(b => b[1])), min = Math.min(...bars.map(b => b[2]));
+  const VW = viewOf(r, nb), v0 = VW.v0, v1 = VW.v1, nbv = VW.n, vis = bars.slice(v0, v1 + 1);
+  let max = Math.max(...vis.map(b => b[1])), min = Math.min(...vis.map(b => b[2]));
   if (lay.plan && p) { max = Math.max(max, p.tp3 || p.tp2 || p.tp); min = Math.min(min, p.sl); }
   const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
-  const sw = iw / nb, bw = Math.max(1.4, sw * 0.62);
-  const y = v => T + (max - v) / (max - min) * ih, x = i => L + i * sw + sw / 2, xl = i => L + i * sw;
+  const sw = iw / nbv, bw = Math.max(1.4, sw * 0.62);
+  const y = v => T + (max - v) / (max - min) * ih, x = i => L + (i - v0) * sw + sw / 2, xl = i => L + (i - v0) * sw;
   const clampY = v => Math.min(T + ih, Math.max(T, y(v)));
   const up = "var(--up)", dn = "var(--down)";
-  let s = `<svg class="d-chart smc-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart ${esc(TF_NAME[S.tf || "1d"])} dengan Smart Money Concepts ${esc(r.t)}" data-g="${[L, T, iw, ih, nb, min, max, W, H, R, GAP, VH, bottomY].join(",")}" data-panes='${JSON.stringify(panes)}'>`;
-  s += `<defs><clipPath id="cp"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath></defs>`;
+  let s = `<svg class="d-chart smc-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart ${esc(TF_NAME[S.tf || "1d"])} dengan Smart Money Concepts ${esc(r.t)}" data-g="${[L, T, iw, ih, nb, min, max, W, H, R, GAP, VH, bottomY, v0, nbv].join(",")}" data-panes='${JSON.stringify(panes)}'>`;
+  s += `<defs><clipPath id="cp"><rect x="${L}" y="${T}" width="${iw}" height="${ih}"/></clipPath><clipPath id="cpx"><rect x="${L}" y="0" width="${iw}" height="${H}"/></clipPath></defs>`;
   // skala harga: kelipatan "rapi" (mis. 25, 50, 100) sekitar 6-8 garis
   const raw = (max - min) / (full ? 11 : 8), mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
   const stepP = [1, 2, 2.5, 5, 10].map(k => k * mag).find(k => k >= raw) || mag * 10;
@@ -3142,9 +3193,10 @@ function smcChart(r, lay) {
     if (!placed.some(u => Math.abs(u - yP) < 13)) s += `<text x="${L + iw + 8}" y="${Math.max(T + 10, yP).toFixed(1)}" font-size="9.5" font-weight="700" fill="${dn}">▲ Premium</text>`;
     if (!placed.some(u => Math.abs(u - yD) < 13)) s += `<text x="${L + iw + 8}" y="${Math.min(T + ih, yD).toFixed(1)}" font-size="9.5" font-weight="700" fill="${up}">▼ Discount</text>`;
   }
-  s += `<text x="${L}" y="${H - 6}" font-size="10" fill="var(--muted)">${esc(S.d0)}</text><text x="${L + iw}" y="${H - 6}" font-size="10" text-anchor="end" fill="var(--muted)">${esc(S.d1)}</text>`;
+  s += `<text x="${L}" y="${H - 6}" font-size="10" fill="var(--muted)">${esc(tglIdx(S, v0))}</text><text x="${L + iw}" y="${H - 6}" font-size="10" text-anchor="end" fill="var(--muted)">${esc(tglIdx(S, v1))}</text>`;
+  s += `<g clip-path="url(#cpx)">`;
   if (VH && S.v) {
-    const vmax = Math.max(...S.v, 1);
+    const vmax = Math.max(...S.v.slice(v0, v1 + 1), 1);
     s += `<line x1="${L}" x2="${L + iw}" y1="${volTop - GAP / 2}" y2="${volTop - GAP / 2}" stroke="var(--line)"/>`;
     S.v.forEach((vv, i) => { const hh = (vv || 0) / vmax * (VH - 4), b = bars[i], col = b && b[3] >= b[0] ? up : dn;
       if (hh > 0.3) s += `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${(volTop + VH - hh).toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" fill="${col}" opacity="0.55"/>`; });
@@ -3163,7 +3215,7 @@ function smcChart(r, lay) {
       s += `<text x="${L + 6}" y="${pn.y0 + 12}" font-size="10" font-weight="700" fill="var(--muted)">RSI 14${lv != null ? ` <tspan fill="#A855F7">${fmtDec(lv, 1)}</tspan>` : ""}</text>`;
     }
     if (pn.k === "macd") {
-      const vals = [...ind.macd, ...ind.sig, ...ind.hist].filter(v => v != null); if (!vals.length) return;
+      const sl = a => a.slice(v0, v1 + 1), vals = [...sl(ind.macd), ...sl(ind.sig), ...sl(ind.hist)].filter(v => v != null); if (!vals.length) return;
       const hi = Math.max(...vals.map(Math.abs)) * 1.1 || 1, lo = -hi, yy = v => pn.y0 + (hi - v) / (hi - lo) * pn.h;
       s += `<rect x="${L}" y="${pn.y0}" width="${iw}" height="${pn.h}" fill="var(--panel2)" opacity="0.35"/>`;
       s += `<line x1="${L}" x2="${L + iw}" y1="${yy(0)}" y2="${yy(0)}" stroke="var(--muted)" opacity="0.6"/>`;
@@ -3175,7 +3227,9 @@ function smcChart(r, lay) {
       s += `<text x="${L + iw + 8}" y="${yy(0) + 4}" font-size="10" fill="var(--muted)">0</text>`;
     }
   });
+  s += "</g>";
   const FR = frvpSel.get(frvpKey(r)), FV = FR ? frvpCalc(S, FR.i0, FR.i1) : null;
+  s += `<g clip-path="url(#cp)">`;
   if (FV) {
     const xa = xl(FV.i0), xb = xl(FV.i1) + sw, wmax = Math.max(40, (xb - xa) * 0.75), bmax = Math.max(...FV.bins) || 1;
     s += `<rect x="${xa.toFixed(1)}" y="${T}" width="${(xb - xa).toFixed(1)}" height="${ih}" fill="var(--accent)" opacity="0.05"/>`;
@@ -3186,6 +3240,7 @@ function smcChart(r, lay) {
     [[FV.vah, "VAH"], [FV.val, "VAL"]].forEach(([v, n]) => s += `<line x1="${xa.toFixed(1)}" x2="${xb.toFixed(1)}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--accent)" stroke-dasharray="5 3" opacity="0.8"/><text x="${(xb - 4).toFixed(1)}" y="${(y(v) - 3).toFixed(1)}" font-size="9.5" font-weight="700" text-anchor="end" fill="var(--accent)">${n} ${fmtNum(v)}</text>`);
     s += `<text x="${(xb - 4).toFixed(1)}" y="${(y(FV.poc) - 3).toFixed(1)}" font-size="10" font-weight="800" text-anchor="end" fill="#F97316">POC rentang ${fmtNum(FV.poc)}</text>`;
   }
+  s += "</g>";
   s += `<rect class="frvp-drag" y="${T}" height="${ih}" fill="var(--accent)" opacity="0.15" style="display:none"/>`;
   s += `<g class="xh" pointer-events="none" style="display:none">
     <rect class="xh-band" y="${T}" height="${bottomY - T}" fill="var(--ink)" opacity="0.06"/>
@@ -3227,9 +3282,9 @@ function smcSummary(r) {
 const HARI3 = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"], BLN3 = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 function attachCrosshair(r, box) {
   const S = r.smc, svg = box.querySelector("svg.smc-svg"), leg = box.querySelector(".xh-legend"); if (!svg || !S) return;
-  const [L, T, iw, ih, nb, min, max, W, H, , GAP, VH, bottomY] = svg.dataset.g.split(",").map(Number);
+  const [L, T, iw, ih, nb, min, max, W, H, , GAP, VH, bottomY, v0, nbv] = svg.dataset.g.split(",").map(Number);
   const panes = JSON.parse(svg.dataset.panes || "[]"), ind = S.ind || {};
-  const base = S.ts ? 0 : Date.parse(S.d0 + "T00:00:00Z"), sw = iw / nb;
+  const base = S.ts ? 0 : Date.parse(S.d0 + "T00:00:00Z"), sw = iw / nbv;
   const g = svg.querySelector(".xh"), vL = g.querySelector(".xh-v"), hL = g.querySelector(".xh-h"), band = g.querySelector(".xh-band");
   const pBox = g.querySelector(".xh-pbox"), pTxt = g.querySelector(".xh-ptxt"), dBox = g.querySelector(".xh-dbox"), dTxt = g.querySelector(".xh-dtxt");
   const idx = r.t === "IHSG";
@@ -3247,15 +3302,15 @@ function attachCrosshair(r, box) {
       ${ind.macd && ind.macd[i] != null ? ` <span class="xl-k">MACD</span> <span style="color:var(--blue)">${fmtDec(ind.macd[i], 2)}</span>` : ""}
       ${ind.ma200 && ind.ma200[i] != null ? ` <span class="xl-k">MA200</span> <span style="color:#A855F7">${fp(ind.ma200[i])}</span>` : ""}`;
   };
-  legend(nb - 1);
+  legend(v0 + nbv - 1);
   const toSvg = e => { const rc = svg.getBoundingClientRect(); const pt = e.touches ? e.touches[0] : e; return [(pt.clientX - rc.left) * W / rc.width, (pt.clientY - rc.top) * H / rc.height]; };
   const move = e => {
     const [sx, sy] = toSvg(e);
     if (sx < L || sx > L + iw || sy < T || sy > bottomY) { hide(); return; }
-    const i = Math.max(0, Math.min(nb - 1, Math.floor((sx - L) / sw))), cx = L + i * sw + sw / 2;
+    const i = Math.max(v0, Math.min(v0 + nbv - 1, v0 + Math.floor((sx - L) / sw))), cx = L + (i - v0) * sw + sw / 2;
     g.style.display = "";
     vL.setAttribute("x1", cx); vL.setAttribute("x2", cx);
-    band.setAttribute("x", L + i * sw); band.setAttribute("width", Math.max(1, sw));
+    band.setAttribute("x", L + (i - v0) * sw); band.setAttribute("width", Math.max(1, sw));
     hL.setAttribute("y1", sy); hL.setAttribute("y2", sy);
     pBox.setAttribute("y", sy - 9); pTxt.setAttribute("y", sy + 4);
     const pn = panes.find(q => sy >= q.y0 - GAP && sy <= q.y0 + q.h);
@@ -3269,11 +3324,11 @@ function attachCrosshair(r, box) {
     legend(i);
     if (e.cancelable && e.touches) e.preventDefault();
   };
-  const hide = () => { g.style.display = "none"; legend(nb - 1); };
+  const hide = () => { g.style.display = "none"; legend(v0 + nbv - 1); };
   // volume profile rentang: klik-geser (atau sentuh-geser) saat mode aktif
   const drag = svg.querySelector(".frvp-drag"); let d0 = null;
-  const idxAt = e => { const [sx] = toSvg(e); return Math.max(0, Math.min(nb - 1, Math.floor((sx - L) / sw))); };
-  const dShow = (a, b2) => { const i0 = Math.min(a, b2), i1 = Math.max(a, b2); drag.setAttribute("x", L + i0 * sw); drag.setAttribute("width", Math.max(sw, (i1 - i0 + 1) * sw)); drag.style.display = ""; };
+  const idxAt = e => { const [sx] = toSvg(e); return Math.max(v0, Math.min(v0 + nbv - 1, v0 + Math.floor((sx - L) / sw))); };
+  const dShow = (a, b2) => { const i0 = Math.min(a, b2), i1 = Math.max(a, b2); drag.setAttribute("x", L + (i0 - v0) * sw); drag.setAttribute("width", Math.max(sw, (i1 - i0 + 1) * sw)); drag.style.display = ""; };
   const dStart = e => { if (!frvpMode) return; d0 = idxAt(e); dShow(d0, d0); if (e.cancelable) e.preventDefault(); };
   const dMove = e => { if (!frvpMode || d0 == null) return; dShow(d0, idxAt(e)); if (e.cancelable) e.preventDefault(); };
   const dEnd = e => { if (!frvpMode || d0 == null) return; const pt = e.changedTouches ? e.changedTouches[0] : e; const i1 = idxAt(pt); const a = d0; d0 = null;
@@ -3282,6 +3337,22 @@ function attachCrosshair(r, box) {
   svg.addEventListener("mouseleave", () => { if (d0 != null) { d0 = null; drag.style.display = "none"; } });
   svg.addEventListener("touchstart", dStart, { passive: false }); svg.addEventListener("touchmove", dMove, { passive: false }); svg.addEventListener("touchend", dEnd);
   svg.classList.toggle("frvp-on", frvpMode);
+  // zoom (roda mouse / cubit dua jari) dan geser (klik-tahan lalu geser)
+  svg.addEventListener("wheel", e => {
+    const [sx] = toSvg(e); if (sx < L || sx > L + iw) return;
+    e.preventDefault(); zoomBy(r, e.deltaY > 0 ? 1.15 : 1 / 1.15, v0 + (sx - L) / sw);
+  }, { passive: false });
+  svg.addEventListener("mousedown", e => {
+    if (frvpMode || e.button !== 0) return;
+    const rc = svg.getBoundingClientRect();
+    panState = { r, x: e.clientX, v0, n: nbv, pxPerBar: sw * rc.width / W }; document.body.classList.add("chart-panning"); e.preventDefault();
+  });
+  svg.addEventListener("touchstart", e => {
+    if (e.touches.length !== 2) return;
+    const [sx] = toSvg({ clientX: (e.touches[0].clientX + e.touches[1].clientX) / 2, clientY: e.touches[0].clientY });
+    pinchState = { r, d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1, v0, n: nbv, ic: v0 + (sx - L) / sw };
+    e.preventDefault();
+  }, { passive: false });
   svg.addEventListener("mousemove", move); svg.addEventListener("mouseleave", hide);
   svg.addEventListener("touchstart", move, { passive: false }); svg.addEventListener("touchmove", move, { passive: false }); svg.addEventListener("touchend", hide);
 }
@@ -3289,10 +3360,24 @@ function frvpControls(r) {
   const box = $("frvp-ctl"); if (!box) return;
   const S = r.smc, has = frvpSel.has(frvpKey(r)), kf = S && S.kf, FR = frvpSel.get(frvpKey(r)), FV = FR ? frvpCalc(S, FR.i0, FR.i1) : null;
   const tgl = i => S.ts ? fmtWaktu(S.ts[i], S.tf) : (S.do ? new Date(Date.parse(S.d0 + "T00:00:00Z") + S.do[i] * 86400000).toISOString().slice(0, 10) : "");
-  box.innerHTML = `<button type="button" class="icon-btn${frvpMode ? " on" : ""}" id="frvp-btn" ${S && S.v ? "" : "disabled"}>${frvpMode ? "Klik-geser di chart…" : "Volume profile rentang"}</button>
+  const nbAll = S.b.length, VV = viewOf(r, nbAll);
+  box.innerHTML = `<span class="zoom-ctl" role="group" aria-label="Zoom chart">
+      <button type="button" data-z="out" title="Perkecil (lebih banyak candle)" ${VV.n >= nbAll ? "disabled" : ""}>−</button>
+      <button type="button" data-z="in" title="Perbesar (lebih sedikit candle)" ${VV.n <= 15 ? "disabled" : ""}>+</button>
+      <button type="button" data-z="left" title="Geser ke kiri (candle lebih lama)" ${VV.v0 <= 0 ? "disabled" : ""}>◀</button>
+      <button type="button" data-z="right" title="Geser ke kanan (candle terbaru)" ${VV.v1 >= nbAll - 1 ? "disabled" : ""}>▶</button>
+      <button type="button" data-z="reset" title="Kembalikan tampilan awal">⟲</button>
+      <span class="zoom-info">${VV.n} dari ${nbAll} candle</span></span>
+    <button type="button" class="icon-btn${frvpMode ? " on" : ""}" id="frvp-btn" ${S && S.v ? "" : "disabled"}>${frvpMode ? "Klik-geser di chart…" : "Volume profile rentang"}</button>
     ${kf && kf.leg && !S.tf ? `<button type="button" class="icon-btn" id="frvp-leg">Pakai rentang dorongan</button>` : ""}
     ${has ? `<button type="button" class="icon-btn" id="frvp-clear">Hapus rentang</button>` : ""}
     <span class="frvp-info">${frvpMode ? "Tarik dari candle awal ke candle akhir rentang yang ingin dihitung." : FV ? `<b>Rentang</b> ${esc(tgl(FV.i0))} – ${esc(tgl(FV.i1))} (${FV.i1 - FV.i0 + 1} candle): <b style="color:#F97316">POC ${fmtNum(FV.poc)}</b> · value area ${fmtNum(FV.val)}–${fmtNum(FV.vah)} · harga sekarang ${r.p > FV.vah ? "di atas" : r.p < FV.val ? "di bawah" : "di dalam"} value area.` : ""}</span>`;
+  box.querySelectorAll("[data-z]").forEach(b => b.addEventListener("click", () => {
+    const z = b.dataset.z, V = viewOf(r, nbAll);
+    if (z === "in") zoomBy(r, 1 / 1.4); else if (z === "out") zoomBy(r, 1.4);
+    else if (z === "left") panBy(r, -Math.max(1, Math.round(V.n * 0.3))); else if (z === "right") panBy(r, Math.max(1, Math.round(V.n * 0.3)));
+    else { chartView.delete(frvpKey(r)); drawSmc(r); }
+  }));
   const bt = $("frvp-btn"); if (bt) bt.addEventListener("click", () => { frvpMode = !frvpMode; drawSmc(r); });
   const lg = $("frvp-leg"); if (lg) lg.addEventListener("click", () => { frvpSel.set(frvpKey(r), { i0: kf.leg[0], i1: kf.leg[1] }); frvpMode = false; drawSmc(r); });
   const cl = $("frvp-clear"); if (cl) cl.addEventListener("click", () => { frvpSel.delete(frvpKey(r)); frvpMode = false; drawSmc(r); });
@@ -3358,7 +3443,7 @@ function msBlock(r) {
   const ms = r.ms || {};
   const cells = [["w", "Mingguan"], ["d", "Harian"], ["h4", "4 jam"]].map(([k, n]) => {
     const v = ms[k];
-    if (!v) return `<div class="tf-cell"><small>${n}</small><span class="muted">-</span><small>${k === "h4" ? "hanya 200 saham skor tertinggi" : "data tidak tersedia"}</small></div>`;
+    if (!v) return `<div class="tf-cell"><small>${n}</small><span class="muted">-</span><small>${k === "h4" ? "hanya saham transaksi ≥ Rp 1 M/hari" : "data tidak tersedia"}</small></div>`;
     const lab = v.tr === 1 ? "Bullish" : v.tr === -1 ? "Bearish" : "Belum jelas", cls = v.tr === 1 ? "sb" : v.tr === -1 ? "ss" : "n";
     return `<div class="tf-cell"><small>${n}</small><span class="v ${cls}">${lab}</span><small>${v.ev ? `${v.ev[0]} ${v.ev[1] === 1 ? "naik" : "turun"}, ${esc(v.ev[2])}` : "belum ada BOS/CHoCH"}</small></div>`;
   }).join("");
