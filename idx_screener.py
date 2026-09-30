@@ -2198,7 +2198,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>MA200, RSI, MACD, dan pasar global</summary>
       <div class="guide-body">
         <p><b>MA20/50/200</b> (lapisan di chart): rata-rata harga 20, 50, dan 200 candle. Harga di atas MA200 menandakan tren jangka panjang naik. MA200 butuh 200 candle sebelumnya, jadi di versi online dihitung dari data tambahan; di timeframe dengan data pendek (misalnya 4H atau bulanan) MA200 bisa belum tersedia.</p>
-        <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Label otomatis 1–5 lalu A–B–C, dan bisa diganti lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya, lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
+        <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Gelombang digambar tanpa label; kalau perlu, label bisa ditambahkan sendiri lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya: tarik bulatan pegangan untuk menggeser satu titik, tarik garisnya untuk memindahkan seluruh gambar, atau klik dua kali untuk mengubah catatan. Untuk menghapus, pilih gambarnya lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
         <p><b>Zoom &amp; geser chart</b>: putar roda mouse di atas chart untuk zoom in/out (berpusat di posisi kursor), klik-tahan lalu geser untuk melihat candle sebelumnya, atau pakai tombol − + ◀ ▶ ⟲ di atas chart. Di HP, cubit dua jari untuk zoom. Skala harga, volume, RSI, dan MACD menyesuaikan dengan candle yang terlihat. Timeframe selain Daily menyimpan sampai 220 candle, jadi bisa di-zoom out lebih jauh.</p>
         <p><b>Volume profile rentang</b> (tombol di atas chart): klik tombolnya, lalu klik-geser di chart dari candle awal ke candle akhir. Histogram volume khusus rentang itu muncul beserta <b>POC</b> (harga paling ramai), <b>VAH</b> dan <b>VAL</b> (batas atas dan bawah value area, tempat 70% volume terjadi). "Pakai rentang dorongan" langsung memilih dorongan naik terakhir yang dipakai konfluensi. Berfungsi di semua timeframe; di HP cukup sentuh lalu geser.</p>
         <p><b>RSI 14</b> (panel di bawah volume): kekuatan kenaikan 0–100. Di atas 70 = sudah panas, di bawah 30 = jenuh jual. <b>MACD 12,26,9</b>: garis biru (MACD) memotong ke atas garis oranye (sinyal) sering dianggap tanda momentum naik; batang hijau/merah adalah selisih keduanya. Nilai keduanya ikut tampil saat kursor di chart.</p>
@@ -3037,12 +3037,36 @@ const EW_SEQ = ["1", "2", "3", "4", "5", "A", "B", "C"];
 function ewLabels(d) {             // label tiap titik; titik pertama (awal) tanpa label
   if (d.type === "ew5") return ["", "1", "2", "3", "4", "5"];
   if (d.type === "ew3") return ["", "A", "B", "C"];
-  return d.pts.map((_, i) => i === 0 ? "" : (d.labels && d.labels[i - 1]) || (EW_SEQ[(i - 1) % 8] + "'".repeat(Math.floor((i - 1) / 8))));
+  return d.pts.map((_, i) => i === 0 ? "" : (d.labels && d.labels[i - 1]) || "");      // tanpa label, kecuali diisi sendiri
 }
 const EW_STEP = { ew5: ["titik awal", "ujung gelombang 1", "ujung gelombang 2", "ujung gelombang 3", "ujung gelombang 4", "ujung gelombang 5"], ew3: ["titik awal", "ujung gelombang A", "ujung gelombang B", "ujung gelombang C"],
   line: ["titik pertama", "titik kedua"], hline: ["level harga"], text: ["posisi catatan"] };
-function ewStep(n) { return n === 0 ? "titik awal gelombang" : `ujung gelombang ${EW_SEQ[(n - 1) % 8] + "'".repeat(Math.floor((n - 1) / 8))}`; }
-let drawTool = null, drawPending = [], drawSel = null, curChartR = null;
+function ewStep(n) { return n === 0 ? "titik awal" : `titik ke-${n + 1}`; }
+let drawTool = null, drawPending = [], drawSel = null, curChartR = null, dwDrag = null, dwRaf = null, dwLastClick = null;
+function editNote(r, id) { const list = drawList(r), d = list.find(x => x.id === id); if (!d) return;
+  const v = prompt("Catatan:", d.note || ""); if (v === null) return; drawSave(r, list.map(x => x.id === id ? { ...x, note: v.trim() } : x)); drawSel = id; drawSmc(r); }
+function dwDragMove(cx, cy) {
+  const D = dwDrag; if (!D) return;
+  const pt = D.pointAt(cx, cy, D.mode === "pt" && drawStyle.magnet), S = D.r.smc, n = S.b.length;
+  if (!D.moved && Math.hypot(cx - D.x0, cy - D.y0) < 3) return;
+  D.moved = true;
+  const list = drawList(D.r).map(d => {
+    if (d.id !== D.id) return d;
+    if (D.mode === "pt") { const pts = d.pts.slice(); pts[D.k] = d.type === "hline" ? { t: pts[D.k].t, p: pt.p } : { t: pt.t, p: pt.p }; return { ...d, pts }; }
+    const di = pt.i - D.start.i, dp = pt.p - D.start.p;
+    return { ...d, pts: D.orig.map(q => ({ t: d.type === "hline" ? q.t : timeOf(S, Math.max(0, Math.min(n - 1, idxOfTime(S, q.t) + di))), p: q.p + dp })) };
+  });
+  drawSave(D.r, list);
+  if (!dwRaf) dwRaf = requestAnimationFrame(() => { dwRaf = null; if (dwDrag) drawSmc(dwDrag.r); });
+}
+function dwDragEnd() {
+  if (!dwDrag) return; const r = dwDrag.r, moved = dwDrag.moved; dwDrag = null; document.body.classList.remove("chart-panning");
+  if (moved) { dwLastClick = null; drawSmc(r); }      // tanpa geser: jangan gambar ulang supaya klik (dan klik dua kali) tetap terbaca
+}
+window.addEventListener("mousemove", e => { if (dwDrag) dwDragMove(e.clientX, e.clientY); });
+window.addEventListener("mouseup", dwDragEnd);
+window.addEventListener("touchmove", e => { if (dwDrag && e.touches.length === 1) { dwDragMove(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }, { passive: false });
+window.addEventListener("touchend", dwDragEnd);
 let drawStyle = Object.assign({ color: "#F59E0B", w: 2, magnet: true }, ls.get("idxs:drawstyle", {}));
 const saveStyle = () => ls.set("idxs:drawstyle", drawStyle);
 const drawAll = () => ls.get(DRAW_KEY, {}) || {};
@@ -3058,11 +3082,12 @@ function idxOfTime(S, t) {
 function ewCheck(d) {
   if (d.type === "ew") {
     const P = d.pts.map(q => q.p), L = ewLabels(d), out = [];
-    if (P.length >= 6) out.push(...ewCheck({ type: "ew5", pts: d.pts.slice(0, 6) }).map(t => t.startsWith("✓") || t.startsWith("✗") ? t : t));
+    if (P.length >= 6) { out.push("Kalau 5 gelombang pertama dihitung sebagai impuls 1–5:"); out.push(...ewCheck({ type: "ew5", pts: d.pts.slice(0, 6) })); }
     if (P.length >= 9) out.push(...ewCheck({ type: "ew3", pts: d.pts.slice(5, 9) }).map(t => "Koreksi setelah gelombang 5: " + t));
-    const rel = []; for (let i = 2; i < P.length; i++) { const a = P[i - 1] - P[i - 2], b = P[i] - P[i - 1]; if (a) rel.push(`${L[i]} = ${fmtDec(Math.abs(b / a) * 100, 1)}% dari ${L[i - 1]}`); }
+    const nm = i => L[i] || `gel. ${i}`;
+    const rel = []; for (let i = 2; i < P.length; i++) { const a = P[i - 1] - P[i - 2], b = P[i] - P[i - 1]; if (a) rel.push(`${nm(i)} = ${fmtDec(Math.abs(b / a) * 100, 1)}% dari ${nm(i - 1)}`); }
     if (rel.length) out.push("Rasio tiap gelombang terhadap gelombang sebelumnya: " + rel.join(" · ") + ".");
-    if (P.length < 6) out.push("Tambahkan titik sampai gelombang 5 untuk mengecek aturan impuls Elliott.");
+    if (P.length < 6) out.push("Dengan minimal 6 titik (titik awal + 5 gelombang), aturan impuls Elliott bisa dicek otomatis.");
     return out;
   }
   const P = d.pts.map(q => q.p), pct = v => fmtDec(v * 100, 1) + "%";
@@ -3088,7 +3113,7 @@ function drawLayer(r, S, x, y, L, iw, fp) {
   const lab = (tx, ty, text, col, anchor = "start") => `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="11" font-weight="800" fill="${col}" text-anchor="${anchor}" stroke="var(--panel)" stroke-width="3" paint-order="stroke" pointer-events="none">${esc(text)}</text>`;
   list.forEach(d => {
     const col = d.color || "#F59E0B", sw = d.w || 2, sel = d.id === drawSel, pts = d.pts.map(q => [x(idxOfTime(S, q.t)), y(q.p), q.p]);
-    const hit = path => `<path d="${path}" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" data-dw="${d.id}" style="cursor:pointer"/>`;
+    const hit = path => `<path d="${path}" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" data-dw="${d.id}" style="cursor:${sel ? "move" : "pointer"}"/>`;
     const dash = sel ? ` stroke-dasharray="7 4"` : "";
     if (d.type === "hline") {
       const yy = pts[0][1];
@@ -3109,18 +3134,18 @@ function drawLayer(r, S, x, y, L, iw, fp) {
       pts.forEach((q, i) => {
         s += `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="3" fill="${col}"/>`;
         if (!names[i]) return;
-        const upPt = i === 0 ? true : q[2] >= pts[i - 1][2];
+        const upPt = q[2] >= pts[i - 1][2];
         s += lab(q[0], upPt ? q[1] - 9 : q[1] + 17, `(${names[i]})`, col, "middle");
       });
       if (d.note) s += lab(pts[pts.length - 1][0] + 8, pts[pts.length - 1][1] + 4, d.note, col);
     }
-    if (sel) pts.forEach(q => s += `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="5" fill="none" stroke="${col}" stroke-width="1.5"/>`);
+    if (sel) pts.forEach((q, k) => s += `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="6.5" fill="var(--panel)" stroke="${col}" stroke-width="2" data-dwh="${d.id}:${k}" pointer-events="all" style="cursor:grab"/>`);
   });
   if (drawTool && drawPending.length) {
     const pp = drawPending.map(q => [x(idxOfTime(S, q.t)), y(q.p), q.p]);
     if (drawTool === "ew" && pp.length > 1) s += `<path d="M${pp.map(q => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" L")}" stroke="${drawStyle.color}" stroke-width="${drawStyle.w}" fill="none" stroke-linejoin="round"/>`;
     pp.forEach((q, i) => { s += `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="4" fill="${drawStyle.color}"/>`;
-      if (drawTool === "ew" && i > 0) { const upPt = q[2] >= pp[i - 1][2]; s += lab(q[0], upPt ? q[1] - 9 : q[1] + 17, `(${EW_SEQ[(i - 1) % 8] + "'".repeat(Math.floor((i - 1) / 8))})`, drawStyle.color, "middle"); } });
+    });
   }
   s += `<polyline class="dw-prev" fill="none" stroke="${drawStyle.color}" stroke-width="1.5" stroke-dasharray="4 3" pointer-events="none"/>`;
   return s;
@@ -3151,6 +3176,7 @@ function drawControls(r) {
         <button type="button" class="icon-btn dw-small" id="dw-done" ${drawPending.length < 2 ? "disabled" : ""}>Selesai</button> untuk mengakhiri. Backspace membatalkan titik terakhir, Esc membatalkan semuanya.</div>`
       : drawTool ? `<div class="dw-hint">Klik di chart: <b>${esc(step)}</b> (titik ${drawPending.length + 1} dari ${need}). Tekan Esc untuk batal.</div>` : ""}
     <!--SEL-->${sel ? `<div class="dw-sel"><b style="color:${sel.color}">${TOOL_NAME[sel.type]}</b>${sel.note ? ` · ${esc(sel.note)}` : ""}
+        <span class="muted" style="font-size:0.76rem">Tarik bulatan untuk menggeser titik, tarik garisnya untuk memindahkan semuanya, klik dua kali untuk ubah catatan.</span>
         <button type="button" class="icon-btn dw-small" id="dw-note">✎ Catatan</button>${sel.type === "ew" ? '<button type="button" class="icon-btn dw-small" id="dw-lab">✎ Label</button>' : ""}<button type="button" class="icon-btn dw-small dw-del" id="dw-del">Hapus</button>
         ${sel.type === "ew" || sel.type === "ew5" || sel.type === "ew3" ? `<ul class="ew-check">${ewCheck(sel).map(t => `<li class="${t.startsWith("✗") ? "neg" : t.startsWith("✓") ? "pos" : ""}">${esc(t)}</li>`).join("")}</ul>` : ""}</div>` : ""}`;
   const selBox = $("draw-sel");
@@ -3166,7 +3192,7 @@ function drawControls(r) {
   const dd = $("dw-del"); if (dd) dd.addEventListener("click", () => deleteDrawing(r, sel.id));
   const dl = $("dw-lab"); if (dl) dl.addEventListener("click", () => {
     const cur = ewLabels(sel).slice(1).join(", ");
-    const v = prompt(`Label gelombang, dipisah koma (${sel.pts.length - 1} titik setelah titik awal). Contoh: 1, 2, 3, 4, 5, A, B, C atau (i), (ii), (iii)`, cur); if (v === null) return;
+    const v = prompt(`Label gelombang (opsional), dipisah koma untuk ${sel.pts.length - 1} titik setelah titik awal. Contoh: 1, 2, 3, 4, 5, A, B, C atau (i), (ii), (iii). Kosongkan untuk tanpa label.`, cur); if (v === null) return;
     const labels = v.split(",").map(t => t.trim()).slice(0, sel.pts.length - 1);
     drawSave(r, list.map(d => d.id === sel.id ? { ...d, labels } : d)); drawSmc(r);
   });
@@ -3515,13 +3541,36 @@ function attachCrosshair(r, box) {
   svg.classList.toggle("frvp-on", frvpMode);
   svg.classList.toggle("draw-on", !!drawTool);
   let downAt = null;
-  svg.addEventListener("mousedown", e => { downAt = [e.clientX, e.clientY]; });
+  const pointAtFor = rc => (cx, cy, snap) => {
+    const sx = (cx - rc.left) * W / rc.width, sy = (cy - rc.top) * H / rc.height;
+    const i = Math.max(v0, Math.min(v0 + nbv - 1, v0 + Math.floor((sx - L) / sw)));
+    let p = max - (sy - T) / ih * (max - min);
+    if (snap) { const bb = S.b[i], yy = v => T + (max - v) / (max - min) * ih; if (Math.abs(sy - yy(bb[1])) < 14) p = bb[1]; else if (Math.abs(sy - yy(bb[2])) < 14) p = bb[2]; }
+    return { i, t: timeOf(S, i), p };
+  };
+  const startDwDrag = (e, cx, cy) => {
+    if (drawTool || frvpMode) return false;
+    const h = e.target.closest && e.target.closest("[data-dwh]"), body = e.target.closest && e.target.closest("[data-dw]");
+    const pa = pointAtFor(svg.getBoundingClientRect());
+    if (h) { const [id, k] = h.dataset.dwh.split(":"); dwDrag = { mode: "pt", id, k: +k, r, pointAt: pa, x0: cx, y0: cy }; }
+    else if (body && body.dataset.dw === drawSel) { const d = drawList(r).find(x => x.id === drawSel); if (!d) return false;
+      dwDrag = { mode: "all", id: d.id, start: pa(cx, cy, false), orig: d.pts.map(q => ({ ...q })), r, pointAt: pa, x0: cx, y0: cy }; }
+    else return false;
+    document.body.classList.add("chart-panning"); return true;
+  };
+  svg.addEventListener("mousedown", e => { downAt = [e.clientX, e.clientY]; if (e.button === 0 && startDwDrag(e, e.clientX, e.clientY)) e.preventDefault(); });
+  svg.addEventListener("touchstart", e => { if (e.touches.length === 1 && startDwDrag(e, e.touches[0].clientX, e.touches[0].clientY)) e.preventDefault(); }, { passive: false });
   svg.addEventListener("click", e => {
     const moved = downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5; downAt = null;
     if (!drawTool) {
       if (moved) return;
-      const hit = e.target.closest && e.target.closest("[data-dw]");
-      if (hit) { drawSel = hit.dataset.dw; drawSmc(r); } else if (drawSel) { drawSel = null; drawSmc(r); }
+      const hit = e.target.closest && (e.target.closest("[data-dw]") || e.target.closest("[data-dwh]"));
+      if (hit) {
+        const id = hit.dataset.dw || hit.dataset.dwh.split(":")[0], now = Date.now();
+        if (dwLastClick && dwLastClick.id === id && now - dwLastClick.t < 450) { dwLastClick = null; editNote(r, id); return; }   // klik dua kali
+        dwLastClick = { id, t: now };
+        if (drawSel !== id) { drawSel = id; drawSmc(r); }
+      } else if (drawSel) { drawSel = null; drawSmc(r); }
       return;
     }
     const [sx, sy] = toSvg(e); if (sx < L || sx > L + iw || sy < T || sy > T + ih) return;
@@ -3534,14 +3583,17 @@ function attachCrosshair(r, box) {
     drawPending.push({ t: tt, p: pr });
     if (drawPending.length >= TOOL_PTS[drawTool]) finishDrawing(r); else drawSmc(r);
   });
-  svg.addEventListener("dblclick", e => { if (drawTool === "ew" && drawPending.length >= 2) { e.preventDefault(); finishDrawing(r); } });
+  svg.addEventListener("dblclick", e => {
+    if (drawTool === "ew" && drawPending.length >= 2) { e.preventDefault(); finishDrawing(r); return; }
+    // klik dua kali pada gambar ditangani di handler klik (lebih andal karena chart digambar ulang saat memilih)
+  });
   // zoom (roda mouse / cubit dua jari) dan geser (klik-tahan lalu geser)
   svg.addEventListener("wheel", e => {
     const [sx] = toSvg(e); if (sx < L || sx > L + iw) return;
     e.preventDefault(); zoomBy(r, e.deltaY > 0 ? 1.15 : 1 / 1.15, v0 + (sx - L) / sw);
   }, { passive: false });
   svg.addEventListener("mousedown", e => {
-    if (frvpMode || drawTool || e.button !== 0 || (e.target.closest && e.target.closest("[data-dw]"))) return;
+    if (frvpMode || drawTool || e.button !== 0 || (e.target.closest && e.target.closest("[data-dw], [data-dwh]"))) return;
     const rc = svg.getBoundingClientRect();
     panState = { r, x: e.clientX, v0, n: nbv, pxPerBar: sw * rc.width / W }; document.body.classList.add("chart-panning"); e.preventDefault();
   });
