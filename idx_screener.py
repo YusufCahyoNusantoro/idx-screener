@@ -753,7 +753,7 @@ def analisa_emas():
     r["plans"] = {kk: v for kk, v in plans.items() if v}
     best = next((kk for kk in ("K", "S", "A") if plans[kk]), None)
     r["plan"] = dict(plans[best], src=best) if best else None
-    tfd = {kk: v for kk, v in (("1d", pak_ohlcv(df, 330)), ("1w", pak_ohlcv(resample(df, "W-FRI"), 280))) if v}
+    tfd = {kk: v for kk, v in (("1d", pak_ohlcv(df, 430)), ("1w", pak_ohlcv(resample(df, "W-FRI"), 280))) if v}
     r["tfx"] = sorted(tfd)
     for kk in ("_atr", "_ma20"):
         r.pop(kk, None)
@@ -810,7 +810,7 @@ def konteks_pasar(ihsg, rows, ihsg_jam=None, ihsg_panjang=None):
     return m
 
 
-def smc(d, L=5, win=120, ctx=260):
+def smc(d, L=5, win=220, ctx=420):
     """Smart Money Concepts (versi sederhana) pada candle harian.
     Menghasilkan struktur BOS/CHoCH, order block & FVG yang belum termitigasi,
     equal highs/lows, dan range premium/discount untuk `win` candle terakhir."""
@@ -876,7 +876,7 @@ def smc(d, L=5, win=120, ctx=260):
     s0 = n - win
     cl = lambda i: max(0, i - s0)
 
-    # volume profile 120 candle terakhir: volume tiap candle dibagi rata ke rentang high-low-nya
+    # volume profile 220 candle terakhir (sama dengan rentang chart): volume tiap candle dibagi rata ke rentang high-low-nya
     vp = None
     if "Volume" in d:
         v = d["Volume"].to_numpy(float)
@@ -1324,6 +1324,12 @@ def main():
 
     print("  Unduh data harian (5 tahun)...")
     harian = {t: ke_tanggal(df) for t, df in unduh(tickers, "5y", "1d").items()}
+    print("  Unduh data bulanan (riwayat terpanjang) untuk chart M...")
+    try:
+        bulan_max = unduh(list(harian.keys()), "max", "1mo")
+    except Exception as e:
+        print(f"  ! data bulanan: {e}")
+        bulan_max = {}
     ihsg = unduh(["^JKSE"], "2y", "1d").get("^JKSE")
     ihsg_jam = None if args.no_intraday else unduh(["^JKSE"], "60d", "60m").get("^JKSE")
     ihsg10 = unduh(["^JKSE"], "10y", "1d").get("^JKSE")        # untuk pola musiman
@@ -1358,15 +1364,15 @@ def main():
         teratas = [r["t"] for r in sorted(rows, key=skor, reverse=True) if r["val"] >= 5e8][:args.intraday_top]
         likuid = [r["t"] for r in rows if r["val"] >= 1e9]
         calon = list(dict.fromkeys(teratas + likuid))
-        print(f"  Unduh data 1 jam (60 hari) untuk {len(calon)} saham (likuid + skor tertinggi)...")
-        jam = unduh(calon, "60d", "60m")
+        print(f"  Unduh data 1 jam (6 bulan) untuk {len(calon)} saham (likuid + skor tertinggi)...")
+        jam = unduh(calon, "6mo", "60m")                  # 6 bulan: cukup untuk 220 candle 4 jam
         per_t = {r["t"]: r for r in rows}
         for t, df in jam.items():
             try:
                 tambah_intraday(per_t[t], df)
                 tfdata.setdefault(t, {})
                 for k, fr in (("1h", df), ("4h", gabung_jam(df, 4))):
-                    pk = pak_ohlcv(fr, 330)
+                    pk = pak_ohlcv(fr, 430)
                     if pk:
                         tfdata[t][k] = pk
             except Exception as e:
@@ -1376,7 +1382,7 @@ def main():
             try:
                 tfdata.setdefault(t, {})
                 for k, fr in (("15m", df), ("45m", gabung_jam(df, 3))):
-                    pk = pak_ohlcv(fr, 330)
+                    pk = pak_ohlcv(fr, 430)
                     if pk:
                         tfdata[t][k] = pk
             except Exception as e:
@@ -1396,8 +1402,10 @@ def main():
             if sw:
                 r.setdefault("ms", {})["w"] = sw
             tfdata.setdefault(r["t"], {})
-            for k, fr in (("1d", r["_d"]), ("1w", resample(r["_d"], "W-FRI")), ("1mo", bulanan(r["_d"]))):
-                pk = pak_ohlcv(fr, {"1d": 330, "1w": 280, "1mo": 120}[k])
+            bm = bulan_max.get(r["t"])
+            bm = ke_tanggal(bm) if bm is not None and len(bm) > 24 else bulanan(r["_d"])
+            for k, fr in (("1d", r["_d"]), ("1w", resample(r["_d"], "W-FRI")), ("1mo", bm)):
+                pk = pak_ohlcv(fr, {"1d": 430, "1w": 280, "1mo": 420}[k])
                 if pk:
                     tfdata[r["t"]][k] = pk
         except Exception as e:
@@ -1712,6 +1720,24 @@ TEMPLATE = r'''<!DOCTYPE html>
   .calc-out { margin-top:10px; background:var(--accent-soft); border-radius:10px; padding:10px 12px; font-size:0.9rem; }
   .d-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
   .xh-wrap { position:relative; }
+  .draw-ctl { margin:0 0 8px; }
+  .dw-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
+  .dw-tools { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .dw-tools button { border:0; border-right:1px solid var(--line); background:var(--panel); color:var(--ink); font-weight:700; font-size:0.8rem; padding:6px 10px; cursor:pointer; }
+  .dw-tools button:last-child { border-right:0; }
+  .dw-tools button.on { background:var(--accent); color:#fff; }
+  :root[data-theme="dark"] .dw-tools button.on { color:#0F1522; }
+  .dw-colors { display:inline-flex; align-items:center; gap:5px; }
+  .dw-colors .sw { width:20px; height:20px; border-radius:50%; border:2px solid var(--panel); box-shadow:0 0 0 1px var(--line); cursor:pointer; padding:0; }
+  .dw-colors .sw.on { box-shadow:0 0 0 2px var(--ink); }
+  .dw-colors input[type=color] { width:26px; height:24px; border:1px solid var(--line); border-radius:6px; padding:0; background:none; cursor:pointer; }
+  .dw-small { padding:5px 10px; font-size:0.78rem; }
+  .dw-small.on { border-color:var(--accent); color:var(--accent); }
+  .dw-hint { margin-top:6px; font-size:0.82rem; color:var(--ink2); background:var(--accent-soft); border-radius:8px; padding:6px 10px; display:inline-block; }
+  .dw-sel { margin-top:6px; font-size:0.84rem; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
+  .dw-del { color:var(--down); }
+  .ew-check { width:100%; margin:4px 0 0; padding-left:18px; font-size:0.8rem; }
+  svg.smc-svg.draw-on { cursor:crosshair; }
   .zoom-ctl { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
   .zoom-ctl button { border:0; border-right:1px solid var(--line); background:var(--panel); color:var(--ink); font-weight:800; font-size:0.95rem; min-width:34px; padding:5px 10px; cursor:pointer; }
   .zoom-ctl button:hover:not(:disabled) { color:var(--accent); }
@@ -2122,12 +2148,12 @@ TEMPLATE = r'''<!DOCTYPE html>
     <details class="guide-item">
       <summary>Smart Money Concepts (SMC) di chart detail</summary>
       <div class="guide-body">
-        <p>Panel detail setiap saham menampilkan chart 120 hari dengan lapisan SMC (kecuali saham yang riwayat harganya masih terlalu pendek). Setiap lapisan bisa dinyalakan atau dimatikan.</p>
+        <p>Panel detail setiap saham menampilkan chart harian (220 candle; tampilan awal 120 candle terakhir, bisa di-zoom) dengan lapisan SMC (kecuali saham yang riwayat harganya masih terlalu pendek). Setiap lapisan bisa dinyalakan atau dimatikan.</p>
         <p><b>BOS</b> (garis penuh): harga menembus swing high/low searah tren, tanda tren berlanjut. <b>CHoCH</b> (garis putus-putus): tembusan pertama yang berlawanan arah, tanda awal pembalikan.<br>
         <b>Order block (OB)</b>: candle terakhir yang berlawanan arah sebelum dorongan yang memicu BOS/CHoCH. Hijau = area permintaan, merah = area penawaran. Yang ditampilkan hanya yang belum ditembus.<br>
         <b>FVG</b>: celah antara candle 1 dan 3 yang belum terisi; harga sering kembali mengisinya.<br>
         <b>EQH/EQL</b>: dua puncak atau dua lembah yang hampir sama tinggi, tempat banyak stop loss berkumpul.<br>
-        <b>Premium/discount</b>: separuh atas range 120 hari (relatif mahal) dan separuh bawah (relatif murah), dengan garis EQ di tengah.</p>
+        <b>Premium/discount</b>: separuh atas range 220 hari (relatif mahal) dan separuh bawah (relatif murah), dengan garis EQ di tengah.</p>
         <p>Ini versi sederhana yang dihitung otomatis dari candle harian (swing 5 candle kiri-kanan), jadi bisa berbeda dari indikator SMC di TradingView atau Stockbit. Gunakan sebagai petunjuk area, lalu pastikan di chart aplikasi trading-mu.</p>
       </div>
     </details>
@@ -2164,7 +2190,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>Bandingkan saham dan saham mirip</summary>
       <div class="guide-body">
         <p><b>Saham mirip:</b> di panel detail, bagian "Saham mirip" menampilkan 5 saham di sektor yang sama dengan pergerakan harga harian paling mirip dalam 60 hari terakhir (korelasi), lengkap dengan kinerja 20 hari, struktur, dan kondisinya. Kalimat di bawahnya memberi tahu apakah saham ini lebih kuat, sejalan, atau tertinggal dari saham-saham miripnya.</p>
-        <p><b>Bandingkan:</b> klik "+ Bandingkan" di panel detail (maksimal 4 saham). Bar di bawah layar menampilkan pilihanmu; klik "Buka perbandingan". Halaman perbandingan berisi chart kinerja dalam % sejak titik awal yang sama (20, 60, atau 120 hari) dengan IHSG sebagai pembanding, serta tabel berdampingan: kondisi, struktur W/D/4H, BOS/CHoCH terakhir, posisi premium/discount, order block terdekat, POC, RSI, checklist, dan lainnya. Link halamannya (…/#bandingkan=PTBA,ITMG) bisa dibagikan.</p>
+        <p><b>Bandingkan:</b> klik "+ Bandingkan" di panel detail (maksimal 4 saham). Bar di bawah layar menampilkan pilihanmu; klik "Buka perbandingan". Halaman perbandingan berisi chart kinerja dalam % sejak titik awal yang sama (20, 60, 120, atau 220 hari) dengan IHSG sebagai pembanding, serta tabel berdampingan: kondisi, struktur W/D/4H, BOS/CHoCH terakhir, posisi premium/discount, order block terdekat, POC, RSI, checklist, dan lainnya. Link halamannya (…/#bandingkan=PTBA,ITMG) bisa dibagikan.</p>
         <p>Saham yang tertinggal dari saham miripnya bisa jadi kandidat menyusul, tapi bisa juga tertinggal karena alasan khusus (berita, kinerja keuangan). Cek dulu sebelum entry.</p>
       </div>
     </details>
@@ -2172,6 +2198,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>MA200, RSI, MACD, dan pasar global</summary>
       <div class="guide-body">
         <p><b>MA20/50/200</b> (lapisan di chart): rata-rata harga 20, 50, dan 200 candle. Harga di atas MA200 menandakan tren jangka panjang naik. MA200 butuh 200 candle sebelumnya, jadi di versi online dihitung dari data tambahan; di timeframe dengan data pendek (misalnya 4H atau bulanan) MA200 bisa belum tersedia.</p>
+        <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Label otomatis 1–5 lalu A–B–C, dan bisa diganti lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya, lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
         <p><b>Zoom &amp; geser chart</b>: putar roda mouse di atas chart untuk zoom in/out (berpusat di posisi kursor), klik-tahan lalu geser untuk melihat candle sebelumnya, atau pakai tombol − + ◀ ▶ ⟲ di atas chart. Di HP, cubit dua jari untuk zoom. Skala harga, volume, RSI, dan MACD menyesuaikan dengan candle yang terlihat. Timeframe selain Daily menyimpan sampai 220 candle, jadi bisa di-zoom out lebih jauh.</p>
         <p><b>Volume profile rentang</b> (tombol di atas chart): klik tombolnya, lalu klik-geser di chart dari candle awal ke candle akhir. Histogram volume khusus rentang itu muncul beserta <b>POC</b> (harga paling ramai), <b>VAH</b> dan <b>VAL</b> (batas atas dan bawah value area, tempat 70% volume terjadi). "Pakai rentang dorongan" langsung memilih dorongan naik terakhir yang dipakai konfluensi. Berfungsi di semua timeframe; di HP cukup sentuh lalu geser.</p>
         <p><b>RSI 14</b> (panel di bawah volume): kekuatan kenaikan 0–100. Di atas 70 = sudah panas, di bawah 30 = jenuh jual. <b>MACD 12,26,9</b>: garis biru (MACD) memotong ke atas garis oranye (sinyal) sering dianggap tanda momentum naik; batang hijau/merah adalah selisih keduanya. Nilai keduanya ikut tampil saat kursor di chart.</p>
@@ -3002,11 +3029,155 @@ function renderMakro() {
   svg.addEventListener("mouseleave", () => { vl.style.display = "none"; dot.style.display = "none"; leg.innerHTML = `${fd(ser[ser.length - 1].t)}: <b>${fmtM(c[c.length - 1], m.dec)}</b>`; });
 }
 
+/* ---------- alat gambar: garis, horizontal, catatan, Elliott Wave ---------- */
+const DRAW_KEY = "idxs:draw", DRAW_COLORS = ["#F59E0B", "#3B82F6", "#10B981", "#EF4444", "#A855F7", "#EC4899", "#14B8A6", "#E5E7EB"];
+const TOOL_PTS = { line: 2, hline: 1, text: 1, ew: Infinity };
+const TOOL_NAME = { line: "Garis tren", hline: "Garis horizontal", text: "Catatan", ew: "Elliott Wave", ew5: "Elliott 1–5", ew3: "Elliott A–B–C" };
+const EW_SEQ = ["1", "2", "3", "4", "5", "A", "B", "C"];
+function ewLabels(d) {             // label tiap titik; titik pertama (awal) tanpa label
+  if (d.type === "ew5") return ["", "1", "2", "3", "4", "5"];
+  if (d.type === "ew3") return ["", "A", "B", "C"];
+  return d.pts.map((_, i) => i === 0 ? "" : (d.labels && d.labels[i - 1]) || (EW_SEQ[(i - 1) % 8] + "'".repeat(Math.floor((i - 1) / 8))));
+}
+const EW_STEP = { ew5: ["titik awal", "ujung gelombang 1", "ujung gelombang 2", "ujung gelombang 3", "ujung gelombang 4", "ujung gelombang 5"], ew3: ["titik awal", "ujung gelombang A", "ujung gelombang B", "ujung gelombang C"],
+  line: ["titik pertama", "titik kedua"], hline: ["level harga"], text: ["posisi catatan"] };
+function ewStep(n) { return n === 0 ? "titik awal gelombang" : `ujung gelombang ${EW_SEQ[(n - 1) % 8] + "'".repeat(Math.floor((n - 1) / 8))}`; }
+let drawTool = null, drawPending = [], drawSel = null, curChartR = null;
+let drawStyle = Object.assign({ color: "#F59E0B", w: 2, magnet: true }, ls.get("idxs:drawstyle", {}));
+const saveStyle = () => ls.set("idxs:drawstyle", drawStyle);
+const drawAll = () => ls.get(DRAW_KEY, {}) || {};
+function drawKey(r) { return r.t + "|" + ((r.smc && r.smc.tf) || "1d"); }
+function drawList(r) { return drawAll()[drawKey(r)] || []; }
+function drawSave(r, list) { const a = drawAll(); if (list.length) a[drawKey(r)] = list; else delete a[drawKey(r)]; ls.set(DRAW_KEY, a); }
+function timeOf(S, i) { return S.ts ? S.ts[i] : Date.parse(S.d0 + "T00:00:00Z") + S.do[i] * 86400000; }
+function idxOfTime(S, t) {
+  const n = S.b.length; if (t <= timeOf(S, 0)) return 0; if (t >= timeOf(S, n - 1)) return n - 1;
+  let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (timeOf(S, m) <= t) lo = m; else hi = m; }
+  return t - timeOf(S, lo) <= timeOf(S, hi) - t ? lo : hi;
+}
+function ewCheck(d) {
+  if (d.type === "ew") {
+    const P = d.pts.map(q => q.p), L = ewLabels(d), out = [];
+    if (P.length >= 6) out.push(...ewCheck({ type: "ew5", pts: d.pts.slice(0, 6) }).map(t => t.startsWith("✓") || t.startsWith("✗") ? t : t));
+    if (P.length >= 9) out.push(...ewCheck({ type: "ew3", pts: d.pts.slice(5, 9) }).map(t => "Koreksi setelah gelombang 5: " + t));
+    const rel = []; for (let i = 2; i < P.length; i++) { const a = P[i - 1] - P[i - 2], b = P[i] - P[i - 1]; if (a) rel.push(`${L[i]} = ${fmtDec(Math.abs(b / a) * 100, 1)}% dari ${L[i - 1]}`); }
+    if (rel.length) out.push("Rasio tiap gelombang terhadap gelombang sebelumnya: " + rel.join(" · ") + ".");
+    if (P.length < 6) out.push("Tambahkan titik sampai gelombang 5 untuk mengecek aturan impuls Elliott.");
+    return out;
+  }
+  const P = d.pts.map(q => q.p), pct = v => fmtDec(v * 100, 1) + "%";
+  if (d.type === "ew3") {
+    const a = P[1] - P[0]; if (!a) return [];
+    const bR = (P[1] - P[2]) / a, cA = (P[3] - P[2]) / a;      // A dan C searah, B berlawanan
+    return [`Gelombang B memantul ${pct(bR)} dari A (umumnya 50–78,6%).`, `Gelombang C = ${pct(cA)} dari A (umumnya 100% atau 161,8%).`,
+      bR <= 0 || bR >= 1 ? "✗ B melewati awal A: ini mungkin bukan koreksi A–B–C biasa." : "✓ B tidak melewati awal A."];
+  }
+  const sg = P[1] > P[0] ? 1 : -1, w = i => (P[i] - P[i - 1]) * sg;
+  const w1 = w(1), w2 = -w(2), w3 = w(3), w4 = -w(4), w5 = w(5);
+  if (!(w1 > 0 && w2 > 0 && w3 > 0 && w4 > 0 && w5 > 0)) return ["✗ Arah gelombang tidak berselang-seling (naik-turun-naik-turun-naik). Cek lagi urutan titiknya."];
+  return [
+    (P[2] - P[0]) * sg > 0 ? "✓ Aturan 1: gelombang 2 tidak melewati titik awal gelombang 1." : "✗ Aturan 1 dilanggar: gelombang 2 melewati titik awal gelombang 1.",
+    !(w3 < w1 && w3 < w5) ? "✓ Aturan 2: gelombang 3 bukan yang terpendek." : "✗ Aturan 2 dilanggar: gelombang 3 yang terpendek.",
+    (P[4] - P[1]) * sg > 0 ? "✓ Aturan 3: gelombang 4 tidak masuk wilayah gelombang 1." : "✗ Aturan 3 dilanggar: gelombang 4 masuk wilayah gelombang 1.",
+    `Gelombang 2 = ${pct(w2 / w1)} dari gelombang 1 (umumnya 50–61,8%). Gelombang 3 = ${pct(w3 / w1)} dari gelombang 1 (sering 161,8%).`,
+    `Gelombang 4 = ${pct(w4 / w3)} dari gelombang 3 (umumnya 38,2%). Gelombang 5 = ${pct(w5 / w1)} dari gelombang 1.`,
+  ];
+}
+function drawLayer(r, S, x, y, L, iw, fp) {
+  const list = drawList(r); let s = "";
+  const lab = (tx, ty, text, col, anchor = "start") => `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="11" font-weight="800" fill="${col}" text-anchor="${anchor}" stroke="var(--panel)" stroke-width="3" paint-order="stroke" pointer-events="none">${esc(text)}</text>`;
+  list.forEach(d => {
+    const col = d.color || "#F59E0B", sw = d.w || 2, sel = d.id === drawSel, pts = d.pts.map(q => [x(idxOfTime(S, q.t)), y(q.p), q.p]);
+    const hit = path => `<path d="${path}" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" data-dw="${d.id}" style="cursor:pointer"/>`;
+    const dash = sel ? ` stroke-dasharray="7 4"` : "";
+    if (d.type === "hline") {
+      const yy = pts[0][1];
+      s += `<line x1="${L}" x2="${L + iw}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="${col}" stroke-width="${sw}"${dash}/>` + hit(`M${L},${yy} L${L + iw},${yy}`);
+      s += lab(L + 8, yy - 5, `${fp(pts[0][2])}${d.note ? " · " + d.note : ""}`, col);
+    } else if (d.type === "line") {
+      const [a, b] = pts, path = `M${a[0]},${a[1]} L${b[0]},${b[1]}`;
+      s += `<path d="${path}" stroke="${col}" stroke-width="${sw}" fill="none"${dash}/>` + hit(path);
+      if (d.note) s += lab(b[0] + 6, b[1] - 6, d.note, col);
+    } else if (d.type === "text") {
+      const [a] = pts;
+      s += `<circle cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="3.5" fill="${col}"/>` + hit(`M${a[0] - 4},${a[1]} L${a[0] + 60},${a[1]}`);
+      s += lab(a[0] + 7, a[1] + 4, d.note || "(catatan)", col);
+    } else {
+      const path = "M" + pts.map(q => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(" L");
+      s += `<path d="${path}" stroke="${col}" stroke-width="${sw}" fill="none" stroke-linejoin="round"${dash}/>` + hit(path);
+      const names = ewLabels(d);
+      pts.forEach((q, i) => {
+        s += `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="3" fill="${col}"/>`;
+        if (!names[i]) return;
+        const upPt = i === 0 ? true : q[2] >= pts[i - 1][2];
+        s += lab(q[0], upPt ? q[1] - 9 : q[1] + 17, `(${names[i]})`, col, "middle");
+      });
+      if (d.note) s += lab(pts[pts.length - 1][0] + 8, pts[pts.length - 1][1] + 4, d.note, col);
+    }
+    if (sel) pts.forEach(q => s += `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="5" fill="none" stroke="${col}" stroke-width="1.5"/>`);
+  });
+  if (drawTool && drawPending.length) {
+    const pp = drawPending.map(q => [x(idxOfTime(S, q.t)), y(q.p), q.p]);
+    if (drawTool === "ew" && pp.length > 1) s += `<path d="M${pp.map(q => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" L")}" stroke="${drawStyle.color}" stroke-width="${drawStyle.w}" fill="none" stroke-linejoin="round"/>`;
+    pp.forEach((q, i) => { s += `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="4" fill="${drawStyle.color}"/>`;
+      if (drawTool === "ew" && i > 0) { const upPt = q[2] >= pp[i - 1][2]; s += lab(q[0], upPt ? q[1] - 9 : q[1] + 17, `(${EW_SEQ[(i - 1) % 8] + "'".repeat(Math.floor((i - 1) / 8))})`, drawStyle.color, "middle"); } });
+  }
+  s += `<polyline class="dw-prev" fill="none" stroke="${drawStyle.color}" stroke-width="1.5" stroke-dasharray="4 3" pointer-events="none"/>`;
+  return s;
+}
+function finishDrawing(r) {
+  const type = drawTool, pts = drawPending.slice();
+  if (type === "ew" && pts.length < 2) { drawSmc(r); return; }
+  drawPending = []; drawTool = null;
+  let note = "";
+  if (type === "text") { note = (prompt("Tulis catatan:", "") || "").trim(); if (!note) { drawSmc(r); return; } }
+  else note = (prompt(`Catatan untuk ${TOOL_NAME[type]} (boleh dikosongkan):`, "") || "").trim();
+  const d = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), type, pts, color: drawStyle.color, w: drawStyle.w, note };
+  drawSave(r, drawList(r).concat([d])); drawSel = d.id; drawSmc(r);
+}
+function deleteDrawing(r, id) { drawSave(r, drawList(r).filter(d => d.id !== id)); if (drawSel === id) drawSel = null; drawSmc(r); }
+function drawControls(r) {
+  const box = $("draw-ctl"); if (!box) return;
+  const list = drawList(r), sel = list.find(d => d.id === drawSel);
+  const need = drawTool ? TOOL_PTS[drawTool] : 0, step = drawTool === "ew" ? ewStep(drawPending.length) : drawTool ? EW_STEP[drawTool][drawPending.length] : "";
+  box.innerHTML = `<div class="dw-row">
+      <span class="dw-tools" role="group" aria-label="Alat gambar">${Object.keys(TOOL_PTS).map(k => `<button type="button" data-tool="${k}" class="${drawTool === k ? "on" : ""}">${{ line: "╱ Garis", hline: "― Horizontal", text: "T Catatan", ew: "〰 Elliott Wave" }[k]}</button>`).join("")}</span>
+      <span class="dw-colors">${DRAW_COLORS.map(c => `<button type="button" class="sw${(sel ? sel.color : drawStyle.color) === c ? " on" : ""}" data-col="${c}" style="background:${c}" aria-label="Warna ${c}"></button>`).join("")}<input type="color" id="dw-color" value="${sel ? sel.color : drawStyle.color}" title="Warna lain"></span>
+      <button type="button" class="icon-btn dw-small" id="dw-w" title="Ketebalan garis">${(sel ? sel.w : drawStyle.w) >= 3 ? "Tebal" : "Tipis"}</button>
+      <button type="button" class="icon-btn dw-small${drawStyle.magnet ? " on" : ""}" id="dw-mag" title="Titik menempel ke harga tertinggi/terendah candle">Magnet ${drawStyle.magnet ? "ON" : "OFF"}</button>
+      ${list.length ? `<button type="button" class="icon-btn dw-small" id="dw-clear">Hapus semua (${list.length})</button>` : ""}
+    </div>
+    ${drawTool === "ew" ? `<div class="dw-hint">Klik di chart: <b>${esc(step)}</b> (sudah ${drawPending.length} titik). Klik dua kali, tekan Enter, atau
+        <button type="button" class="icon-btn dw-small" id="dw-done" ${drawPending.length < 2 ? "disabled" : ""}>Selesai</button> untuk mengakhiri. Backspace membatalkan titik terakhir, Esc membatalkan semuanya.</div>`
+      : drawTool ? `<div class="dw-hint">Klik di chart: <b>${esc(step)}</b> (titik ${drawPending.length + 1} dari ${need}). Tekan Esc untuk batal.</div>` : ""}
+    <!--SEL-->${sel ? `<div class="dw-sel"><b style="color:${sel.color}">${TOOL_NAME[sel.type]}</b>${sel.note ? ` · ${esc(sel.note)}` : ""}
+        <button type="button" class="icon-btn dw-small" id="dw-note">✎ Catatan</button>${sel.type === "ew" ? '<button type="button" class="icon-btn dw-small" id="dw-lab">✎ Label</button>' : ""}<button type="button" class="icon-btn dw-small dw-del" id="dw-del">Hapus</button>
+        ${sel.type === "ew" || sel.type === "ew5" || sel.type === "ew3" ? `<ul class="ew-check">${ewCheck(sel).map(t => `<li class="${t.startsWith("✗") ? "neg" : t.startsWith("✓") ? "pos" : ""}">${esc(t)}</li>`).join("")}</ul>` : ""}</div>` : ""}`;
+  const selBox = $("draw-sel");
+  if (selBox) { const i = box.innerHTML.indexOf("<!--SEL-->"); selBox.innerHTML = box.innerHTML.slice(i); box.innerHTML = box.innerHTML.slice(0, i); }
+  box.querySelectorAll("[data-tool]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.tool; drawTool = drawTool === k ? null : k; drawPending = []; drawSel = null; frvpMode = false; drawSmc(r); }));
+  const applyStyle = (patch) => { if (sel) { drawSave(r, list.map(d => d.id === sel.id ? { ...d, ...patch } : d)); } Object.assign(drawStyle, patch); saveStyle(); drawSmc(r); };
+  box.querySelectorAll("[data-col]").forEach(b => b.addEventListener("click", () => applyStyle({ color: b.dataset.col })));
+  $("dw-color").addEventListener("change", e => applyStyle({ color: e.target.value }));
+  $("dw-w").addEventListener("click", () => applyStyle({ w: (sel ? sel.w : drawStyle.w) >= 3 ? 2 : 3 }));
+  $("dw-mag").addEventListener("click", () => { drawStyle.magnet = !drawStyle.magnet; saveStyle(); drawSmc(r); });
+  const cl = $("dw-clear"); if (cl) cl.addEventListener("click", () => { if (confirm(`Hapus semua ${list.length} gambar di chart ${r.t} (${TF_NAME[(r.smc && r.smc.tf) || "1d"]})?`)) { drawSave(r, []); drawSel = null; drawSmc(r); } });
+  const dn = $("dw-note"); if (dn) dn.addEventListener("click", () => { const v = prompt("Catatan:", sel.note || ""); if (v === null) return; drawSave(r, list.map(d => d.id === sel.id ? { ...d, note: v.trim() } : d)); drawSmc(r); });
+  const dd = $("dw-del"); if (dd) dd.addEventListener("click", () => deleteDrawing(r, sel.id));
+  const dl = $("dw-lab"); if (dl) dl.addEventListener("click", () => {
+    const cur = ewLabels(sel).slice(1).join(", ");
+    const v = prompt(`Label gelombang, dipisah koma (${sel.pts.length - 1} titik setelah titik awal). Contoh: 1, 2, 3, 4, 5, A, B, C atau (i), (ii), (iii)`, cur); if (v === null) return;
+    const labels = v.split(",").map(t => t.trim()).slice(0, sel.pts.length - 1);
+    drawSave(r, list.map(d => d.id === sel.id ? { ...d, labels } : d)); drawSmc(r);
+  });
+  const ddn = $("dw-done"); if (ddn) ddn.addEventListener("click", () => finishDrawing(r));
+}
+
 /* ---------- zoom & geser chart ---------- */
 const chartView = new Map();      // kunci "KODE|tf" -> {v0, v1} (rentang candle yang terlihat)
 let panState = null, pinchState = null, rafRedraw = null;
 function viewOf(r, nb) {
-  const V = chartView.get(frvpKey(r)), def = r.smc && r.smc.tf ? Math.min(nb, 120) : nb;
+  const V = chartView.get(frvpKey(r)), def = Math.min(nb, 120);      // tampilan awal 120 candle terakhir
   let v0 = V ? V.v0 : nb - def, v1 = V ? V.v1 : nb - 1;
   v1 = Math.min(nb - 1, Math.max(v1, 0)); v0 = Math.max(0, Math.min(v0, v1 - 4));
   return { v0, v1, n: v1 - v0 + 1 };
@@ -3045,7 +3216,7 @@ function tglIdx(S, i) {
 /* ---------- volume profile rentang tetap (fixed range) ---------- */
 const frvpSel = new Map();        // kunci "KODE|tf" -> {i0, i1} (indeks candle yang terlihat)
 let frvpMode = false;
-function frvpKey(r) { return r.t + "|" + ((r.smc && r.smc.tf) || "1d"); }
+function frvpKey(r) { return r.t + "|" + ((r.smc && r.smc.tf) || "1d") + "|" + (r.smc && r.smc.b ? r.smc.b.length : 0); }
 function frvpCalc(S, i0, i1, NB = 30) {
   const b = S.b, v = S.v; if (!v) return null;
   i0 = Math.max(0, Math.min(i0, i1)); i1 = Math.min(b.length - 1, Math.max(i0, i1));
@@ -3110,7 +3281,7 @@ function smcChart(r, lay) {
     if (V.poc <= max && V.poc >= min) s += `<line x1="${L}" x2="${L + iw}" y1="${y(V.poc).toFixed(1)}" y2="${y(V.poc).toFixed(1)}" stroke="var(--orange)" stroke-width="1.2" opacity="0.8"/>`;
   }
   const KF = S.kf;
-  if (lay.fibo && KF && KF.leg && !S.tf) {
+  if (lay.fibo && KF && KF.leg && (!S.tf || S.tf === "1d")) {
     const [i0, i1, flo, fhi] = KF.leg, xs = xl(Math.max(0, Math.min(nb - 1, i0))), xe = L + iw;
     const labX = Math.max(L + 70, xs - 6), fibUsed = [];   // label di kiri awal garis, supaya tidak menumpuk label SMC
     [["0", 0], ["0.5", 0.5], ["0.618", 0.618], ["0.705", 0.705], ["0.786", 0.786], ["1", 1]].forEach(([k, r]) => {
@@ -3158,9 +3329,10 @@ function smcChart(r, lay) {
     s += `<rect x="${L}" y="${y(p.e2).toFixed(1)}" width="${iw}" height="${Math.max(2, y(p.e1) - y(p.e2)).toFixed(1)}" fill="var(--accent)" opacity="0.12"/>`;
     [[p.tp, up], [p.sl, dn], [p.tp2, up], [p.tp3, up]].forEach(([v, col]) => { if (v != null && v <= max && v >= min) s += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${col}" stroke-width="1.3" stroke-dasharray="6 4"/>`; });
   }
-  if (lay.moon && S.do && S.d0) {
-    const base = Date.parse(S.d0 + "T00:00:00Z"), dates = S.do.map(o => new Date(base + o * 86400000).toISOString().slice(0, 10));
-    const from = new Date(base - WIB_MS), to = new Date(Date.parse(S.d1 + "T00:00:00Z") + 86400000 - WIB_MS);
+  const moonDates = S.do && S.d0 ? (() => { const base = Date.parse(S.d0 + "T00:00:00Z"); return S.do.map(o => new Date(base + o * 86400000).toISOString().slice(0, 10)); })()
+    : S.ts && S.tf === "1d" ? S.ts.map(t => new Date(t + WIB_MS).toISOString().slice(0, 10)) : null;
+  if (lay.moon && moonDates) {
+    const dates = moonDates, from = new Date(Date.parse(dates[0] + "T00:00:00Z") - WIB_MS), to = new Date(Date.parse(dates[dates.length - 1] + "T00:00:00Z") + 86400000 - WIB_MS);
     moonPhases(from, to).filter(p => p.q === 0 || p.q === 2).forEach(p => {
       const day = ymd(p.t), i = dates.findIndex(dd => dd >= day); if (i < 0) return;
       const cx = x(i), full = p.q === 2;
@@ -3168,6 +3340,7 @@ function smcChart(r, lay) {
       s += `<circle cx="${cx.toFixed(1)}" cy="${T + ih - 6}" r="4.5" fill="${full ? "#F2C94C" : "var(--ink)"}" stroke="${full ? "#B8860B" : "var(--muted)"}" stroke-width="1"><title>${MOON_NAME[p.q]} ${day} ${hm(p.t)} WIB</title></circle>`;
     });
   }
+  s += drawLayer(r, S, x, y, L, iw, v => r.t === "IHSG" ? fmtDec(v, 2) : fmtNum(v));
   s += "</g>";
   // skala harga di kanan (gaya TradingView/Stockbit): angka bertingkat + kotak label untuk level penting
   const last = bars[nb - 1][3], prevC = nb > 1 ? bars[nb - 2][3] : bars[nb - 1][0], lastCol = last >= prevC ? up : dn;
@@ -3229,7 +3402,7 @@ function smcChart(r, lay) {
   });
   s += "</g>";
   const FR = frvpSel.get(frvpKey(r)), FV = FR ? frvpCalc(S, FR.i0, FR.i1) : null;
-  s += `<g clip-path="url(#cp)">`;
+  s += `<g clip-path="url(#cp)" pointer-events="none">`;
   if (FV) {
     const xa = xl(FV.i0), xb = xl(FV.i1) + sw, wmax = Math.max(40, (xb - xa) * 0.75), bmax = Math.max(...FV.bins) || 1;
     s += `<rect x="${xa.toFixed(1)}" y="${T}" width="${(xb - xa).toFixed(1)}" height="${ih}" fill="var(--accent)" opacity="0.05"/>`;
@@ -3262,7 +3435,7 @@ function smcSummary(r) {
     const arti = t === "BOS" ? (dr === 1 ? "BOS naik: tren naik berlanjut" : "BOS turun: tren turun berlanjut")
       : (dr === 1 ? "CHoCH naik: tanda awal pembalikan ke atas" : "CHoCH turun: tanda awal pembalikan ke bawah");
     out.push(`Struktur terakhir ${arti} (tembus ${fmtNum(lvl)} pada ${dt}).`);
-  } else out.push("Belum ada perubahan struktur (BOS/CHoCH) dalam 120 candle terakhir.");
+  } else out.push(`Belum ada perubahan struktur (BOS/CHoCH) dalam ${S.b.length} candle terakhir.`);
   const inside = (S.ob || []).find(z => pr <= z[1] && pr >= z[2]);
   if (inside) out.push(`Harga sedang berada di dalam order block ${inside[3] === 1 ? "bullish (area permintaan)" : "bearish (area penawaran)"} ${rng(inside[1], inside[2])}.`);
   const obBelow = (S.ob || []).filter(z => z[3] === 1 && z[1] < pr).sort((a, b) => b[1] - a[1])[0];
@@ -3271,10 +3444,10 @@ function smcSummary(r) {
   if (obAbove) out.push(`Order block bearish terdekat di atas harga: ${rng(obAbove[1], obAbove[2])} (${fmtDec((obAbove[2] - pr) / pr * 100, 1)}% di atas). Area yang berpotensi menahan kenaikan.`);
   const gaps = (S.fvg || []).map(z => ({ z, d: z[3] === 1 ? pr - z[1] : z[2] - pr })).filter(o => o.d >= 0).sort((a, b) => a.d - b.d);
   if (gaps[0]) out.push(`FVG ${gaps[0].z[3] === 1 ? "bullish" : "bearish"} terdekat yang belum terisi: ${rng(gaps[0].z[1], gaps[0].z[2])}. Harga sering kembali mengisi celah seperti ini.`);
-  if (S.vp) out.push(`POC (harga dengan volume terbanyak dalam 120 candle) di ${fmtNum(S.vp.poc)}; value area ${fmtNum(S.vp.val)}–${fmtNum(S.vp.vah)}. Harga sekarang ${pr > S.vp.vah ? "di atas value area" : pr < S.vp.val ? "di bawah value area" : "di dalam value area"}.`);
+  if (S.vp) out.push(`POC (harga dengan volume terbanyak dalam ${S.b.length} candle) di ${fmtNum(S.vp.poc)}; value area ${fmtNum(S.vp.val)}–${fmtNum(S.vp.vah)}. Harga sekarang ${pr > S.vp.vah ? "di atas value area" : pr < S.vp.val ? "di bawah value area" : "di dalam value area"}.`);
   if (S.pd) {
     const pct = Math.round((pr - S.pd[1]) / ((S.pd[0] - S.pd[1]) || 1) * 100);
-    out.push(`Posisi dalam range 120 candle: ${pct}%. ${pct >= 55 ? "Zona premium (relatif mahal)." : pct <= 45 ? "Zona discount (relatif murah)." : "Sekitar equilibrium."}`);
+    out.push(`Posisi dalam range ${S.b.length} candle: ${pct}%. ${pct >= 55 ? "Zona premium (relatif mahal)." : pct <= 45 ? "Zona discount (relatif murah)." : "Sekitar equilibrium."}`);
   }
   return out;
 }
@@ -3322,6 +3495,9 @@ function attachCrosshair(r, box) {
     dBox.setAttribute("x", dx - 48); dTxt.setAttribute("x", dx);
     dTxt.textContent = intra ? `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}` : `${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`;
     legend(i);
+    const pv = svg.querySelector(".dw-prev");
+    if (pv) pv.setAttribute("points", drawTool && drawPending.length && sy <= T + ih
+      ? drawPending.map(q => `${(L + (idxOfTime(S, q.t) - v0) * sw + sw / 2).toFixed(1)},${(T + (max - q.p) / (max - min) * ih).toFixed(1)}`).concat([`${cx.toFixed(1)},${sy.toFixed(1)}`]).join(" ") : "");
     if (e.cancelable && e.touches) e.preventDefault();
   };
   const hide = () => { g.style.display = "none"; legend(v0 + nbv - 1); };
@@ -3337,13 +3513,35 @@ function attachCrosshair(r, box) {
   svg.addEventListener("mouseleave", () => { if (d0 != null) { d0 = null; drag.style.display = "none"; } });
   svg.addEventListener("touchstart", dStart, { passive: false }); svg.addEventListener("touchmove", dMove, { passive: false }); svg.addEventListener("touchend", dEnd);
   svg.classList.toggle("frvp-on", frvpMode);
+  svg.classList.toggle("draw-on", !!drawTool);
+  let downAt = null;
+  svg.addEventListener("mousedown", e => { downAt = [e.clientX, e.clientY]; });
+  svg.addEventListener("click", e => {
+    const moved = downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5; downAt = null;
+    if (!drawTool) {
+      if (moved) return;
+      const hit = e.target.closest && e.target.closest("[data-dw]");
+      if (hit) { drawSel = hit.dataset.dw; drawSmc(r); } else if (drawSel) { drawSel = null; drawSmc(r); }
+      return;
+    }
+    const [sx, sy] = toSvg(e); if (sx < L || sx > L + iw || sy < T || sy > T + ih) return;
+    const i = Math.max(v0, Math.min(v0 + nbv - 1, v0 + Math.floor((sx - L) / sw)));
+    let pr = max - (sy - T) / ih * (max - min);
+    if (drawStyle.magnet) { const bb = S.b[i], yy = v => T + (max - v) / (max - min) * ih;
+      if (Math.abs(sy - yy(bb[1])) < 14) pr = bb[1]; else if (Math.abs(sy - yy(bb[2])) < 14) pr = bb[2]; }
+    const tt = timeOf(S, i), last = drawPending[drawPending.length - 1];
+    if (drawTool === "ew" && last && last.t === tt) return;          // klik kedua dari klik-dua-kali
+    drawPending.push({ t: tt, p: pr });
+    if (drawPending.length >= TOOL_PTS[drawTool]) finishDrawing(r); else drawSmc(r);
+  });
+  svg.addEventListener("dblclick", e => { if (drawTool === "ew" && drawPending.length >= 2) { e.preventDefault(); finishDrawing(r); } });
   // zoom (roda mouse / cubit dua jari) dan geser (klik-tahan lalu geser)
   svg.addEventListener("wheel", e => {
     const [sx] = toSvg(e); if (sx < L || sx > L + iw) return;
     e.preventDefault(); zoomBy(r, e.deltaY > 0 ? 1.15 : 1 / 1.15, v0 + (sx - L) / sw);
   }, { passive: false });
   svg.addEventListener("mousedown", e => {
-    if (frvpMode || e.button !== 0) return;
+    if (frvpMode || drawTool || e.button !== 0 || (e.target.closest && e.target.closest("[data-dw]"))) return;
     const rc = svg.getBoundingClientRect();
     panState = { r, x: e.clientX, v0, n: nbv, pxPerBar: sw * rc.width / W }; document.body.classList.add("chart-panning"); e.preventDefault();
   });
@@ -3369,7 +3567,7 @@ function frvpControls(r) {
       <button type="button" data-z="reset" title="Kembalikan tampilan awal">⟲</button>
       <span class="zoom-info">${VV.n} dari ${nbAll} candle</span></span>
     <button type="button" class="icon-btn${frvpMode ? " on" : ""}" id="frvp-btn" ${S && S.v ? "" : "disabled"}>${frvpMode ? "Klik-geser di chart…" : "Volume profile rentang"}</button>
-    ${kf && kf.leg && !S.tf ? `<button type="button" class="icon-btn" id="frvp-leg">Pakai rentang dorongan</button>` : ""}
+    ${kf && kf.leg && (!S.tf || S.tf === "1d") ? `<button type="button" class="icon-btn" id="frvp-leg">Pakai rentang dorongan</button>` : ""}
     ${has ? `<button type="button" class="icon-btn" id="frvp-clear">Hapus rentang</button>` : ""}
     <span class="frvp-info">${frvpMode ? "Tarik dari candle awal ke candle akhir rentang yang ingin dihitung." : FV ? `<b>Rentang</b> ${esc(tgl(FV.i0))} – ${esc(tgl(FV.i1))} (${FV.i1 - FV.i0 + 1} candle): <b style="color:#F97316">POC ${fmtNum(FV.poc)}</b> · value area ${fmtNum(FV.val)}–${fmtNum(FV.vah)} · harga sekarang ${r.p > FV.vah ? "di atas" : r.p < FV.val ? "di bawah" : "di dalam"} value area.` : ""}</span>`;
   box.querySelectorAll("[data-z]").forEach(b => b.addEventListener("click", () => {
@@ -3386,12 +3584,14 @@ function drawSmc(r) {
   const lay = smcLayers();
   $("smc-box").innerHTML = `<div class="xh-wrap"><div class="xh-legend" aria-live="off"></div>${smcChart(r, lay)}</div>`;
   attachCrosshair(r, $("smc-box"));
+  curChartR = r;
   frvpControls(r);
+  drawControls(r);
   const sum = $("smc-sum"); if (sum) sum.innerHTML = smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("");
   const tt = $("smc-title"); if (tt) tt.textContent = `Chart ${TF_NAME[(r.smc && r.smc.tf) || "1d"]} dengan Smart Money Concepts`;
 }
 function renderSmc(r) {
-  frvpMode = false;
+  frvpMode = false; drawTool = null; drawPending = []; drawSel = null;
   const tb = $("tf-bar");
   if (tb && r.t !== "IHSG") {
     tb.innerHTML = tfBar(r);
@@ -3404,8 +3604,9 @@ function renderSmc(r) {
     if (r.t !== "IHSG" && (r.tfx || []).includes("1d")) loadTF(r.t).then(raw => {
       if (curTF !== "1d" && (r.tfx || []).includes(curTF)) return;
       const d = raw && raw["1d"]; if (!d || !r.smc) return;
-      const nb = r.smc.b.length, closes = d.b.map(b => b[3]);
-      drawSmc({ ...r, smc: { ...r.smc, ind: indicators(closes, nb) } });
+      // Daily memakai hasil SMC dari server (220 candle, sama dengan yang dipakai Kondisi & Rencana);
+      // data yang lebih panjang hanya dipakai supaya MA200, RSI, dan MACD terhitung penuh
+      drawSmc({ ...r, smc: { ...r.smc, ind: indicators(d.b.map(b => b[3]), r.smc.b.length) } });
     }).catch(() => {});
   }
   else {
@@ -3471,7 +3672,7 @@ function structPlan(r) {
   const mid = (e1 + e2) / 2, risk = mid - sl; if (risk <= 0) return null;
   const bear = S.ob.filter(z => z[3] === -1 && z[2] > p).sort((a, b) => a[2] - b[2])[0];
   let tp = bear ? floorT(bear[2]) : (S.pd && S.pd[0] > p ? floorT(S.pd[0]) : null);
-  let src = bear ? "batas bawah order block bearish terdekat di atas harga" : "puncak range 120 hari";
+  let src = bear ? "batas bawah order block bearish terdekat di atas harga" : "puncak range chart";
   if (!tp || (tp - mid) / risk < 1.5) { tp = ceilT(mid + 2 * risk); src = "2 kali risiko, karena target struktur terlalu dekat atau tidak ada"; }
   return { e1, e2, sl, tp, risk: Math.round(risk / mid * 1000) / 10, src, hv: ob[4] === 1, dist: Math.round((p - ob[1]) / p * 1000) / 10 };
 }
@@ -3642,9 +3843,9 @@ function renderHist(r) {
 /* ---------- perbandingan saham & saham mirip ---------- */
 const CMP_KEY = "idxs:cmp", CMP_MAX = 4, CMP_COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#A855F7"];
 let cmp = (ls.get(CMP_KEY, []) || []).filter(t => DATA.some(r => r.t === t)).slice(0, CMP_MAX);
-let cmpPeriod = ls.get("idxs:cmpn", 60);
+let cmpPeriod = ls.get("idxs:cmpn", 60); if (cmpPeriod === 119) cmpPeriod = 120;
 const saveCmp = () => { ls.set(CMP_KEY, cmp); renderCmpBar(); };
-function seriesOf(o) {                       // {tgl: [...], c: [...]} dari data SMC (120 hari)
+function seriesOf(o) {                       // {tgl: [...], c: [...]} dari data SMC (220 hari)
   const S = o && o.smc; if (!S || !S.b || !S.do) return null;
   const base = Date.parse(S.d0 + "T00:00:00Z");
   return { tgl: S.do.map(x => new Date(base + x * 86400000).toISOString().slice(0, 10)), c: S.b.map(b => b[3]) };
@@ -3769,7 +3970,7 @@ function renderCompare() {
     ["Kondisi", r => r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : "-"],
     ["Struktur W / D / 4H", r => msCell(r)],
     ["BOS/CHoCH terakhir (harian)", r => esc(lastEv(r))],
-    ["Posisi range 120 hari", r => { const v = pdPos(r); return v == null ? "-" : `${v}% · ${v >= 55 ? "premium" : v <= 45 ? "discount" : "equilibrium"}`; }],
+    ["Posisi range 220 hari", r => { const v = pdPos(r); return v == null ? "-" : `${v}% · ${v >= 55 ? "premium" : v <= 45 ? "discount" : "equilibrium"}`; }],
     ["OB bullish terdekat", r => esc(obNear(r))],
     ["POC volume", r => esc(pocTxt(r))],
     ["RSI", r => fmtDec(r.rsi, 1)],
@@ -3792,7 +3993,7 @@ function renderCompare() {
     <div class="full-grid cmp-grid">
       <section class="card">
         <div class="hist-head"><h3>Kinerja sejak titik awal yang sama</h3>
-          <div class="seg" role="group" aria-label="Periode">${[20, 60, 119].map(k => `<button type="button" data-p="${k}" class="${cmpPeriod === k ? "on" : ""}">${k === 119 ? "120 hari" : k + " hari"}</button>`).join("")}</div></div>
+          <div class="seg" role="group" aria-label="Periode">${[20, 60, 120, 219].map(k => `<button type="button" data-p="${k}" class="${cmpPeriod === k ? "on" : ""}">${k === 219 ? "220 hari" : k + " hari"}</button>`).join("")}</div></div>
         ${cmpChart(rows, cmpPeriod)}
         <p class="d-why">${best ? `Paling kuat dalam ${cmpPeriod} hari terakhir: <b>${esc(best.t)}</b>.` : ""} ${aligned.length ? `Struktur searah naik (W dan D bullish): <b>${aligned.map(esc).join(", ")}</b>.` : "Belum ada yang strukturnya searah naik di Mingguan dan Harian."}</p>
         <p class="muted" style="font-size:0.78rem;margin:4px 0 0">Setiap garis menunjukkan perubahan harga dalam % sejak hari pertama periode, jadi saham dengan harga berbeda bisa dibandingkan langsung. Garis putus-putus abu-abu = IHSG.</p>
@@ -3827,7 +4028,7 @@ function openEmas() {
     </div></div>
     <div class="full-grid full-grid2">
       <section class="card full-span"><div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
-        <div class="frvp-ctl" id="frvp-ctl"></div><div id="smc-box"></div>
+        <div class="frvp-ctl" id="frvp-ctl"></div><div class="draw-ctl" id="draw-ctl"></div><div id="smc-box"></div><div class="draw-sel" id="draw-sel"></div>
         <div class="chips smc-toggles" id="smc-toggles"></div><ul class="smc-sum" id="smc-sum"></ul>
         <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Harga = emas dunia (USD/oz) × kurs USD/IDR ÷ 31,1035. Volume = jumlah kontrak emas dunia, karena harga emas dalam rupiah tidak punya data volume sendiri.</p></div></section>
       <div class="full-col"><section class="card">${msBlock(r)}</section></div>
@@ -3878,13 +4079,15 @@ function detailParts(r, r0, w) {
     struktur: msBlock(r),
     chart: r.smc ? `<div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
       <div class="frvp-ctl" id="frvp-ctl"></div>
+      <div class="draw-ctl" id="draw-ctl"></div>
       <div id="smc-box"></div>
+      <div class="draw-sel" id="draw-sel"></div>
       <div class="chips smc-toggles" id="smc-toggles"></div>
       <ul class="smc-sum" id="smc-sum"></ul>
       <p class="muted" style="font-size:0.78rem;margin:6px 0 0">SMC di sini versi sederhana yang dihitung otomatis, jadi bisa berbeda dari indikator SMC di TradingView atau Stockbit. Garis putus-putus = CHoCH, garis penuh = BOS. Lingkaran kuning di bawah = purnama, lingkaran gelap = bulan baru (ditaruh di hari bursa terdekat).</p>
     </div>` : `<div class="d-sec"><h3>Chart 30 hari</h3>${bigChart(r)}
       <div class="legend"><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--orange)"></i>MA50</span>${p ? '<span><i style="background:var(--accent);opacity:.35;height:8px"></i>Area entry</span><span><i style="background:var(--down)"></i>Stop loss</span><span><i style="background:var(--up)"></i>Target</span>' : ""}</div>
-      <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Chart SMC 120 hari belum tersedia karena riwayat harga saham ini masih terlalu pendek.</p>
+      <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Chart SMC belum tersedia karena riwayat harga saham ini masih terlalu pendek.</p>
     </div>`,
     checklist: `<div class="d-sec"><h3>Checklist: ${c.pass} dari ${c.total} syarat terpenuhi</h3>
       <ul class="checklist">${c.items.map(([label, ok]) => `<li><span class="ci ${ok === null ? "na" : ok ? "y" : "x"}">${ok === null ? "–" : ok ? "✓" : "✗"}</span><span>${esc(label)}${ok === null ? ' <span class="muted">(data tidak tersedia)</span>' : ""}</span></li>`).join("")}</ul></div>`,
@@ -4011,7 +4214,7 @@ function openIhsg() {
     <div class="d-price">${fmtDec(m.p, 2)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(m.chg, 2)}%</span></div>
     <div class="muted" style="font-size:0.8rem">Candle terakhir ${esc(m.tgl || "")}. Ringkasan teknikal harian: ${esc(m.d)}${m.rsi ? `, RSI ${fmtDec(m.rsi, 1)}` : ""}.</div>
     ${msBlock({ ms: m.ms })}
-    ${m.smc ? `<div class="d-sec"><h3>Chart 120 hari dengan Smart Money Concepts</h3>
+    ${m.smc ? `<div class="d-sec"><h3>Chart harian dengan Smart Money Concepts</h3>
       <div id="smc-box"></div><div class="chips smc-toggles" id="smc-toggles"></div>
       <ul class="smc-sum">${smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>` : ""}
     <div class="d-sec"><h3>Posisi terhadap moving average</h3><ul class="checklist">${pos(m.ma20, "MA20")}${pos(m.ma50, "MA50")}${pos(m.ma200, "MA200")}</ul></div>
@@ -4050,7 +4253,14 @@ $("tbody").addEventListener("click", e => {
 $("tbody").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("tr[data-t]")) openDrawer(e.target.dataset.t); });
 $("scrim").addEventListener("click", closeDrawer);
 document.addEventListener("keydown", e => {
+  const inField = e.target && e.target.closest && e.target.closest("input, textarea, select");
   if (e.key === "Escape" && $("cmpv").classList.contains("open")) { closeCompare(); return; }
+  if (drawTool === "ew" && curChartR && !inField) {
+    if (e.key === "Enter" && drawPending.length >= 2) { e.preventDefault(); finishDrawing(curChartR); return; }
+    if (e.key === "Backspace" && drawPending.length) { e.preventDefault(); drawPending.pop(); drawSmc(curChartR); return; }
+  }
+  if (e.key === "Escape" && (drawTool || drawPending.length) && curChartR) { drawTool = null; drawPending = []; drawSmc(curChartR); return; }
+  if ((e.key === "Delete" || e.key === "Backspace") && drawSel && curChartR && !inField) { e.preventDefault(); deleteDrawing(curChartR, drawSel); return; }
   if (!openT) return;
   if (e.key === "Escape") { if ($("full").classList.contains("open")) closeFull(); else closeDrawer(); return; }
   if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && openT !== "IHSG" && !(e.target && e.target.closest && e.target.closest("input, select, textarea"))) {
