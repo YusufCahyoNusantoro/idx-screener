@@ -635,6 +635,7 @@ def analisa(t, d, ihsg_ret, sektor, nama, frac_hari, hari_ini):
     tf = {"daily": rating(d), "weekly": rating(resample(d, "W-FRI")), "monthly": rating(bulanan(d))}
     tf = {k: x for k, x in tf.items() if x}
 
+
     tail = d.iloc[-30:]
     return {
         "t": t, "nm": nama.get(t, ""), "p": round(last, 0 if last >= 50 else 2), "chg": round((last / prev - 1) * 100, 2),
@@ -642,6 +643,7 @@ def analisa(t, d, ihsg_ret, sektor, nama, frac_hari, hari_ini):
         "trend": trend, "brk": brk, "pa": pa, "mom": mom,
         "trendOk": trend_ok, "brkOk": brk_ok, "pattern": pattern, "pk": pk,
         "rsi": round(r, 1), "vr": round(vr, 2), "tf": tf,
+        "vday": float(d["Close"].iloc[-1] * d["Volume"].iloc[-1]) if fin(d["Close"].iloc[-1] * d["Volume"].iloc[-1]) else 0.0,
         "ohlc": [[round(float(a), 0 if last >= 50 else 2) for a in row] for row in tail[["Open", "High", "Low", "Close"]].values],
         "sector": sektor.get(t, "-"), "beta": beta,
         "tgl": d.index[-1].strftime("%Y-%m-%d"),
@@ -1331,7 +1333,8 @@ def main():
         print(f"  ! data bulanan: {e}")
         bulan_max = {}
     ihsg = unduh(["^JKSE"], "2y", "1d").get("^JKSE")
-    ihsg_jam = None if args.no_intraday else unduh(["^JKSE"], "60d", "60m").get("^JKSE")
+    ihsg_jam = None if args.no_intraday else unduh(["^JKSE"], "6mo", "60m").get("^JKSE")
+    ihsg15 = None if args.no_intraday else unduh(["^JKSE"], "60d", "15m").get("^JKSE")
     ihsg10 = unduh(["^JKSE"], "10y", "1d").get("^JKSE")        # untuk pola musiman
     ihsg_ret = ke_tanggal(ihsg)["Close"].pct_change() if ihsg is not None else None
 
@@ -1425,6 +1428,24 @@ def main():
     out_html = Path(args.output).resolve()
     for r in rows:
         r["tfx"] = sorted(tfdata.get(r["t"], {}).keys())
+    ihsg_tf = {}
+    try:                                           # IHSG: semua timeframe, sama seperti saham
+        base = ke_tanggal(ihsg10) if ihsg10 is not None else (ke_tanggal(ihsg) if ihsg is not None else None)
+        pairs = []
+        if base is not None:
+            pairs += [("1d", base, 430), ("1w", resample(base, "W-FRI"), 280), ("1mo", bulanan(base), 220)]
+        if ihsg_jam is not None:
+            pairs += [("1h", ihsg_jam, 430), ("4h", gabung_jam(ihsg_jam, 4), 430)]
+        if ihsg15 is not None:
+            pairs += [("15m", ihsg15, 430), ("45m", gabung_jam(ihsg15, 3), 430)]
+        for k, fr, nn in pairs:
+            pk = pak_ohlcv(fr, nn)
+            if pk:
+                ihsg_tf[k] = pk
+        if ihsg_tf:
+            tfdata["IHSG"] = ihsg_tf
+    except Exception as e:
+        print(f"  ! data timeframe IHSG: {e}")
     emas_r = None
     try:
         print("  Analisa emas dalam rupiah...")
@@ -1438,6 +1459,8 @@ def main():
                           ke_tanggal(ihsg10) if ihsg10 is not None else None)
     if emas_r:
         pasar["emas"] = emas_r
+    if pasar.get("ihsg") is not None:
+        pasar["ihsg"]["tfx"] = sorted(ihsg_tf)
     tulis_html(rows, now, status, len(gagal), not args.no_intraday, out_html, not args.no_arsip, pasar)
 
     top = sorted(rows, key=skor, reverse=True)[:5]
@@ -1901,6 +1924,18 @@ TEMPLATE = r'''<!DOCTYPE html>
   :root[data-theme="dark"] .to-top { color:#0F1522; }
   body.has-cmpbar .to-top { bottom:calc(84px + env(safe-area-inset-bottom,0px)); }
 
+  #movers-card { margin-bottom:14px; }
+  #movers-card .filt { margin-top:0; border-top:0; padding-top:0; }
+  .mv-tabs { flex-wrap:wrap; }
+  .mv-tbl tbody tr { cursor:pointer; }
+  .mv-tbl td:nth-child(2), .mv-tbl th:nth-child(2) { text-align:left; }
+  .mv-tbl td:first-child, .mv-tbl th:first-child { width:36px; }
+  .mv-tbl tbody tr:hover td { background:var(--row-hover); }
+  .mv-bar { display:inline-block; width:60px; height:6px; background:var(--panel2); border-radius:9px; margin-right:8px; vertical-align:middle; overflow:hidden; }
+  .mv-bar i { display:block; height:100%; }
+  .mv-bar.pos i { background:var(--up); } .mv-bar.neg i { background:var(--down); }
+  .est { font-size:0.66rem; font-weight:700; background:var(--orange-soft); color:var(--orange); border-radius:5px; padding:1px 5px; margin-left:4px; }
+
   /* perbandingan */
   .cmp-bar { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:19; display:none;
     align-items:center; gap:10px; flex-wrap:wrap; background:var(--ink); color:#fff; padding:10px 14px; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.25); font-size:0.88rem; max-width:calc(100% - 24px); }
@@ -1961,6 +1996,10 @@ TEMPLATE = r'''<!DOCTYPE html>
 
   <div class="view" id="v-screener">
   <section class="market" id="market" aria-label="Kondisi pasar"></section>
+  <section class="card" id="movers-card" aria-label="Daftar teratas hari ini">
+    <details class="adv filt" id="movers-d"><summary>Daftar teratas hari ini <span class="muted" style="font-weight:500;font-size:0.82rem">· nilai transaksi, lonjakan volume, naik/turun</span></summary>
+      <div id="movers"></div></details>
+  </section>
 
   <section class="card" aria-label="Preset">
     <h2>Pilih gaya screening</h2>
@@ -2214,6 +2253,12 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p><b>Pilihan otomatis:</b> kolom Rencana memakai sumber terbaik yang tersedia, ditandai huruf <b>K</b> (konfluensi), <b>S</b> (order block), atau <b>A</b> (ATR). Di panel detail, keempat tombolnya (Otomatis, Konfluensi, Order block, ATR) bisa dipilih untuk membandingkan.</p>
         <p><b>Label Kondisi baru:</b> <b>Di zona entry</b> berarti setup konfluensi layak dan harga sedang di zonanya; tunggu konfirmasi candle hijau atau CHoCH naik di 1H. <b>Tunggu ke zona</b> berarti setup layak tapi harga masih di atas zona; alasannya menyebut jarak zona dari harga.</p>
         <p>Lapisan chart <b>Fibo &amp; konfluensi</b> (Daily) menampilkan garis Fibonacci, zona 0,5–0,786, zona konfluensi, dan POC dorongan. Nyalakan juga lapisan Entry/SL/TP untuk melihat TP1–TP3 dan SL.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Daftar teratas hari ini</summary>
+      <div class="guide-body">
+        <p>Panel di bawah kondisi pasar berisi 4 daftar 10 saham teratas (hanya saham dengan transaksi ≥ Rp 1 M/hari): <b>Nilai transaksi</b> hari ini, <b>Lonjakan volume</b> (volume hari ini dibanding rata-rata 20 hari), <b>Naik tertinggi</b>, dan <b>Turun terdalam</b>. Klik baris untuk membuka detail sahamnya. Semua angka berasal dari data harga dan volume, bukan perkiraan. Untuk tahu broker mana yang membeli atau menjual, cek broker summary di Stockbit.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -3645,15 +3690,15 @@ function drawSmc(r) {
 function renderSmc(r) {
   frvpMode = false; drawTool = null; drawPending = []; drawSel = null;
   const tb = $("tf-bar");
-  if (tb && r.t !== "IHSG") {
+  if (tb) {
     tb.innerHTML = tfBar(r);
     tb.querySelectorAll("[data-tf]").forEach(bt => bt.addEventListener("click", () => { curTF = bt.dataset.tf; ls.set(TF_KEY, curTF); renderSmc(r); }));
   }
-  const tf = r.t === "IHSG" || !(r.tfx || []).includes(curTF) ? "1d" : curTF;
+  const tf = curTF !== "1d" && !(r.tfx || []).includes(curTF) ? "1d" : curTF;
   if (tb) tb.querySelectorAll("[data-tf]").forEach(bt => bt.classList.toggle("on", bt.dataset.tf === tf));
   if (tf === "1d") {
     drawSmc(r);
-    if (r.t !== "IHSG" && (r.tfx || []).includes("1d")) loadTF(r.t).then(raw => {
+    if ((r.tfx || []).includes("1d")) loadTF(r.t).then(raw => {
       if (curTF !== "1d" && (r.tfx || []).includes(curTF)) return;
       const d = raw && raw["1d"]; if (!d || !r.smc) return;
       // Daily memakai hasil SMC dari server (220 candle, sama dengan yang dipakai Kondisi & Rencana);
@@ -4252,29 +4297,34 @@ window.addEventListener("popstate", () => {
 
 function openIhsg() {
   const m = MARKET.ihsg; if (!m) return;
-  hideFull(true); viewMode = "panel"; navList = [];
-  openT = "IHSG";
+  hideCompare(); $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); $("drawer").innerHTML = "";
+  viewMode = "full"; navList = []; openT = "IHSG";
   const up = m.chg >= 0, tf = m.tf || {}, b = MARKET.breadth;
-  const r = { t: "IHSG", p: m.p, smc: m.smc, plan: null };
+  const r = { t: "IHSG", nm: "Indeks Harga Saham Gabungan", p: m.p, chg: m.chg, smc: m.smc, plan: null, tfx: m.tfx || [], ms: m.ms };
   const pos = (v, n) => v ? `<li><span class="ci ${m.p > v ? "y" : "x"}">${m.p > v ? "✓" : "✗"}</span><span>${m.p > v ? "Di atas" : "Di bawah"} ${n} (${fmtDec(v, 2)})</span></li>` : "";
   const tfNames = [["h1", "1 jam"], ["h2", "2 jam"], ["h4", "4 jam"], ["daily", "Harian"], ["weekly", "Mingguan"], ["monthly", "Bulanan"]];
-  $("drawer").innerHTML = `
-    <div class="d-head">
-      <div><div class="d-tk" id="d-title">IHSG</div><div class="d-name">Indeks Harga Saham Gabungan</div></div>
-      <button class="icon-btn" id="d-close" type="button">Tutup</button>
+  $("full").innerHTML = `
+    <div class="full-head"><div class="full-head-in">
+      <button class="icon-btn" id="d-close" type="button">← Kembali</button>
+      <div class="fh-id"><span class="fh-tk" id="d-title">IHSG</span><span class="fh-name">Indeks Harga Saham Gabungan · candle terakhir ${esc(m.tgl || "")}</span></div>
+      <span class="fh-price">${fmtDec(m.p, 2)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(m.chg, 2)}%</span></span>
+    </div></div>
+    <div class="full-grid full-grid2">
+      ${m.smc ? `<section class="card full-span"><div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
+        <div class="frvp-ctl" id="frvp-ctl"></div><div class="draw-ctl" id="draw-ctl"></div><div id="smc-box"></div><div class="draw-sel" id="draw-sel"></div>
+        <div class="chips smc-toggles" id="smc-toggles"></div><ul class="smc-sum" id="smc-sum"></ul></div></section>` : ""}
+      <div class="full-col">
+        <section class="card"><div class="muted" style="font-size:0.82rem">Ringkasan teknikal harian: ${esc(m.d || "-")}${m.rsi ? `, RSI ${fmtDec(m.rsi, 1)}` : ""}.</div>${msBlock({ ms: m.ms })}</section>
+        <section class="card"><div class="d-sec"><h3>Posisi terhadap moving average</h3><ul class="checklist">${pos(m.ma20, "MA20")}${pos(m.ma50, "MA50")}${pos(m.ma200, "MA200")}</ul></div></section>
+      </div>
+      <div class="full-col">
+        <section class="card"><div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div></section>
+        ${b ? `<section class="card"><div class="d-sec"><h3>Napas pasar</h3><div class="muted" style="font-size:0.88rem">${b.pct}% dari ${fmtNum(b.n)} saham likuid (transaksi ≥ Rp 1 M/hari) berada di atas MA20.</div></div></section>` : ""}
+      </div>
     </div>
-    <div class="d-price">${fmtDec(m.p, 2)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(m.chg, 2)}%</span></div>
-    <div class="muted" style="font-size:0.8rem">Candle terakhir ${esc(m.tgl || "")}. Ringkasan teknikal harian: ${esc(m.d)}${m.rsi ? `, RSI ${fmtDec(m.rsi, 1)}` : ""}.</div>
-    ${msBlock({ ms: m.ms })}
-    ${m.smc ? `<div class="d-sec"><h3>Chart harian dengan Smart Money Concepts</h3>
-      <div id="smc-box"></div><div class="chips smc-toggles" id="smc-toggles"></div>
-      <ul class="smc-sum">${smcSummary(r).map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>` : ""}
-    <div class="d-sec"><h3>Posisi terhadap moving average</h3><ul class="checklist">${pos(m.ma20, "MA20")}${pos(m.ma50, "MA50")}${pos(m.ma200, "MA200")}</ul></div>
-    <div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>
-    ${b ? `<div class="d-sec"><h3>Napas pasar</h3><div class="muted" style="font-size:0.88rem">${b.pct}% dari ${fmtNum(b.n)} saham likuid (transaksi ≥ Rp 1 M/hari) berada di atas MA20. Kalau IHSG naik tapi napas pasar di bawah 50%, kenaikannya hanya ditopang sedikit saham besar.</div></div>` : ""}
-    <p class="d-foot">Data IHSG dari Yahoo Finance (^JKSE), bisa tertunda. Kondisi IHSG dipakai sebagai salah satu syarat di checklist setiap saham.</p>`;
-  $("drawer").classList.add("open"); $("scrim").classList.add("open"); $("drawer").focus();
-  $("d-close").addEventListener("click", closeDrawer);
+    <p class="d-foot" style="max-width:1880px;margin:0 auto;padding:0 28px 40px">Data IHSG dari Yahoo Finance (^JKSE), bisa tertunda. Kondisi IHSG dipakai sebagai salah satu syarat di checklist setiap saham.</p>`;
+  $("full").classList.add("open"); document.body.classList.add("noscroll"); $("full").scrollTop = 0;
+  $("d-close").addEventListener("click", closeFull); $("d-close").focus();
   if (m.smc) renderSmc(r);
 }
 
@@ -4339,6 +4389,36 @@ if (location.protocol === "file:") {
   $("sector-filter").innerHTML = '<option value="">Semua sektor</option>' + Object.keys(cnt).filter(k => k !== "-").sort()
     .map(k => `<option value="${esc(k)}">${esc(k)} (${cnt[k]})</option>`).join("") + (cnt["-"] ? `<option value="-">Tanpa sektor (${cnt["-"]})</option>` : "");
 })();
+/* ---------- daftar teratas: tekanan beli/jual (money flow), akumulasi, nilai, naik/turun ---------- */
+const MV = [
+  ["nilai", "Nilai transaksi", r => r.vday || null, v => fmtValue(v)],
+  ["vol", "Lonjakan volume", r => r.vr > 0 ? r.vr : null, (v, r) => `${fmtDec(v, 1)}× rata-rata <span class="muted">· ${fmtValue(r.vday || 0)}</span>`],
+  ["naik", "Naik tertinggi", r => r.chg > 0 ? r.chg : null, v => `+${fmtDec(v, 2)}%`],
+  ["turun", "Turun terdalam", r => r.chg < 0 ? -r.chg : null, v => `−${fmtDec(v, 2)}%`],
+];
+let mvTab = ls.get("idxs:mv", "nilai");
+function renderMovers() {
+  const box = $("movers"); if (!box) return;
+  const cfg = MV.find(x => x[0] === mvTab) || MV[0], [key, name, get, fmt] = cfg;
+  const rows = DATA.filter(r => r.val >= 1e9).map(r => ({ r, v: get(r) })).filter(x => x.v != null).sort((a, b) => b.v - a.v).slice(0, 10);
+  const vmax = rows.length ? rows[0].v : 1;
+  const NOTE = {
+    nilai: "Nilai transaksi hari ini (volume × harga tutup). Saat sesi berjalan, angkanya masih bertambah.",
+    vol: "Volume hari ini dibanding rata-rata 20 hari sebelumnya (saat sesi berjalan, diproyeksikan ke satu hari penuh). Lonjakan besar sering menandakan ada pihak besar yang masuk atau keluar; cek broker summary untuk tahu siapa.",
+    naik: "Kenaikan harga terbesar hari ini.", turun: "Penurunan harga terbesar hari ini.",
+  };
+
+  box.innerHTML = `<div class="seg mv-tabs" role="tablist">${MV.map(([k, n]) => `<button type="button" data-mv="${k}" class="${k === key ? "on" : ""}">${n}</button>`).join("")}</div>
+    <div class="table-wrap" style="max-height:none;margin-top:8px"><table class="j-tbl mv-tbl"><thead><tr><th>#</th><th>Saham</th><th class="num">Harga</th><th class="num">Chg%</th><th class="num">${esc(name)}</th><th>Kondisi</th></tr></thead>
+    <tbody>${rows.length ? rows.map((x, i) => `<tr data-go="${x.r.t}" tabindex="0"><td class="muted">${i + 1}</td><td><b>${x.r.t}</b>${x.r.top ? ` <span class="top-badge">#${x.r.top}</span>` : ""}<div class="muted" style="font-size:0.72rem">${esc(x.r.nm)}</div></td>
+      <td class="num">${fmtNum(x.r.p)}</td><td class="num ${x.r.chg >= 0 ? "pos" : "neg"}">${x.r.chg >= 0 ? "+" : ""}${fmtDec(x.r.chg, 2)}%</td>
+      <td class="num"><span class="mv-bar ${key === "turun" ? "neg" : "pos"}"><i style="width:${Math.max(4, Math.round(x.v / vmax * 100))}%"></i></span>${fmt(x.v, x.r)}</td>
+      <td>${x.r.kd ? `<span class="kd ${x.r.kd.c}">${esc(x.r.kd.l)}</span>` : "-"}</td></tr>`).join("") : `<tr><td colspan="6" class="muted">Tidak ada data.</td></tr>`}</tbody></table></div>
+    <p class="muted" style="font-size:0.78rem;margin:6px 0 0">${esc(NOTE[key])} Hanya saham dengan transaksi ≥ Rp 1 M/hari. Semua angka dari data harga dan volume Yahoo Finance.</p>`;
+  box.querySelectorAll("[data-mv]").forEach(b => b.addEventListener("click", () => { mvTab = b.dataset.mv; ls.set("idxs:mv", mvTab); renderMovers(); }));
+  box.querySelectorAll("tr[data-go]").forEach(tr => { const go = () => openDrawer(tr.dataset.go); tr.addEventListener("click", go); tr.addEventListener("keydown", e => { if (e.key === "Enter") go(); }); });
+}
+
 /* ---------- halaman (tab): screener, kalender, jurnal, panduan ---------- */
 const VIEWS = ["screener", "kalender", "jurnal", "panduan"];
 function viewFromHash() { const h = location.hash.replace("#", ""); return VIEWS.includes(h) ? h : "screener"; }
@@ -4369,7 +4449,8 @@ $("page-size").addEventListener("change", () => { PAGE_SIZE = +$("page-size").va
 })();
 $("f-pin").checked = ls.get(PIN_KEY, true);
 $("f-pin").addEventListener("change", () => { ls.set(PIN_KEY, $("f-pin").checked); page = 0; render(); });
-renderMarket(); load(); render(); renderCal(); renderJournal(); renderMakro();
+renderMarket(); load(); render(); renderCal(); renderJournal(); renderMakro(); renderMovers();
+(() => { const d = $("movers-d"); d.open = ls.get("idxs:mvopen", true); d.addEventListener("toggle", () => ls.set("idxs:mvopen", d.open)); })();
 renderCmpBar();
 (() => { const f = $("filt"); f.open = !!ls.get("idxs:filt", false); f.addEventListener("toggle", () => ls.set("idxs:filt", f.open)); })();
 (() => {
