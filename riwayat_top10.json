@@ -60,15 +60,15 @@
   "RSCH"
  ],
  "2026-10-01": [
-  "BDMN",
-  "SAPX",
   "CSMI",
+  "SAPX",
   "MBTO",
+  "RSCH",
+  "BDMN",
   "MSJA",
-  "NEST",
+  "MPIX",
   "MEJA",
   "SMLE",
-  "TINS",
   "KETR"
  ]
 }
