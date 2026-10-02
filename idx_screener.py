@@ -1846,6 +1846,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   .dw-del { color:var(--down); }
   .ew-check { width:100%; margin:4px 0 0; padding-left:18px; font-size:0.8rem; }
   svg.smc-svg.draw-on { cursor:crosshair; }
+  .zoom-ctl button.on { color:var(--accent); }
   .zoom-ctl { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
   .zoom-ctl button { border:0; border-right:1px solid var(--line); background:var(--panel); color:var(--ink); font-weight:800; font-size:0.95rem; min-width:34px; padding:5px 10px; cursor:pointer; }
   .zoom-ctl button:hover:not(:disabled) { color:var(--accent); }
@@ -2363,6 +2364,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>MA200, RSI, MACD, dan pasar global</summary>
       <div class="guide-body">
         <p><b>MA20/50/200</b> (lapisan di chart): rata-rata harga 20, 50, dan 200 candle. Harga di atas MA200 menandakan tren jangka panjang naik. MA200 butuh 200 candle sebelumnya, jadi di versi online dihitung dari data tambahan; di timeframe dengan data pendek (misalnya 4H atau bulanan) MA200 bisa belum tersedia.</p>
+        <p><b>Geser &amp; zoom skala harga</b>: klik-tahan lalu geser chart ke atas/bawah untuk melihat harga yang lebih tinggi atau rendah; tarik angka di skala harga (kanan) ke atas/bawah atau putar roda mouse di sana (atau Shift + roda mouse) untuk merenggangkan/merapatkan; atau pakai tombol <b>Harga ▲ ▼ ⇕+ ⇕−</b>. <b>Auto</b> (atau ⟲) mengembalikan skala harga otomatis mengikuti candle.</p>
         <p><b>Area prediksi</b>: di kanan candle terakhir ada ruang kosong (awalnya 8 candle, bisa sampai 60). Klik <b>⇥ Area prediksi</b>, tombol ▶, atau geser chart ke kiri untuk memperluasnya, lalu gambar perkiraan arah harga dengan garis, catatan, atau Elliott Wave. Tanggal di area ini adalah perkiraan (hari kerja berikutnya; intraday mengikuti jam bursa). Gambar ditambatkan ke tanggal dan harga, jadi saat candle baru muncul kamu bisa membandingkan prediksi dengan harga sebenarnya.</p>
         <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Gelombang digambar tanpa label; kalau perlu, label bisa ditambahkan sendiri lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya: tarik bulatan pegangan untuk menggeser satu titik, tarik garisnya untuk memindahkan seluruh gambar, atau klik dua kali untuk mengubah catatan. Untuk menghapus, pilih gambarnya lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
         <p><b>Zoom &amp; geser chart</b>: putar roda mouse di atas chart untuk zoom in/out (berpusat di posisi kursor), klik-tahan lalu geser untuk melihat candle sebelumnya, atau pakai tombol − + ◀ ▶ ⟲ di atas chart. Di HP, cubit dua jari untuk zoom. Skala harga, volume, RSI, dan MACD menyesuaikan dengan candle yang terlihat. Timeframe selain Daily menyimpan sampai 220 candle, jadi bisa di-zoom out lebih jauh.</p>
@@ -3503,7 +3505,13 @@ function drawControls(r) {
 }
 
 /* ---------- zoom & geser chart ---------- */
-const chartView = new Map();      // kunci "KODE|tf" -> {v0, v1} (rentang candle yang terlihat)
+const chartView = new Map();
+const priceView = new Map();      // kunci chart -> {off, scale}: geser & zoom skala harga (kosong = otomatis)
+let yPanState = null;
+function pvOf(r) { return priceView.get(frvpKey(r)) || null; }
+function pvSet(r, off, scale) { priceView.set(frvpKey(r), { off, scale: Math.max(0.15, Math.min(12, scale)) }); }
+function pvShift(r, f) { const v = pvOf(r) || { off: 0, scale: 1 }; pvSet(r, v.off + f * v.scale, v.scale); redrawSoon(r); }
+function pvZoom(r, f) { const v = pvOf(r) || { off: 0, scale: 1 }; pvSet(r, v.off, v.scale * f); redrawSoon(r); }      // kunci "KODE|tf" -> {v0, v1} (rentang candle yang terlihat)
 let panState = null, pinchState = null, rafRedraw = null;
 const FUT = 60, FUT_DEF = 8;          // ruang kosong di kanan (area prediksi): maksimal 60 candle, tampilan awal 8
 function viewOf(r, nb) {
@@ -3529,7 +3537,14 @@ window.addEventListener("mousemove", e => {
   const d = Math.round((panState.x - e.clientX) / panState.pxPerBar);
   const nb = panState.r.smc.b.length; setView(panState.r, nb, panState.v0 + d, panState.n); redrawSoon(panState.r);
 });
-window.addEventListener("mouseup", () => { if (panState) { panState = null; document.body.classList.remove("chart-panning"); } });
+window.addEventListener("mouseup", () => { if (panState || yPanState) { panState = null; yPanState = null; document.body.classList.remove("chart-panning"); } });
+window.addEventListener("mousemove", e => {
+  const Y = yPanState; if (!Y) return;
+  const dy = e.clientY - Y.y;
+  if (Y.mode === "scale") { pvSet(Y.r, Y.off, Y.scale * Math.exp(dy / 220)); redrawSoon(Y.r); return; }
+  if (!Y.started && Math.abs(dy) < 10) return;          // geser horizontal biasa tidak ikut menggeser harga
+  Y.started = true; pvSet(Y.r, Y.off + dy / Y.ihPx * Y.scale, Y.scale); redrawSoon(Y.r);
+});
 window.addEventListener("touchmove", e => {
   if (!pinchState || e.touches.length !== 2) return;
   const dd = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
@@ -3583,6 +3598,8 @@ function smcChart(r, lay) {
   let max = Math.max(...vis.map(b => b[1])), min = Math.min(...vis.map(b => b[2]));
   if (lay.plan && p) { max = Math.max(max, p.tp3 || p.tp2 || p.tp); min = Math.min(min, p.sl); }
   const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
+  const PV = pvOf(r);
+  if (PV) { const rg0 = max - min, c = (max + min) / 2 + PV.off * rg0, rg = rg0 * PV.scale; max = c + rg / 2; min = c - rg / 2; }
   const sw = iw / nbv, bw = Math.max(1.4, sw * 0.62);
   const y = v => T + (max - v) / (max - min) * ih, x = i => L + (i - v0) * sw + sw / 2, xl = i => L + (i - v0) * sw;
   const clampY = v => Math.min(T + ih, Math.max(T, y(v)));
@@ -3900,13 +3917,20 @@ function attachCrosshair(r, box) {
   });
   // zoom (roda mouse / cubit dua jari) dan geser (klik-tahan lalu geser)
   svg.addEventListener("wheel", e => {
-    const [sx] = toSvg(e); if (sx < L || sx > L + iw) return;
+    const [sx, sy] = toSvg(e);
+    if ((e.shiftKey && sx >= L && sx <= L + iw) || (sx > L + iw && sy <= T + ih)) { e.preventDefault(); pvZoom(r, e.deltaY > 0 ? 1.12 : 1 / 1.12); return; }
+    if (sx < L || sx > L + iw) return;
     e.preventDefault(); zoomBy(r, e.deltaY > 0 ? 1.15 : 1 / 1.15, v0 + (sx - L) / sw);
   }, { passive: false });
   svg.addEventListener("mousedown", e => {
     if (frvpMode || drawTool || e.button !== 0 || (e.target.closest && e.target.closest("[data-dw], [data-dwh]"))) return;
     const rc = svg.getBoundingClientRect();
-    panState = { r, x: e.clientX, v0, n: nbv, pxPerBar: sw * rc.width / W }; document.body.classList.add("chart-panning"); e.preventDefault();
+    const [sx, sy] = toSvg(e), pv = pvOf(r) || { off: 0, scale: 1 }, ihPx = ih * rc.height / H;
+    if (sx > L + iw && sy <= T + ih) { yPanState = { r, y: e.clientY, scale: pv.scale, off: pv.off, mode: "scale" }; document.body.classList.add("chart-panning"); e.preventDefault(); return; }
+    if (sy > T + ih) { panState = { r, x: e.clientX, v0, n: nbv, pxPerBar: sw * rc.width / W }; document.body.classList.add("chart-panning"); e.preventDefault(); return; }
+    panState = { r, x: e.clientX, v0, n: nbv, pxPerBar: sw * rc.width / W };
+    yPanState = { r, y: e.clientY, off: pv.off, scale: pv.scale, ihPx, mode: "pan", started: !!pvOf(r) };
+    document.body.classList.add("chart-panning"); e.preventDefault();
   });
   svg.addEventListener("touchstart", e => {
     if (e.touches.length !== 2) return;
@@ -3930,16 +3954,28 @@ function frvpControls(r) {
       <button type="button" data-z="reset" title="Kembalikan tampilan awal">⟲</button>
       <button type="button" data-z="fut" title="Sisakan area kosong di kanan untuk menggambar prediksi">⇥ Area prediksi</button>
       <span class="zoom-info">${Math.min(VV.v1, nbAll - 1) - VV.v0 + 1} dari ${nbAll} candle${VV.v1 > nbAll - 1 ? ` + ${VV.v1 - (nbAll - 1)} ruang prediksi` : ""}</span></span>
+    <span class="zoom-ctl" role="group" aria-label="Skala harga"><span class="zoom-info" style="padding-left:10px">Harga</span>
+      <button type="button" data-y="up" title="Geser skala harga ke atas (lihat harga lebih tinggi)">▲</button>
+      <button type="button" data-y="down" title="Geser skala harga ke bawah (lihat harga lebih rendah)">▼</button>
+      <button type="button" data-y="in" title="Renggangkan skala harga">⇕+</button>
+      <button type="button" data-y="out" title="Rapatkan skala harga">⇕−</button>
+      <button type="button" data-y="auto" class="${pvOf(r) ? "" : "on"}" title="Skala harga otomatis mengikuti candle">Auto</button></span>
     <button type="button" class="icon-btn${frvpMode ? " on" : ""}" id="frvp-btn" ${S && S.v ? "" : "disabled"}>${frvpMode ? "Klik-geser di chart…" : "Volume profile rentang"}</button>
     ${kf && kf.leg && (!S.tf || S.tf === "1d") ? `<button type="button" class="icon-btn" id="frvp-leg">Pakai rentang dorongan</button>` : ""}
     ${has ? `<button type="button" class="icon-btn" id="frvp-clear">Hapus rentang</button>` : ""}
     <span class="frvp-info">${frvpMode ? "Tarik dari candle awal ke candle akhir rentang yang ingin dihitung." : FV ? `<b>Rentang</b> ${esc(tgl(FV.i0))} – ${esc(tgl(FV.i1))} (${FV.i1 - FV.i0 + 1} candle): <b style="color:#F97316">POC ${fmtNum(FV.poc)}</b> · value area ${fmtNum(FV.val)}–${fmtNum(FV.vah)} · harga sekarang ${r.p > FV.vah ? "di atas" : r.p < FV.val ? "di bawah" : "di dalam"} value area.` : ""}</span>`;
+  box.querySelectorAll("[data-y]").forEach(b => b.addEventListener("click", () => {
+    const k = b.dataset.y;
+    if (k === "up") pvShift(r, 0.2); else if (k === "down") pvShift(r, -0.2);
+    else if (k === "in") pvZoom(r, 1 / 1.25); else if (k === "out") pvZoom(r, 1.25);
+    else { priceView.delete(frvpKey(r)); drawSmc(r); }
+  }));
   box.querySelectorAll("[data-z]").forEach(b => b.addEventListener("click", () => {
     const z = b.dataset.z, V = viewOf(r, nbAll);
     if (z === "in") zoomBy(r, 1 / 1.4); else if (z === "out") zoomBy(r, 1.4);
     else if (z === "fut") { const fut = Math.min(FUT, Math.round(V.n * 0.4)); setView(r, nbAll, nbAll - 1 + fut - V.n + 1, V.n); redrawSoon(r); }
     else if (z === "left") panBy(r, -Math.max(1, Math.round(V.n * 0.3))); else if (z === "right") panBy(r, Math.max(1, Math.round(V.n * 0.3)));
-    else { chartView.delete(frvpKey(r)); drawSmc(r); }
+    else { chartView.delete(frvpKey(r)); priceView.delete(frvpKey(r)); drawSmc(r); }
   }));
   const bt = $("frvp-btn"); if (bt) bt.addEventListener("click", () => { frvpMode = !frvpMode; drawSmc(r); });
   const lg = $("frvp-leg"); if (lg) lg.addEventListener("click", () => { frvpSel.set(frvpKey(r), { i0: kf.leg[0], i1: kf.leg[1] }); frvpMode = false; drawSmc(r); });
