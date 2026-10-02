@@ -73,14 +73,14 @@
  ],
  "2026-10-02": [
   "CSMI",
-  "MMIX",
-  "MEJA",
-  "BKDP",
-  "AKRA",
-  "NEST",
+  "RSCH",
   "PTBA",
-  "PTSN",
-  "SMIL",
-  "SMLE"
+  "SMLE",
+  "AUTO",
+  "MMIX",
+  "BSSR",
+  "AALI",
+  "SEMA",
+  "AKRA"
  ]
 }
