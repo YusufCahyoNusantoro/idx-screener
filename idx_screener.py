@@ -1678,8 +1678,6 @@ TEMPLATE = r'''<!DOCTYPE html>
   body[data-pref="h1"] .tfc-h1, body[data-pref="h2"] .tfc-h2, body[data-pref="h4"] .tfc-h4,
   body[data-pref="daily"] .tfc-daily, body[data-pref="weekly"] .tfc-weekly, body[data-pref="monthly"] .tfc-monthly { background:color-mix(in srgb, var(--orange) 14%, transparent) !important; }
   .v10-hi { color:var(--orange); font-weight:800; }
-  .gen-ago { color:var(--muted); }
-  .gen-ago.stale b { color:var(--orange); }
   .cal-today { font-size:0.9rem; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin:0 0 10px; }
   .cal-today .muted { display:block; font-size:0.8rem; margin-top:3px; }
   .cal-peaks { font-size:0.84rem; margin:-4px 0 10px; font-weight:700; }
@@ -2091,7 +2089,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <h1 class="brand-row"><img class="logo" src="data:image/png;base64,__LOGO96__" alt="" width="40" height="40">
         <span class="brand-name"><span class="nm">Dibalik Saham</span><span class="tg">Research &amp; Insight</span></span>
         <span class="status" id="status-chip">__BADGE__</span></h1>
-      <div class="meta">__SUB__ <span id="gen-ago" class="gen-ago"></span></div>
+      <div class="meta">__SUB__</div>
     </div>
     <div class="top-actions">
       <nav class="tabs" aria-label="Halaman">
@@ -2365,6 +2363,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>MA200, RSI, MACD, dan pasar global</summary>
       <div class="guide-body">
         <p><b>MA20/50/200</b> (lapisan di chart): rata-rata harga 20, 50, dan 200 candle. Harga di atas MA200 menandakan tren jangka panjang naik. MA200 butuh 200 candle sebelumnya, jadi di versi online dihitung dari data tambahan; di timeframe dengan data pendek (misalnya 4H atau bulanan) MA200 bisa belum tersedia.</p>
+        <p><b>Area prediksi</b>: di kanan candle terakhir ada ruang kosong (awalnya 8 candle, bisa sampai 60). Klik <b>⇥ Area prediksi</b>, tombol ▶, atau geser chart ke kiri untuk memperluasnya, lalu gambar perkiraan arah harga dengan garis, catatan, atau Elliott Wave. Tanggal di area ini adalah perkiraan (hari kerja berikutnya; intraday mengikuti jam bursa). Gambar ditambatkan ke tanggal dan harga, jadi saat candle baru muncul kamu bisa membandingkan prediksi dengan harga sebenarnya.</p>
         <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Gelombang digambar tanpa label; kalau perlu, label bisa ditambahkan sendiri lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya: tarik bulatan pegangan untuk menggeser satu titik, tarik garisnya untuk memindahkan seluruh gambar, atau klik dua kali untuk mengubah catatan. Untuk menghapus, pilih gambarnya lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
         <p><b>Zoom &amp; geser chart</b>: putar roda mouse di atas chart untuk zoom in/out (berpusat di posisi kursor), klik-tahan lalu geser untuk melihat candle sebelumnya, atau pakai tombol − + ◀ ▶ ⟲ di atas chart. Di HP, cubit dua jari untuk zoom. Skala harga, volume, RSI, dan MACD menyesuaikan dengan candle yang terlihat. Timeframe selain Daily menyimpan sampai 220 candle, jadi bisa di-zoom out lebih jauh.</p>
         <p><b>Volume profile rentang</b> (tombol di atas chart): klik tombolnya, lalu klik-geser di chart dari candle awal ke candle akhir. Histogram volume khusus rentang itu muncul beserta <b>POC</b> (harga paling ramai), <b>VAH</b> dan <b>VAL</b> (batas atas dan bawah value area, tempat 70% volume terjadi). "Pakai rentang dorongan" langsung memilih dorongan naik terakhir yang dipakai konfluensi. Berfungsi di semua timeframe; di HP cukup sentuh lalu geser.</p>
@@ -3321,7 +3320,7 @@ function dwDragMove(cx, cy) {
     if (d.id !== D.id) return d;
     if (D.mode === "pt") { const pts = d.pts.slice(); pts[D.k] = d.type === "hline" ? { t: pts[D.k].t, p: pt.p } : { t: pt.t, p: pt.p }; return { ...d, pts }; }
     const di = pt.i - D.start.i, dp = pt.p - D.start.p;
-    return { ...d, pts: D.orig.map(q => ({ t: d.type === "hline" ? q.t : timeOf(S, Math.max(0, Math.min(n - 1, idxOfTime(S, q.t) + di))), p: q.p + dp })) };
+    return { ...d, pts: D.orig.map(q => ({ t: d.type === "hline" ? q.t : timeOf(S, Math.max(0, Math.min(n - 1 + FUT, idxOfTime(S, q.t) + di))), p: q.p + dp })) };
   });
   drawSave(D.r, list);
   if (!dwRaf) dwRaf = requestAnimationFrame(() => { dwRaf = null; if (dwDrag) drawSmc(dwDrag.r); });
@@ -3340,9 +3339,46 @@ const drawAll = () => ls.get(DRAW_KEY, {}) || {};
 function drawKey(r) { return r.t + "|" + ((r.smc && r.smc.tf) || "1d"); }
 function drawList(r) { return drawAll()[drawKey(r)] || []; }
 function drawSave(r, list) { const a = drawAll(); if (list.length) a[drawKey(r)] = list; else delete a[drawKey(r)]; ls.set(DRAW_KEY, a); }
-function timeOf(S, i) { return S.ts ? S.ts[i] : Date.parse(S.d0 + "T00:00:00Z") + S.do[i] * 86400000; }
+/* waktu tiap indeks candle; indeks di kanan candle terakhir (area masa depan) diperkirakan:
+   chart harian/intraday harian = lompat hari bursa (Sabtu-Minggu dilewati), lainnya = jarak rata-rata antar candle */
+function tfStep(S) {
+  if (S._step) return S._step;
+  const n = S.b.length, a = [];
+  for (let i = Math.max(1, n - 30); i < n; i++) a.push(timeOf0(S, i) - timeOf0(S, i - 1));
+  a.sort((x, y) => x - y); S._step = a.length ? a[Math.floor(a.length / 2)] : 86400000; return S._step;
+}
+function timeOf0(S, i) { return S.ts ? S.ts[i] : Date.parse(S.d0 + "T00:00:00Z") + S.do[i] * 86400000; }
+function isDailyLike(S) { return !S.ts || S.tf === "1d"; }
+function addBizDays(t, k) { let d = new Date(t); while (k > 0) { d = new Date(d.getTime() + 86400000); const w = d.getUTCDay(); if (w !== 0 && w !== 6) k--; } return d.getTime(); }
+function intraPattern(S) {          // jam-jam candle dalam satu hari bursa (WIB), dari hari terlengkap 10 hari terakhir
+  if (S._pat) return S._pat;
+  const byDay = new Map();
+  for (let i = Math.max(0, S.ts.length - 120); i < S.ts.length; i++) {
+    const w = S.ts[i] + WIB_MS, day = Math.floor(w / 86400000); (byDay.get(day) || byDay.set(day, []).get(day)).push(w - day * 86400000);
+  }
+  let best = []; byDay.forEach(v => { if (v.length > best.length) best = v; });
+  S._pat = best.length ? best.sort((a, b) => a - b) : [9 * 3600000]; return S._pat;
+}
+function timeOf(S, i) {
+  const n = S.b.length; if (i < n) return timeOf0(S, i);
+  const last = timeOf0(S, n - 1), k = i - (n - 1);
+  if (isDailyLike(S)) return addBizDays(last + (S.ts ? WIB_MS : 0), k) - (S.ts ? WIB_MS : 0);
+  if (S.ts && /m$|h$/.test(S.tf || "")) {          // intraday: ulangi pola jam bursa, hari kerja saja
+    const pat = intraPattern(S), P = pat.length, w = last + WIB_MS, day0 = Math.floor(w / 86400000) * 86400000, tod = w - day0;
+    let p0 = pat.findIndex(x => x >= tod - 60000); if (p0 < 0) p0 = P - 1;
+    const tot = p0 + k, dAdd = Math.floor(tot / P), slot = tot % P;
+    return addBizDays(day0, dAdd) + pat[slot] - WIB_MS;
+  }
+  return last + k * tfStep(S);
+}
 function idxOfTime(S, t) {
-  const n = S.b.length; if (t <= timeOf(S, 0)) return 0; if (t >= timeOf(S, n - 1)) return n - 1;
+  const n = S.b.length; if (t <= timeOf(S, 0)) return 0;
+  if (t > timeOf0(S, n - 1)) {                                 // titik di area masa depan
+    if (!isDailyLike(S) && !(S.ts && /m$|h$/.test(S.tf || ""))) return n - 1 + Math.max(1, Math.round((t - timeOf0(S, n - 1)) / tfStep(S)));
+    const tol = isDailyLike(S) ? 43200000 : tfStep(S) / 2;
+    let k = 0; while (k < 2000 && timeOf(S, n - 1 + k) < t - tol) k++; return n - 1 + k;
+  }
+  if (t >= timeOf(S, n - 1)) return n - 1;
   let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (timeOf(S, m) <= t) lo = m; else hi = m; }
   return t - timeOf(S, lo) <= timeOf(S, hi) - t ? lo : hi;
 }
@@ -3469,20 +3505,21 @@ function drawControls(r) {
 /* ---------- zoom & geser chart ---------- */
 const chartView = new Map();      // kunci "KODE|tf" -> {v0, v1} (rentang candle yang terlihat)
 let panState = null, pinchState = null, rafRedraw = null;
+const FUT = 60, FUT_DEF = 8;          // ruang kosong di kanan (area prediksi): maksimal 60 candle, tampilan awal 8
 function viewOf(r, nb) {
-  const V = chartView.get(frvpKey(r)), def = Math.min(nb, 120);      // tampilan awal 120 candle terakhir
-  let v0 = V ? V.v0 : nb - def, v1 = V ? V.v1 : nb - 1;
-  v1 = Math.min(nb - 1, Math.max(v1, 0)); v0 = Math.max(0, Math.min(v0, v1 - 4));
+  const V = chartView.get(frvpKey(r)), def = Math.min(nb, 120);      // tampilan awal 120 candle terakhir + sedikit ruang kosong
+  let v0 = V ? V.v0 : nb - def, v1 = V ? V.v1 : nb - 1 + FUT_DEF;
+  v1 = Math.min(nb - 1 + FUT, Math.max(v1, 0)); v0 = Math.max(0, Math.min(v0, v1 - 4, nb - 10));
   return { v0, v1, n: v1 - v0 + 1 };
 }
 function setView(r, nb, v0, n) {
-  n = Math.max(15, Math.min(nb, Math.round(n))); v0 = Math.round(v0);
-  v0 = Math.max(0, Math.min(v0, nb - n));
+  n = Math.max(15, Math.min(nb + FUT, Math.round(n))); v0 = Math.round(v0);
+  v0 = Math.max(0, Math.min(v0, nb - 1 + FUT - n + 1, nb - 10));     // minimal 10 candle sungguhan tetap terlihat
   chartView.set(frvpKey(r), { v0, v1: v0 + n - 1 });
 }
 function redrawSoon(r) { if (rafRedraw) return; rafRedraw = requestAnimationFrame(() => { rafRedraw = null; drawSmc(r); }); }
 function zoomBy(r, f, ic) {
-  const nb = r.smc.b.length, V = viewOf(r, nb), n2 = Math.max(15, Math.min(nb, Math.round(V.n * f)));
+  const nb = r.smc.b.length, V = viewOf(r, nb), n2 = Math.max(15, Math.min(nb + FUT, Math.round(V.n * f)));
   if (ic == null) ic = V.v0 + V.n / 2;
   setView(r, nb, ic - (ic - V.v0) * n2 / V.n, n2); redrawSoon(r);
 }
@@ -3496,11 +3533,12 @@ window.addEventListener("mouseup", () => { if (panState) { panState = null; docu
 window.addEventListener("touchmove", e => {
   if (!pinchState || e.touches.length !== 2) return;
   const dd = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
-  const P = pinchState, nb = P.r.smc.b.length, n2 = Math.max(15, Math.min(nb, Math.round(P.n * P.d / dd)));
+  const P = pinchState, nb = P.r.smc.b.length, n2 = Math.max(15, Math.min(nb + FUT, Math.round(P.n * P.d / dd)));
   setView(P.r, nb, P.ic - (P.ic - P.v0) * n2 / P.n, n2); redrawSoon(P.r); e.preventDefault();
 }, { passive: false });
 window.addEventListener("touchend", e => { if (pinchState && e.touches.length < 2) pinchState = null; });
 function tglIdx(S, i) {
+  if (i >= S.b.length) { const t = timeOf(S, i); return S.ts ? fmtWaktu(t, S.tf) : new Date(t).toISOString().slice(0, 10); }
   if (S.ts) return fmtWaktu(S.ts[i], S.tf);
   if (S.do && S.d0) return new Date(Date.parse(S.d0 + "T00:00:00Z") + S.do[i] * 86400000).toISOString().slice(0, 10);
   return "";
@@ -3541,7 +3579,7 @@ function smcChart(r, lay) {
   if (lay.rsi) { panes.push({ k: "rsi", y0: yCur + GAP, h: PH }); yCur += GAP + PH; }
   if (lay.macd) { panes.push({ k: "macd", y0: yCur + GAP, h: PH }); yCur += GAP + PH; }
   const bottomY = yCur, H = bottomY + B;
-  const VW = viewOf(r, nb), v0 = VW.v0, v1 = VW.v1, nbv = VW.n, vis = bars.slice(v0, v1 + 1);
+  const VW = viewOf(r, nb), v0 = VW.v0, v1 = VW.v1, nbv = VW.n, vis = bars.slice(v0, Math.min(v1, nb - 1) + 1);
   let max = Math.max(...vis.map(b => b[1])), min = Math.min(...vis.map(b => b[2]));
   if (lay.plan && p) { max = Math.max(max, p.tp3 || p.tp2 || p.tp); min = Math.min(min, p.sl); }
   const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
@@ -3558,6 +3596,11 @@ function smcChart(r, lay) {
   ticks.forEach(v => s += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1" opacity="0.7"/>`);
   s += `<line x1="${L + iw}" x2="${L + iw}" y1="${T}" y2="${T + ih}" stroke="var(--line)"/>`;
   s += `<g clip-path="url(#cp)">`;
+  if (v1 > nb - 1) {          // area masa depan: diarsir tipis
+    const xf = L + (nb - v0) * sw;
+    s += `<rect x="${xf.toFixed(1)}" y="${T}" width="${(L + iw - xf).toFixed(1)}" height="${ih}" fill="var(--accent)" opacity="0.035"/>`;
+    s += `<line x1="${xf.toFixed(1)}" x2="${xf.toFixed(1)}" y1="${T}" y2="${T + ih}" stroke="var(--muted)" stroke-dasharray="2 4" opacity="0.5"/>`;
+  }
   if (lay.pd && S.pd) {
     const [hi, lo] = S.pd, mid = (hi + lo) / 2;
     s += `<rect x="${L}" y="${clampY(hi)}" width="${iw}" height="${Math.max(0, clampY(mid) - clampY(hi))}" fill="${dn}" opacity="0.06"/>`;
@@ -3755,9 +3798,10 @@ function attachCrosshair(r, box) {
   const pBox = g.querySelector(".xh-pbox"), pTxt = g.querySelector(".xh-ptxt"), dBox = g.querySelector(".xh-dbox"), dTxt = g.querySelector(".xh-dtxt");
   const idx = r.t === "IHSG";
   const fp = v => idx ? fmtDec(v, 2) : fmtNum(v);
-  const tglOf = i => S.ts ? new Date(S.ts[i] + WIB_MS) : new Date(base + (S.do ? S.do[i] : i) * 86400000);
+  const tglOf = i => i >= S.b.length ? new Date(timeOf(S, i) + (S.ts ? WIB_MS : 0)) : S.ts ? new Date(S.ts[i] + WIB_MS) : new Date(base + (S.do ? S.do[i] : i) * 86400000);
   const intra = S.ts && /m$|h$/.test(S.tf || "");
   const legend = i => {
+    if (i >= S.b.length) { const d = tglOf(i); leg.innerHTML = `<b>${HARI3[d.getUTCDay()]}, ${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}${intra ? " " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0") : ""}</b> <span class="muted">area prediksi (belum ada candle)</span>`; return; }
     const b = S.b[i], prev = i > 0 ? S.b[i - 1][3] : null, chg = prev ? (b[3] / prev - 1) * 100 : null, d = tglOf(i), c = b[3] >= b[0] ? "pos" : "neg";
     const vol = !idx && S.v && S.v[i] != null ? ` <span class="xl-k">Vol</span> ${fmtNum(S.v[i])} ${r.vu || "lot"}` : "";
     leg.innerHTML = `<b>${HARI3[d.getUTCDay()]}, ${d.getUTCDate()} ${BLN3[d.getUTCMonth()]} ${d.getUTCFullYear()}${intra ? " " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0") : ""}</b>
@@ -3768,7 +3812,7 @@ function attachCrosshair(r, box) {
       ${ind.macd && ind.macd[i] != null ? ` <span class="xl-k">MACD</span> <span style="color:var(--blue)">${fmtDec(ind.macd[i], 2)}</span>` : ""}
       ${ind.ma200 && ind.ma200[i] != null ? ` <span class="xl-k">MA200</span> <span style="color:#A855F7">${fp(ind.ma200[i])}</span>` : ""}`;
   };
-  legend(v0 + nbv - 1);
+  legend(Math.min(v0 + nbv - 1, S.b.length - 1));
   const toSvg = e => { const rc = svg.getBoundingClientRect(); const pt = e.touches ? e.touches[0] : e; return [(pt.clientX - rc.left) * W / rc.width, (pt.clientY - rc.top) * H / rc.height]; };
   const move = e => {
     const [sx, sy] = toSvg(e);
@@ -3781,7 +3825,7 @@ function attachCrosshair(r, box) {
     pBox.setAttribute("y", sy - 9); pTxt.setAttribute("y", sy + 4);
     const pn = panes.find(q => sy >= q.y0 - GAP && sy <= q.y0 + q.h);
     pTxt.textContent = sy <= T + ih ? fp(max - (sy - T) / ih * (max - min))
-      : !pn ? "" : pn.k === "vol" ? (S.v && S.v[i] != null ? fmtNum(S.v[i]) : "")
+      : !pn || i >= S.b.length ? "" : pn.k === "vol" ? (S.v && S.v[i] != null ? fmtNum(S.v[i]) : "")
       : pn.k === "rsi" ? (ind.rsi && ind.rsi[i] != null ? "RSI " + fmtDec(ind.rsi[i], 1) : "")
       : (ind.macd && ind.macd[i] != null ? fmtDec(ind.macd[i], 2) : "");
     const d = tglOf(i), dx = Math.max(L + 48, Math.min(L + iw - 48, cx));
@@ -3793,7 +3837,7 @@ function attachCrosshair(r, box) {
       ? drawPending.map(q => `${(L + (idxOfTime(S, q.t) - v0) * sw + sw / 2).toFixed(1)},${(T + (max - q.p) / (max - min) * ih).toFixed(1)}`).concat([`${cx.toFixed(1)},${sy.toFixed(1)}`]).join(" ") : "");
     if (e.cancelable && e.touches) e.preventDefault();
   };
-  const hide = () => { g.style.display = "none"; legend(v0 + nbv - 1); };
+  const hide = () => { g.style.display = "none"; legend(Math.min(v0 + nbv - 1, S.b.length - 1)); };
   // volume profile rentang: klik-geser (atau sentuh-geser) saat mode aktif
   const drag = svg.querySelector(".frvp-drag"); let d0 = null;
   const idxAt = e => { const [sx] = toSvg(e); return Math.max(v0, Math.min(v0 + nbv - 1, v0 + Math.floor((sx - L) / sw))); };
@@ -3812,7 +3856,7 @@ function attachCrosshair(r, box) {
     const sx = (cx - rc.left) * W / rc.width, sy = (cy - rc.top) * H / rc.height;
     const i = Math.max(v0, Math.min(v0 + nbv - 1, v0 + Math.floor((sx - L) / sw)));
     let p = max - (sy - T) / ih * (max - min);
-    if (snap) { const bb = S.b[i], yy = v => T + (max - v) / (max - min) * ih; if (Math.abs(sy - yy(bb[1])) < 14) p = bb[1]; else if (Math.abs(sy - yy(bb[2])) < 14) p = bb[2]; }
+    if (snap && i < S.b.length) { const bb = S.b[i], yy = v => T + (max - v) / (max - min) * ih; if (Math.abs(sy - yy(bb[1])) < 14) p = bb[1]; else if (Math.abs(sy - yy(bb[2])) < 14) p = bb[2]; }
     return { i, t: timeOf(S, i), p };
   };
   const startDwDrag = (e, cx, cy) => {
@@ -3843,7 +3887,7 @@ function attachCrosshair(r, box) {
     const [sx, sy] = toSvg(e); if (sx < L || sx > L + iw || sy < T || sy > T + ih) return;
     const i = Math.max(v0, Math.min(v0 + nbv - 1, v0 + Math.floor((sx - L) / sw)));
     let pr = max - (sy - T) / ih * (max - min);
-    if (drawStyle.magnet) { const bb = S.b[i], yy = v => T + (max - v) / (max - min) * ih;
+    if (drawStyle.magnet && i < S.b.length) { const bb = S.b[i], yy = v => T + (max - v) / (max - min) * ih;
       if (Math.abs(sy - yy(bb[1])) < 14) pr = bb[1]; else if (Math.abs(sy - yy(bb[2])) < 14) pr = bb[2]; }
     const tt = timeOf(S, i), last = drawPending[drawPending.length - 1];
     if (drawTool === "ew" && last && last.t === tt) return;          // klik kedua dari klik-dua-kali
@@ -3879,12 +3923,13 @@ function frvpControls(r) {
   const tgl = i => S.ts ? fmtWaktu(S.ts[i], S.tf) : (S.do ? new Date(Date.parse(S.d0 + "T00:00:00Z") + S.do[i] * 86400000).toISOString().slice(0, 10) : "");
   const nbAll = S.b.length, VV = viewOf(r, nbAll);
   box.innerHTML = `<span class="zoom-ctl" role="group" aria-label="Zoom chart">
-      <button type="button" data-z="out" title="Perkecil (lebih banyak candle)" ${VV.n >= nbAll ? "disabled" : ""}>−</button>
+      <button type="button" data-z="out" title="Perkecil (lebih banyak candle)" ${VV.n >= nbAll + FUT ? "disabled" : ""}>−</button>
       <button type="button" data-z="in" title="Perbesar (lebih sedikit candle)" ${VV.n <= 15 ? "disabled" : ""}>+</button>
       <button type="button" data-z="left" title="Geser ke kiri (candle lebih lama)" ${VV.v0 <= 0 ? "disabled" : ""}>◀</button>
-      <button type="button" data-z="right" title="Geser ke kanan (candle terbaru)" ${VV.v1 >= nbAll - 1 ? "disabled" : ""}>▶</button>
+      <button type="button" data-z="right" title="Geser ke kanan (candle terbaru, lalu area prediksi)" ${VV.v1 >= nbAll - 1 + FUT ? "disabled" : ""}>▶</button>
       <button type="button" data-z="reset" title="Kembalikan tampilan awal">⟲</button>
-      <span class="zoom-info">${VV.n} dari ${nbAll} candle</span></span>
+      <button type="button" data-z="fut" title="Sisakan area kosong di kanan untuk menggambar prediksi">⇥ Area prediksi</button>
+      <span class="zoom-info">${Math.min(VV.v1, nbAll - 1) - VV.v0 + 1} dari ${nbAll} candle${VV.v1 > nbAll - 1 ? ` + ${VV.v1 - (nbAll - 1)} ruang prediksi` : ""}</span></span>
     <button type="button" class="icon-btn${frvpMode ? " on" : ""}" id="frvp-btn" ${S && S.v ? "" : "disabled"}>${frvpMode ? "Klik-geser di chart…" : "Volume profile rentang"}</button>
     ${kf && kf.leg && (!S.tf || S.tf === "1d") ? `<button type="button" class="icon-btn" id="frvp-leg">Pakai rentang dorongan</button>` : ""}
     ${has ? `<button type="button" class="icon-btn" id="frvp-clear">Hapus rentang</button>` : ""}
@@ -3892,6 +3937,7 @@ function frvpControls(r) {
   box.querySelectorAll("[data-z]").forEach(b => b.addEventListener("click", () => {
     const z = b.dataset.z, V = viewOf(r, nbAll);
     if (z === "in") zoomBy(r, 1 / 1.4); else if (z === "out") zoomBy(r, 1.4);
+    else if (z === "fut") { const fut = Math.min(FUT, Math.round(V.n * 0.4)); setView(r, nbAll, nbAll - 1 + fut - V.n + 1, V.n); redrawSoon(r); }
     else if (z === "left") panBy(r, -Math.max(1, Math.round(V.n * 0.3))); else if (z === "right") panBy(r, Math.max(1, Math.round(V.n * 0.3)));
     else { chartView.delete(frvpKey(r)); drawSmc(r); }
   }));
@@ -4728,17 +4774,6 @@ function rfCheck() {
 }
 $("rf-btn").addEventListener("click", () => { const p = $("rf-pop"); if (p.hidden) { rfRender(); p.hidden = false; } else p.hidden = true; });
 if (location.protocol === "file:") $("rf-btn").hidden = true;
-
-/* ---------- umur data & jam WIB ---------- */
-function updAgo() {
-  const m = GEN.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/); const el = $("gen-ago"); if (!m || !el) return;
-  const genMs = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] - 7, +m[5]), mins = Math.max(0, Math.round((Date.now() - genMs) / 60000));
-  const ago = mins < 1 ? "baru saja" : mins < 60 ? `${mins} menit lalu` : mins < 1440 ? `${Math.floor(mins / 60)} jam ${mins % 60} menit lalu` : `${Math.floor(mins / 1440)} hari lalu`;
-  const wib = new Date(Date.now() + WIB_MS), hh = String(wib.getUTCHours()).padStart(2, "0"), mi = String(wib.getUTCMinutes()).padStart(2, "0");
-  el.innerHTML = `· diperbarui <b>${ago}</b> · sekarang ${hh}:${mi} WIB`;
-  el.classList.toggle("stale", mins > 360);
-}
-updAgo(); setInterval(updAgo, 30000);
 
 /* ---------- new data check (no auto reload) ---------- */
 function checkUpdate() {
