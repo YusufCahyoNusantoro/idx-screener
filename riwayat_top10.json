@@ -75,12 +75,12 @@
   "CSMI",
   "MMIX",
   "MEJA",
-  "MPIX",
-  "SGER",
+  "BKDP",
+  "AKRA",
+  "NEST",
   "PTBA",
+  "PTSN",
   "SMIL",
-  "SMLE",
-  "DEWI",
-  "NEST"
+  "SMLE"
  ]
 }
