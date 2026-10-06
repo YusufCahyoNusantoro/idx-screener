@@ -1890,6 +1890,9 @@ TEMPLATE = r'''<!DOCTYPE html>
   .seg button:disabled { opacity:.4; cursor:default; }
   .plan-note { font-size:0.84rem; color:var(--ink2); margin:4px 0 10px; }
   .j-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:10px; background:var(--panel2); border-radius:12px; padding:12px; }
+  .jr-add { display:grid; gap:6px; min-width:170px; }
+  .jr-add input { width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
+  .jr-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-bottom:6px; }
   .j-form input, .j-form select { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
   .j-tbl { width:100%; border-collapse:collapse; font-size:0.84rem; }
   .j-tbl th { text-align:center; color:var(--muted); font-size:0.76rem; padding:8px 10px; border-bottom:1px solid var(--line); background:var(--panel2); position:static; }
@@ -4144,25 +4147,81 @@ function renderPlan(r0, r) {
 const JR = "idxs:jurnal";
 const SETUPS = ["BOS + order block", "CHoCH + order block", "Pantulan dari FVG", "Pullback ke zona discount", "Breakout", "Pullback ke MA20", "Lainnya"];
 const jrLoad = () => ls.get(JR, []), jrSave = a => ls.set(JR, a);
+/* Saran SL & target dari rata-rata entry (average up/down). Menjaga rugi maksimal sesuai % modal di kalkulator. */
+function exitSuggest(avg, lot, p, r, modal, riskPct) {
+  const atr = (r.x && r.x.atr) || 0, budget = modal * riskPct / 100, notes = [];
+  let slS = p.sl < avg ? p.sl : null;
+  if (slS === null) {
+    slS = floorT(atr > 0 ? avg - atr : avg * 0.93); if (!(slS > 0)) slS = floorT(avg * 0.93);
+    notes.push("SL rencana (" + fmtNum(p.sl) + ") sudah di atas rata-rata entry, jadi SL dihitung ulang 1 ATR di bawah rata-rata entry.");
+  }
+  const slR = budget > 0 && lot > 0 ? ceilT(avg - budget / (lot * 100)) : null;
+  let sl = slS;
+  if (slR !== null && slR < avg && slR > slS) {
+    sl = slR;
+    const maxLot = Math.floor(budget / ((avg - slS) * 100));
+    notes.push("Dengan " + fmtNum(lot) + " lot, SL di " + fmtNum(slS) + " bikin rugi Rp " + fmtNum(lot * 100 * (avg - slS)) + ", lebih dari batas Rp " + fmtNum(budget) + ". SL diketatkan ke " + fmtNum(sl) + " supaya rugi tetap sesuai batas. Alternatifnya: total lot maksimal " + fmtNum(maxLot) + " kalau mau tetap pakai SL " + fmtNum(slS) + ".");
+  } else if (slR !== null && slR >= avg) {
+    notes.push("Total lot terlalu besar untuk batas rugi " + fmtDec(riskPct, 1) + "% modal: jarak SL yang muat kurang dari 1 tick. Kurangi lot.");
+  }
+  const risk = avg - sl;
+  let tp, tpSrc;
+  if (p.tp > avg && (p.tp - avg) / risk >= 1.5) { tp = p.tp; tpSrc = "target rencana"; }
+  else { tp = ceilT(avg + 2 * risk); tpSrc = "R:R 1:2 dari rata-rata entry"; }
+  const loss = lot * 100 * risk;
+  return { sl, tp, tpSrc, tp3: ceilT(avg + 3 * risk), riskPct: risk / avg * 100, rr: (tp - avg) / risk, loss, lossPct: modal > 0 ? loss / modal * 100 : 0, notes };
+}
 function journalForm(r, p, lot, mode) {
   const today = ymd(new Date()), mid = floorT((p.e1 + p.e2) / 2);
+  const rows = [{ h: mid, l: lot || 1 }];
+  let dirtySL = false, dirtyTP = false, sug = null, avg = 0, totLot = 0;
   $("j-form").innerHTML = `<div class="j-form">
     <div class="f"><label>Tanggal</label><input type="date" id="jf-tgl" value="${today}"></div>
-    <div class="f"><label>Harga entry</label><input type="number" id="jf-entry" value="${mid}"></div>
-    <div class="f"><label>Stop loss</label><input type="number" id="jf-sl" value="${p.sl}"></div>
-    <div class="f"><label>Target</label><input type="number" id="jf-tp" value="${p.tp}"></div>
-    <div class="f"><label>Lot</label><input type="number" id="jf-lot" value="${lot || 1}" min="1"></div>
     <div class="f"><label>Setup</label><select id="jf-setup">${SETUPS.map(s => `<option ${mode === "smc" && s === "BOS + order block" ? "selected" : ""}>${s}</option>`).join("")}</select></div>
     <div class="f"><label>Timeframe entry</label><select id="jf-tf"><option>1 jam</option><option>4 jam</option><option selected>Harian</option></select></div>
+    <div class="f" style="grid-column:1/-1"><label>Pembelian (tambah baris kalau average up/down)</label><div id="jf-rows"></div>
+      <button class="icon-btn" id="jf-addrow" type="button">+ Tambah pembelian</button></div>
+    <div class="calc-out" id="jf-sum" style="grid-column:1/-1;margin-top:0"></div>
+    <div class="f"><label>Stop loss</label><input type="number" id="jf-sl"></div>
+    <div class="f"><label>Target</label><input type="number" id="jf-tp"></div>
     <div class="f" style="grid-column:1/-1"><label>Catatan</label><input type="text" id="jf-note" placeholder="mis. CHoCH 1 jam di OB harian, broker akumulasi"></div>
     <div style="grid-column:1/-1;display:flex;gap:8px"><button class="icon-btn" id="jf-save" type="button">Simpan trade</button><button class="icon-btn" id="jf-cancel" type="button">Batal</button></div>
   </div>`;
+  const drawRows = () => {
+    $("jf-rows").innerHTML = rows.map((x, i) => `<div class="jr-row"><input type="number" data-i="${i}" data-k="h" value="${x.h}" min="0" placeholder="Harga beli ${i + 1}" aria-label="Harga beli ${i + 1}"><input type="number" data-i="${i}" data-k="l" value="${x.l}" min="1" placeholder="Lot" aria-label="Lot pembelian ${i + 1}">${rows.length > 1 ? `<button class="icon-btn" type="button" data-rm="${i}" aria-label="Hapus pembelian ${i + 1}">✕</button>` : "<span></span>"}</div>`).join("");
+    $("jf-rows").querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => { rows[+inp.dataset.i][inp.dataset.k] = +inp.value; recalc(); }));
+    $("jf-rows").querySelectorAll("[data-rm]").forEach(bt => bt.addEventListener("click", () => { rows.splice(+bt.dataset.rm, 1); drawRows(); recalc(); }));
+  };
+  const apply = () => { if (!sug) return; $("jf-sl").value = sug.sl; $("jf-tp").value = sug.tp; dirtySL = dirtyTP = false; };
+  const recalc = () => {
+    const ok = rows.filter(x => x.h > 0 && x.l > 0);
+    totLot = ok.reduce((s, x) => s + x.l, 0);
+    if (!totLot) { sug = null; $("jf-sum").innerHTML = "Isi harga beli dan lot dulu."; return; }
+    avg = ok.reduce((s, x) => s + x.h * x.l, 0) / totLot;
+    const c = ls.get(CALC, { modal: 10000000, risk: 1 }), cost = avg * totLot * 100;
+    sug = exitSuggest(avg, totLot, p, r, c.modal, c.risk);
+    if (!dirtySL) $("jf-sl").value = sug.sl;
+    if (!dirtyTP) $("jf-tp").value = sug.tp;
+    const chg = r.p ? (r.p - avg) / avg * 100 : null;
+    $("jf-sum").innerHTML = `Rata-rata entry <b>${fmtDec(avg, Number.isInteger(avg) ? 0 : 1)}</b> · total <b>${fmtNum(totLot)} lot</b> (Rp ${fmtNum(cost)}${c.modal > 0 ? `, ${fmtDec(cost / c.modal * 100, 0)}% modal` : ""})${chg !== null ? `<br>Harga sekarang ${fmtNum(r.p)}: <b class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "+" : ""}${fmtDec(chg, 1)}%</b> dari rata-rata entry.` : ""}
+      <br>Saran: stop loss <b class="neg">${fmtNum(sug.sl)}</b> (−${fmtDec(sug.riskPct, 1)}%), target <b class="pos">${fmtNum(sug.tp)}</b> (${esc(sug.tpSrc)}, R:R 1:${fmtDec(sug.rr, 1)})${sug.tp3 > sug.tp ? `, atau target 1:3 di ${fmtNum(sug.tp3)}` : ""}. Kalau kena SL, rugi sekitar Rp ${fmtNum(sug.loss)} (${fmtDec(sug.lossPct, 2)}% modal).
+      ${sug.notes.map(n => `<br><span class="muted">${esc(n)}</span>`).join("")}${c.modal > 0 && cost > c.modal ? `<br><b class="neg">Total pembelian melebihi modal di kalkulator.</b>` : ""}
+      <br><button class="icon-btn" id="jf-apply" type="button" style="margin-top:6px">Terapkan saran SL &amp; target</button>`;
+    $("jf-apply").addEventListener("click", apply);
+  };
+  $("jf-sl").addEventListener("input", () => dirtySL = true);
+  $("jf-tp").addEventListener("input", () => dirtyTP = true);
+  $("jf-addrow").addEventListener("click", () => { rows.push({ h: Math.round(r.p || mid), l: 1 }); drawRows(); recalc(); });
+  drawRows(); recalc();
   $("jf-cancel").addEventListener("click", () => $("j-form").innerHTML = "");
   $("jf-save").addEventListener("click", () => {
-    const e = +$("jf-entry").value, sl = +$("jf-sl").value;
-    if (!(e > 0) || !(sl > 0) || sl >= e) { alert("Stop loss harus di bawah harga entry."); return; }
+    const ok = rows.filter(x => x.h > 0 && x.l > 0), sl = +$("jf-sl").value;
+    if (!ok.length) { alert("Isi harga beli dan lot."); return; }
+    const e = Math.round(avg * 100) / 100;
+    if (!(sl > 0) || sl >= e) { alert("Stop loss harus di bawah harga entry (rata-rata)."); return; }
     const a = jrLoad();
-    a.push({ id: Date.now(), t: r.t, tgl: $("jf-tgl").value, entry: e, sl, tp: +$("jf-tp").value || null, lot: +$("jf-lot").value || 1,
+    a.push({ id: Date.now(), t: r.t, tgl: $("jf-tgl").value, entry: e, sl, tp: +$("jf-tp").value || null, lot: totLot,
+      tr: ok.length > 1 ? ok.map(x => ({ h: x.h, l: x.l })) : undefined,
       setup: $("jf-setup").value, tf: $("jf-tf").value, note: $("jf-note").value.trim(), exit: null, tglExit: null });
     jrSave(a); renderJournal();
     $("j-form").innerHTML = `<p class="calc-out">Tersimpan di jurnal. Buka tab Jurnal di kanan atas untuk melihatnya.</p>`;
@@ -4181,12 +4240,47 @@ function renderJournal() {
   const rows = a.slice().sort((x, y) => ((x.exit != null) - (y.exit != null)) || y.tgl.localeCompare(x.tgl));
   $("j-list").innerHTML = rows.length ? `<div class="table-wrap" style="max-height:none"><table class="j-tbl"><thead><tr><th>Tanggal</th><th>Saham</th><th>Setup</th><th class="num">Entry</th><th class="num">SL</th><th class="num">Target</th><th class="num">Lot</th><th class="num">Harga kini / keluar</th><th class="num">R</th><th>Aksi</th></tr></thead><tbody>${rows.map(j => {
     const cur = DATA.find(d => d.t === j.t), px = j.exit != null ? j.exit : cur ? cur.p : null, r = px != null ? rOf(j, px) : null;
-    return `<tr><td>${esc(j.tgl)}</td><td><b>${esc(j.t)}</b><div class="muted" style="font-size:0.72rem">${esc(j.tf)}${j.note ? " · " + esc(j.note) : ""}</div></td><td>${esc(j.setup)}</td><td class="num">${fmtNum(j.entry)}</td><td class="num">${fmtNum(j.sl)}</td><td class="num">${j.tp ? fmtNum(j.tp) : "-"}</td><td class="num">${fmtNum(j.lot)}</td>
+    return `<tr><td>${esc(j.tgl)}</td><td><b>${esc(j.t)}</b><div class="muted" style="font-size:0.72rem">${esc(j.tf)}${j.note ? " · " + esc(j.note) : ""}</div></td><td>${esc(j.setup)}</td><td class="num">${Number.isInteger(j.entry) ? fmtNum(j.entry) : fmtDec(j.entry, 1)}${j.tr ? `<div class="muted" style="font-size:0.72rem" title="${esc(j.tr.map(x => x.h + " x " + x.l + " lot").join("; "))}">rata-rata ${j.tr.length} pembelian</div>` : ""}</td><td class="num">${fmtNum(j.sl)}</td><td class="num">${j.tp ? fmtNum(j.tp) : "-"}</td><td class="num">${fmtNum(j.lot)}</td>
       <td class="num">${px != null ? fmtNum(px) : "-"}${j.exit == null ? '<div class="muted" style="font-size:0.72rem">masih terbuka</div>' : ""}${j.exit == null && cur && cur.p <= j.sl ? '<div class="neg" style="font-size:0.72rem">sudah di bawah SL</div>' : ""}${j.exit == null && cur && j.tp && cur.p >= j.tp ? '<div class="pos" style="font-size:0.72rem">sudah capai target</div>' : ""}</td>
       <td class="num ${r == null ? "" : r >= 0 ? "pos" : "neg"}">${r == null ? "-" : fmtDec(r, 2) + "R"}</td>
-      <td class="j-act" data-id="${j.id}">${j.exit == null ? `<button class="icon-btn" data-close="${j.id}" type="button">Tutup</button>` : ""} <button class="icon-btn" data-del="${j.id}" type="button">Hapus</button></td></tr>`;
+      <td class="j-act" data-id="${j.id}">${j.exit == null ? `<button class="icon-btn" data-add="${j.id}" type="button" title="Average up/down: tambah pembelian di trade ini">+ Beli</button> <button class="icon-btn" data-close="${j.id}" type="button">Tutup</button>` : ""} <button class="icon-btn" data-del="${j.id}" type="button">Hapus</button></td></tr>`;
   }).join("")}</tbody></table></div>` : '<p class="muted">Belum ada trade. Buka panel detail saham, lalu klik "Catat ke jurnal" di bagian Rencana.</p>';
   $("j-list").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { if (confirm("Hapus trade ini dari jurnal?")) { jrSave(jrLoad().filter(j => j.id !== +b.dataset.del)); renderJournal(); } }));
+  $("j-list").querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => {
+    const td = b.closest("td"), j0 = jrLoad().find(x => x.id === +b.dataset.add), cur = DATA.find(d => d.t === j0.t);
+    const base = j0.tr || [{ h: j0.entry, l: j0.lot }];
+    td.innerHTML = `<div class="jr-add">
+      <input type="number" data-k="h" value="${cur ? Math.round(cur.p) : j0.entry}" aria-label="Harga beli tambahan" placeholder="Harga beli">
+      <input type="number" data-k="l" value="1" min="1" aria-label="Lot tambahan" placeholder="Lot">
+      <div class="muted jr-out" style="font-size:0.72rem"></div>
+      <label class="muted" style="font-size:0.72rem">SL <input type="number" data-k="sl" value="${j0.sl}"></label>
+      <label class="muted" style="font-size:0.72rem">Target <input type="number" data-k="tp" value="${j0.tp || ""}"></label>
+      <div><button class="icon-btn" data-k="ok" type="button">Simpan</button> <button class="icon-btn" data-k="no" type="button">Batal</button></div></div>`;
+    const g = k => td.querySelector('[data-k="' + k + '"]'), out = td.querySelector(".jr-out");
+    let dSL = false, dTP = false, nAvg = 0, nLot = 0;
+    const calc = () => {
+      const h = +g("h").value, l = +g("l").value;
+      if (!(h > 0 && l > 0)) { out.textContent = "Isi harga beli dan lot."; nLot = 0; return; }
+      const c = ls.get(CALC, { modal: 10000000, risk: 1 });
+      nLot = j0.lot + l; nAvg = (j0.entry * j0.lot + h * l) / nLot;
+      const sg = exitSuggest(nAvg, nLot, { sl: j0.sl, tp: j0.tp || 0 }, cur || {}, c.modal, c.risk);
+      if (!dSL) g("sl").value = sg.sl;
+      if (!dTP) g("tp").value = sg.tp;
+      out.innerHTML = `Rata-rata baru <b>${fmtDec(nAvg, Number.isInteger(nAvg) ? 0 : 1)}</b> · ${fmtNum(nLot)} lot<br>Saran SL ${fmtNum(sg.sl)}, target ${fmtNum(sg.tp)}. Rugi di SL ±Rp ${fmtNum(sg.loss)} (${fmtDec(sg.lossPct, 2)}% modal).${sg.notes.map(n => "<br>" + esc(n)).join("")}`;
+    };
+    g("h").addEventListener("input", calc); g("l").addEventListener("input", calc);
+    g("sl").addEventListener("input", () => dSL = true); g("tp").addEventListener("input", () => dTP = true);
+    g("no").addEventListener("click", () => renderJournal());
+    g("ok").addEventListener("click", () => {
+      const h = +g("h").value, l = +g("l").value, sl = +g("sl").value, e = Math.round(nAvg * 100) / 100;
+      if (!(h > 0 && l > 0 && nLot > 0)) { alert("Isi harga beli dan lot."); return; }
+      if (!(sl > 0) || sl >= e) { alert("Stop loss harus di bawah rata-rata entry baru (" + e + ")."); return; }
+      const arr = jrLoad(), it = arr.find(x => x.id === j0.id);
+      it.tr = base.concat([{ h, l, d: ymd(new Date()) }]); it.entry = e; it.lot = nLot; it.sl = sl; it.tp = +g("tp").value || null;
+      jrSave(arr); renderJournal();
+    });
+    calc();
+  }));
   $("j-list").querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => {
     const td = b.closest("td"), j = jrLoad().find(x => x.id === +b.dataset.close), cur = DATA.find(d => d.t === j.t);
     td.innerHTML = `<input type="number" class="j-exit" value="${cur ? cur.p : j.entry}" aria-label="Harga keluar"> <button class="icon-btn" type="button">OK</button>`;
@@ -4197,8 +4291,8 @@ function renderJournal() {
   }));
 }
 $("j-export").addEventListener("click", () => {
-  const a = jrLoad(), head = ["tanggal", "saham", "setup", "timeframe", "entry", "stop_loss", "target", "lot", "harga_keluar", "tanggal_keluar", "R", "catatan"];
-  const lines = [head.join(",")].concat(a.map(j => [j.tgl, j.t, j.setup, j.tf, j.entry, j.sl, j.tp ?? "", j.lot, j.exit ?? "", j.tglExit ?? "", j.exit != null ? rOf(j, j.exit).toFixed(2) : "", `"${(j.note || "").replace(/"/g, '""')}"`].join(",")));
+  const a = jrLoad(), head = ["tanggal", "saham", "setup", "timeframe", "entry", "stop_loss", "target", "lot", "harga_keluar", "tanggal_keluar", "R", "catatan", "rincian_pembelian"];
+  const lines = [head.join(",")].concat(a.map(j => [j.tgl, j.t, j.setup, j.tf, j.entry, j.sl, j.tp ?? "", j.lot, j.exit ?? "", j.tglExit ?? "", j.exit != null ? rOf(j, j.exit).toFixed(2) : "", `"${(j.note || "").replace(/"/g, '""')}"`, `"${(j.tr || []).map(x => x.h + " x " + x.l).join("; ")}"`].join(",")));
   const blob = new Blob([lines.join("\n")], { type: "text/csv" }), url = URL.createObjectURL(blob), el = document.createElement("a");
   el.href = url; el.download = `jurnal_trading_${ymd(new Date())}.csv`; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
