@@ -108,15 +108,15 @@
   "MMIX"
  ],
  "2026-10-09": [
-  "SMIL",
-  "MMIX",
-  "AADI",
-  "AUTO",
-  "BDMN",
   "MBSS",
-  "MEJA",
+  "SMIL",
   "TEBE",
-  "VICI",
+  "BDMN",
+  "MEJA",
+  "SEMA",
+  "BSML",
+  "PKPK",
+  "RSCH",
   "SGER"
  ]
 }
