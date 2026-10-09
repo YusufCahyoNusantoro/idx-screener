@@ -1,16 +1,4 @@
 {
- "2026-09-27": [
-  "UVCR",
-  "KETR",
-  "TMPO",
-  "TUGU",
-  "MMIX",
-  "AYAM",
-  "NASI",
-  "BNGA",
-  "JARR",
-  "AUTO"
- ],
  "2026-09-28": [
   "UVCR",
   "RSCH",
@@ -118,5 +106,17 @@
   "ULTJ",
   "ASGR",
   "MMIX"
+ ],
+ "2026-10-09": [
+  "SMIL",
+  "MMIX",
+  "AADI",
+  "AUTO",
+  "BDMN",
+  "MBSS",
+  "MEJA",
+  "TEBE",
+  "VICI",
+  "SGER"
  ]
 }
