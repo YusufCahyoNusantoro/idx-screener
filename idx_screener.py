@@ -1841,6 +1841,9 @@ TEMPLATE = r'''<!DOCTYPE html>
   .dw-colors input[type=color] { width:26px; height:24px; border:1px solid var(--line); border-radius:6px; padding:0; background:none; cursor:pointer; }
   .dw-small { padding:5px 10px; font-size:0.78rem; }
   .dw-small.on { border-color:var(--accent); color:var(--accent); }
+  .dw-hint-ov { position:absolute; left:10px; top:34px; z-index:3; max-width:min(560px, 80%); }
+  .dw-hint-ov:empty { display:none; }
+  .dw-hint-ov .dw-hint { margin:0; box-shadow:0 4px 14px rgba(0,0,0,.25); }
   .dw-hint { margin-top:6px; font-size:0.82rem; color:var(--ink2); background:var(--accent-soft); border-radius:8px; padding:6px 10px; display:inline-block; }
   .dw-sel { margin-top:6px; font-size:0.84rem; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
   .dw-del { color:var(--down); }
@@ -2366,10 +2369,10 @@ TEMPLATE = r'''<!DOCTYPE html>
     <details class="guide-item">
       <summary>MA200, RSI, MACD, dan pasar global</summary>
       <div class="guide-body">
-        <p><b>MA20/50/200</b> (lapisan di chart): rata-rata harga 20, 50, dan 200 candle. Harga di atas MA200 menandakan tren jangka panjang naik. MA200 butuh 200 candle sebelumnya, jadi di versi online dihitung dari data tambahan; di timeframe dengan data pendek (misalnya 4H atau bulanan) MA200 bisa belum tersedia.</p>
+        <p><b>VWMA 20/50/100</b> (lapisan di chart): rata-rata harga yang ditimbang dengan volume (hari bertransaksi besar lebih berpengaruh). Hijau = VWMA20, kuning = VWMA50, merah = VWMA100. VWMA100 butuh 100 candle sebelumnya, jadi di timeframe dengan data pendek bisa belum tersedia. Untuk IHSG yang data volumenya kadang kosong, dipakai rata-rata biasa. Perhitungan analisa (skor Trend, badge Uptrend, Checklist, Kondisi, rencana ATR) tetap memakai MA biasa 20/50/200.</p>
         <p><b>Geser &amp; zoom skala harga</b>: klik-tahan lalu geser chart ke atas/bawah untuk melihat harga yang lebih tinggi atau rendah; tarik angka di skala harga (kanan) ke atas/bawah atau putar roda mouse di sana (atau Shift + roda mouse) untuk merenggangkan/merapatkan; atau pakai tombol <b>Harga ▲ ▼ ⇕+ ⇕−</b>. <b>Auto</b> (atau ⟲) mengembalikan skala harga otomatis mengikuti candle.</p>
         <p><b>Area prediksi</b>: di kanan candle terakhir ada ruang kosong (awalnya 8 candle, bisa sampai 60). Klik <b>⇥ Area prediksi</b>, tombol ▶, atau geser chart ke kiri untuk memperluasnya, lalu gambar perkiraan arah harga dengan garis, catatan, atau Elliott Wave. Tanggal di area ini adalah perkiraan (hari kerja berikutnya; intraday mengikuti jam bursa). Gambar ditambatkan ke tanggal dan harga, jadi saat candle baru muncul kamu bisa membandingkan prediksi dengan harga sebenarnya.</p>
-        <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Gelombang digambar tanpa label; kalau perlu, label bisa ditambahkan sendiri lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya: tarik bulatan pegangan untuk menggeser satu titik, tarik garisnya untuk memindahkan seluruh gambar, atau klik dua kali untuk mengubah catatan. Untuk menghapus, pilih gambarnya lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
+        <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), <b>Fibonacci</b> (klik titik awal lalu titik akhir, misalnya swing low lalu swing high; menampilkan level 0 sampai 1 beserta harganya, zona 0,618–0,786, dan target 1,272 serta 1,618), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Gelombang digambar tanpa label; kalau perlu, label bisa ditambahkan sendiri lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya: tarik bulatan pegangan untuk menggeser satu titik, tarik garisnya untuk memindahkan seluruh gambar, atau klik dua kali untuk mengubah catatan. Untuk menghapus, pilih gambarnya lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
         <p><b>Zoom &amp; geser chart</b>: putar roda mouse di atas chart untuk zoom in/out (berpusat di posisi kursor), klik-tahan lalu geser untuk melihat candle sebelumnya, atau pakai tombol − + ◀ ▶ ⟲ di atas chart. Di HP, cubit dua jari untuk zoom. Skala harga, volume, RSI, dan MACD menyesuaikan dengan candle yang terlihat. Timeframe selain Daily menyimpan sampai 220 candle, jadi bisa di-zoom out lebih jauh.</p>
         <p><b>Volume profile rentang</b> (tombol di atas chart): klik tombolnya, lalu klik-geser di chart dari candle awal ke candle akhir. Histogram volume khusus rentang itu muncul beserta <b>POC</b> (harga paling ramai), <b>VAH</b> dan <b>VAL</b> (batas atas dan bawah value area, tempat 70% volume terjadi). "Pakai rentang dorongan" langsung memilih dorongan naik terakhir yang dipakai konfluensi. Berfungsi di semua timeframe; di HP cukup sentuh lalu geser.</p>
         <p><b>RSI 14</b> (panel di bawah volume): kekuatan kenaikan 0–100. Di atas 70 = sudah panas, di bawah 30 = jenuh jual. <b>MACD 12,26,9</b>: garis biru (MACD) memotong ke atas garis oranye (sinyal) sering dianggap tanda momentum naik; batang hijau/merah adalah selisih keduanya. Nilai keduanya ikut tampil saat kursor di chart.</p>
@@ -3231,13 +3234,21 @@ function indRSI(c, n = 14) {
     else { g = (g * (n - 1) + up) / n; l = (l * (n - 1) + dn) / n; o[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l); } }
   return o;
 }
-function indicators(closes, nb) {
+function indVWMA(c, v, n) {
+  const o = new Array(c.length).fill(null); if (!v || !v.some(x => x > 0)) return indSMA(c, n);   // tanpa volume (mis. IHSG): rata-rata biasa
+  let sv = 0, s = 0;
+  for (let i = 0; i < c.length; i++) { const vi = v[i] || 0; sv += c[i] * vi; s += vi; if (i >= n) { const vj = v[i - n] || 0; sv -= c[i - n] * vj; s -= vj; }
+    if (i >= n - 1) o[i] = s > 0 ? sv / s : null; }
+  return o;
+}
+function indicators(closes, nb, vols) {
   const e12 = indEMA(closes, 12), e26 = indEMA(closes, 26);
   const macd = closes.map((_, i) => e12[i] != null && e26[i] != null ? e12[i] - e26[i] : null);
   const firstM = macd.findIndex(v => v != null), sig = new Array(closes.length).fill(null);
   if (firstM >= 0) { const e = indEMA(macd.slice(firstM), 9); e.forEach((v, i) => sig[firstM + i] = v); }
   const cut = a => a.slice(-nb);
   return { ma20: cut(indSMA(closes, 20)), ma50: cut(indSMA(closes, 50)), ma200: cut(indSMA(closes, 200)), rsi: cut(indRSI(closes)),
+    vw20: cut(indVWMA(closes, vols, 20)), vw50: cut(indVWMA(closes, vols, 50)), vw100: cut(indVWMA(closes, vols, 100)),
     macd: cut(macd), sig: cut(sig), hist: cut(macd.map((v, i) => v != null && sig[i] != null ? v - sig[i] : null)) };
 }
 
@@ -3302,8 +3313,8 @@ function renderMakro() {
 
 /* ---------- alat gambar: garis, horizontal, catatan, Elliott Wave ---------- */
 const DRAW_KEY = "idxs:draw", DRAW_COLORS = ["#F59E0B", "#3B82F6", "#10B981", "#EF4444", "#A855F7", "#EC4899", "#14B8A6", "#E5E7EB"];
-const TOOL_PTS = { line: 2, hline: 1, text: 1, ew: Infinity };
-const TOOL_NAME = { line: "Garis tren", hline: "Garis horizontal", text: "Catatan", ew: "Elliott Wave", ew5: "Elliott 1–5", ew3: "Elliott A–B–C" };
+const TOOL_PTS = { line: 2, hline: 1, text: 1, fib: 2, ew: Infinity };
+const TOOL_NAME = { fib: "Fibonacci", line: "Garis tren", hline: "Garis horizontal", text: "Catatan", ew: "Elliott Wave", ew5: "Elliott 1–5", ew3: "Elliott A–B–C" };
 const EW_SEQ = ["1", "2", "3", "4", "5", "A", "B", "C"];
 function ewLabels(d) {             // label tiap titik; titik pertama (awal) tanpa label
   if (d.type === "ew5") return ["", "1", "2", "3", "4", "5"];
@@ -3311,7 +3322,9 @@ function ewLabels(d) {             // label tiap titik; titik pertama (awal) tan
   return d.pts.map((_, i) => i === 0 ? "" : (d.labels && d.labels[i - 1]) || "");      // tanpa label, kecuali diisi sendiri
 }
 const EW_STEP = { ew5: ["titik awal", "ujung gelombang 1", "ujung gelombang 2", "ujung gelombang 3", "ujung gelombang 4", "ujung gelombang 5"], ew3: ["titik awal", "ujung gelombang A", "ujung gelombang B", "ujung gelombang C"],
-  line: ["titik pertama", "titik kedua"], hline: ["level harga"], text: ["posisi catatan"] };
+  line: ["titik pertama", "titik kedua"], hline: ["level harga"], text: ["posisi catatan"],
+  fib: ["titik awal (mis. swing low)", "titik akhir (mis. swing high)"] };
+const FIB_LV = [[0, "0"], [0.236, "0,236"], [0.382, "0,382"], [0.5, "0,5"], [0.618, "0,618"], [0.705, "0,705"], [0.786, "0,786"], [1, "1"], [-0.272, "1,272"], [-0.618, "1,618"]];
 function ewStep(n) { return n === 0 ? "titik awal" : `titik ke-${n + 1}`; }
 let drawTool = null, drawPending = [], drawSel = null, curChartR = null, dwDrag = null, dwRaf = null, dwLastClick = null;
 function editNote(r, id) { const list = drawList(r), d = list.find(x => x.id === id); if (!d) return;
@@ -3431,6 +3444,20 @@ function drawLayer(r, S, x, y, L, iw, fp) {
       const [a, b] = pts, path = `M${a[0]},${a[1]} L${b[0]},${b[1]}`;
       s += `<path d="${path}" stroke="${col}" stroke-width="${sw}" fill="none"${dash}/>` + hit(path);
       if (d.note) s += lab(b[0] + 6, b[1] - 6, d.note, col);
+    } else if (d.type === "fib") {
+      const [a, b] = pts, rg = b[2] - a[2], xs = Math.min(a[0], b[0]), xe = L + iw;
+      const lv = FIB_LV.map(([f, nm]) => ({ f, nm, p: b[2] - f * rg })).map(o => ({ ...o, y: y(o.p) }));
+      const yz1 = y(b[2] - 0.618 * rg), yz2 = y(b[2] - 0.786 * rg);
+      s += `<rect x="${xs.toFixed(1)}" y="${Math.min(yz1, yz2).toFixed(1)}" width="${(xe - xs).toFixed(1)}" height="${Math.abs(yz2 - yz1).toFixed(1)}" fill="${col}" opacity="0.08" pointer-events="none"/>`;
+      lv.forEach(o => {
+        const ext = o.f < 0, key = o.f === 0 || o.f === 1;
+        s += `<line x1="${xs.toFixed(1)}" x2="${xe}" y1="${o.y.toFixed(1)}" y2="${o.y.toFixed(1)}" stroke="${col}" stroke-width="${key ? sw : 1}" stroke-dasharray="${key ? "" : ext ? "2 4" : "5 3"}" opacity="${ext ? 0.65 : 0.9}"${sel ? "" : ""}/>`;
+        s += lab(xs + 4, o.y - 3, `${o.nm} · ${fp(o.p)}`, col);
+      });
+      const path = `M${a[0]},${a[1]} L${b[0]},${b[1]}`;
+      s += `<path d="${path}" stroke="${col}" stroke-width="1" stroke-dasharray="3 3" fill="none" opacity="0.8"/>` + hit(path);
+      lv.forEach(o => s += hit(`M${xs},${o.y} L${xe},${o.y}`));
+      if (d.note) s += lab(b[0] + 8, b[1] - 8, d.note, col);
     } else if (d.type === "text") {
       const [a] = pts;
       s += `<circle cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="3.5" fill="${col}"/>` + hit(`M${a[0] - 4},${a[1]} L${a[0] + 60},${a[1]}`);
@@ -3474,19 +3501,25 @@ function drawControls(r) {
   const list = drawList(r), sel = list.find(d => d.id === drawSel);
   const need = drawTool ? TOOL_PTS[drawTool] : 0, step = drawTool === "ew" ? ewStep(drawPending.length) : drawTool ? EW_STEP[drawTool][drawPending.length] : "";
   box.innerHTML = `<div class="dw-row">
-      <span class="dw-tools" role="group" aria-label="Alat gambar">${Object.keys(TOOL_PTS).map(k => `<button type="button" data-tool="${k}" class="${drawTool === k ? "on" : ""}">${{ line: "╱ Garis", hline: "― Horizontal", text: "T Catatan", ew: "〰 Elliott Wave" }[k]}</button>`).join("")}</span>
+      <span class="dw-tools" role="group" aria-label="Alat gambar">${Object.keys(TOOL_PTS).map(k => `<button type="button" data-tool="${k}" class="${drawTool === k ? "on" : ""}">${{ line: "╱ Garis", hline: "― Horizontal", text: "T Catatan", fib: "𝐅 Fibonacci", ew: "〰 Elliott Wave" }[k]}</button>`).join("")}</span>
       <span class="dw-colors">${DRAW_COLORS.map(c => `<button type="button" class="sw${(sel ? sel.color : drawStyle.color) === c ? " on" : ""}" data-col="${c}" style="background:${c}" aria-label="Warna ${c}"></button>`).join("")}<input type="color" id="dw-color" value="${sel ? sel.color : drawStyle.color}" title="Warna lain"></span>
       <button type="button" class="icon-btn dw-small" id="dw-w" title="Ketebalan garis">${(sel ? sel.w : drawStyle.w) >= 3 ? "Tebal" : "Tipis"}</button>
       <button type="button" class="icon-btn dw-small${drawStyle.magnet ? " on" : ""}" id="dw-mag" title="Titik menempel ke harga tertinggi/terendah candle">Magnet ${drawStyle.magnet ? "ON" : "OFF"}</button>
       ${list.length ? `<button type="button" class="icon-btn dw-small" id="dw-clear">Hapus semua (${list.length})</button>` : ""}
     </div>
-    ${drawTool === "ew" ? `<div class="dw-hint">Klik di chart: <b>${esc(step)}</b> (sudah ${drawPending.length} titik). Klik dua kali, tekan Enter, atau
-        <button type="button" class="icon-btn dw-small" id="dw-done" ${drawPending.length < 2 ? "disabled" : ""}>Selesai</button> untuk mengakhiri. Backspace membatalkan titik terakhir, Esc membatalkan semuanya.</div>`
-      : drawTool ? `<div class="dw-hint">Klik di chart: <b>${esc(step)}</b> (titik ${drawPending.length + 1} dari ${need}). Tekan Esc untuk batal.</div>` : ""}
     <!--SEL-->${sel ? `<div class="dw-sel"><b style="color:${sel.color}">${TOOL_NAME[sel.type]}</b>${sel.note ? ` · ${esc(sel.note)}` : ""}
         <span class="muted" style="font-size:0.76rem">Tarik bulatan untuk menggeser titik, tarik garisnya untuk memindahkan semuanya, klik dua kali untuk ubah catatan.</span>
         <button type="button" class="icon-btn dw-small" id="dw-note">✎ Catatan</button>${sel.type === "ew" ? '<button type="button" class="icon-btn dw-small" id="dw-lab">✎ Label</button>' : ""}<button type="button" class="icon-btn dw-small dw-del" id="dw-del">Hapus</button>
         ${sel.type === "ew" || sel.type === "ew5" || sel.type === "ew3" ? `<ul class="ew-check">${ewCheck(sel).map(t => `<li class="${t.startsWith("✗") ? "neg" : t.startsWith("✓") ? "pos" : ""}">${esc(t)}</li>`).join("")}</ul>` : ""}</div>` : ""}`;
+  // petunjuk menggambar: melayang di dalam chart supaya posisi chart tidak bergeser saat titik ditambahkan
+  const wrap = document.querySelector("#smc-box .xh-wrap");
+  if (wrap) {
+    let ov = wrap.querySelector(".dw-hint-ov"); if (!ov) { ov = document.createElement("div"); ov.className = "dw-hint-ov"; wrap.appendChild(ov); }
+    ov.innerHTML = drawTool === "ew"
+      ? `<div class="dw-hint">Klik di chart: <b>${esc(step)}</b> (sudah ${drawPending.length} titik). Klik dua kali, tekan Enter, atau
+        <button type="button" class="icon-btn dw-small" id="dw-done" ${drawPending.length < 2 ? "disabled" : ""}>Selesai</button> untuk mengakhiri. Backspace membatalkan titik terakhir, Esc membatalkan semuanya.</div>`
+      : drawTool ? `<div class="dw-hint">Klik di chart: <b>${esc(step)}</b> (titik ${drawPending.length + 1} dari ${need}). Tekan Esc untuk batal.</div>` : "";
+  }
   const selBox = $("draw-sel");
   if (selBox) { const i = box.innerHTML.indexOf("<!--SEL-->"); selBox.innerHTML = box.innerHTML.slice(i); box.innerHTML = box.innerHTML.slice(0, i); }
   box.querySelectorAll("[data-tool]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.tool; drawTool = drawTool === k ? null : k; drawPending = []; drawSel = null; frvpMode = false; drawSmc(r); }));
@@ -3582,14 +3615,14 @@ function frvpCalc(S, i0, i1, NB = 30) {
 
 /* ---------- SMC chart ---------- */
 const SMC_KEY = "idxs:smc";
-const SMC_LAYERS = [["fibo", "Fibo & konfluensi"], ["vp", "Volume profile"], ["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "MA20/50/200"], ["rsi", "RSI"], ["macd", "MACD"], ["plan", "Entry/SL/TP"]];
+const SMC_LAYERS = [["fibo", "Fibo & konfluensi"], ["vp", "Volume profile"], ["pd", "Premium/discount"], ["st", "Struktur BOS/CHoCH"], ["ob", "Order block"], ["fvg", "FVG"], ["eq", "Likuiditas EQH/EQL"], ["moon", "Fase bulan"], ["ma", "VWMA 20/50/100"], ["rsi", "RSI"], ["macd", "MACD"], ["plan", "Entry/SL/TP"]];
 function smcLayers() { return Object.assign({ fibo: true, vp: true, pd: true, st: true, ob: true, fvg: true, eq: true, moon: true, ma: false, rsi: true, macd: true, plan: false }, ls.get(SMC_KEY, {})); }
 
 function smcChart(r, lay) {
   const S = r.smc, bars = S.b, nb = bars.length, p = r.plan;
   const full = viewMode === "full";
   const W = full ? 1440 : 720, L = 8, R = full ? 104 : 92, T = 10, B = 22, iw = W - L - R;
-  const ind = S.ind || (S.ind = indicators(bars.map(b => b[3]), nb));
+  const ind = S.ind || (S.ind = indicators(bars.map(b => b[3]), nb, S.v));
   const ih = full ? 500 : 290, GAP = 8, VH = S.v ? (full ? 80 : 54) : 0, PH = full ? 86 : 58, volTop = T + ih + GAP;
   const panes = [];
   if (VH) panes.push({ k: "vol", y0: volTop, h: VH });
@@ -3674,9 +3707,11 @@ function smcChart(r, lay) {
   const path = (arr, col) => { const pts = (arr || []).map((v, i) => v ? `${x(i).toFixed(1)},${y(v).toFixed(1)}` : null).filter(Boolean); return pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="1.5" opacity="0.9"/>` : ""; };
   const smaArr = n => bars.map((b, i) => i < n - 1 ? null : bars.slice(i - n + 1, i + 1).reduce((t, v) => t + v[3], 0) / n);
   if (lay.ma) {
-    s += path(ind.ma20 || smaArr(20), "var(--blue)") + path(ind.ma50 || smaArr(50), "var(--orange)") + (ind.ma200 ? path(ind.ma200, "#A855F7") : "");
-    s += `<text x="${L + iw - 6}" y="${T + 14}" font-size="10" font-weight="700" text-anchor="end"><tspan fill="var(--blue)">MA20</tspan> <tspan fill="var(--orange)">MA50</tspan>${ind.ma200 && ind.ma200.some(v => v != null) ? ' <tspan fill="#A855F7">MA200</tspan>' : ' <tspan fill="var(--muted)">MA200 butuh data lebih panjang</tspan>'}</text>`;
+    const VWC = ["#22C55E", "#EAB308", "#EF4444"], ok = a => a && a.some(v => v != null);
+    s += (ok(ind.vw20) ? path(ind.vw20, VWC[0]) : "") + (ok(ind.vw50) ? path(ind.vw50, VWC[1]) : "") + (ok(ind.vw100) ? path(ind.vw100, VWC[2]) : "");
+    s += `<text x="${L + iw - 6}" y="${T + 14}" font-size="10" font-weight="700" text-anchor="end"><tspan fill="${VWC[0]}">VWMA20</tspan> <tspan fill="${VWC[1]}">VWMA50</tspan> ${ok(ind.vw100) ? `<tspan fill="${VWC[2]}">VWMA100</tspan>` : '<tspan fill="var(--muted)">VWMA100 butuh data lebih panjang</tspan>'}</text>`;
   }
+
   bars.forEach((b, i) => {
     const [op, hi, lo, cl] = b, col = cl >= op ? up : dn, top = Math.min(y(op), y(cl));
     s += `<line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${y(hi).toFixed(1)}" y2="${y(lo).toFixed(1)}" stroke="${col}" stroke-width="0.9"/><rect x="${(x(i) - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0.8, Math.abs(y(cl) - y(op))).toFixed(1)}" fill="${col}"/>`;
@@ -3830,7 +3865,7 @@ function attachCrosshair(r, box) {
       ${chg == null ? "" : `<span class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "+" : ""}${fmtDec(chg, 2)}%</span>`}${vol}
       ${ind.rsi && ind.rsi[i] != null ? ` <span class="xl-k">RSI</span> <span style="color:#A855F7">${fmtDec(ind.rsi[i], 1)}</span>` : ""}
       ${ind.macd && ind.macd[i] != null ? ` <span class="xl-k">MACD</span> <span style="color:var(--blue)">${fmtDec(ind.macd[i], 2)}</span>` : ""}
-      ${ind.ma200 && ind.ma200[i] != null ? ` <span class="xl-k">MA200</span> <span style="color:#A855F7">${fp(ind.ma200[i])}</span>` : ""}`;
+      ${ind.vw20 && ind.vw20[i] != null ? ` <span class="xl-k">VWMA</span> <span style="color:#22C55E">${fp(ind.vw20[i])}</span>` : ""}${ind.vw50 && ind.vw50[i] != null ? ` <span style="color:#EAB308">${fp(ind.vw50[i])}</span>` : ""}${ind.vw100 && ind.vw100[i] != null ? ` <span style="color:#EF4444">${fp(ind.vw100[i])}</span>` : ""}`;
   };
   legend(Math.min(v0 + nbv - 1, S.b.length - 1));
   const toSvg = e => { const rc = svg.getBoundingClientRect(); const pt = e.touches ? e.touches[0] : e; return [(pt.clientX - rc.left) * W / rc.width, (pt.clientY - rc.top) * H / rc.height]; };
@@ -3985,6 +4020,14 @@ function frvpControls(r) {
   const cl = $("frvp-clear"); if (cl) cl.addEventListener("click", () => { frvpSel.delete(frvpKey(r)); frvpMode = false; drawSmc(r); });
 }
 function drawSmc(r) {
+  // simpan posisi gulir: menggambar ulang chart tidak boleh membuat halaman meloncat ke atas
+  const sf = $("full").scrollTop, sd = $("drawer").scrollTop, sw = window.scrollY;
+  drawSmcInner(r);
+  if ($("full").scrollTop !== sf) $("full").scrollTop = sf;
+  if ($("drawer").scrollTop !== sd) $("drawer").scrollTop = sd;
+  if (window.scrollY !== sw) window.scrollTo(0, sw);
+}
+function drawSmcInner(r) {
   const lay = smcLayers();
   $("smc-box").innerHTML = `<div class="xh-wrap"><div class="xh-legend" aria-live="off"></div>${smcChart(r, lay)}</div>`;
   attachCrosshair(r, $("smc-box"));
@@ -4010,7 +4053,7 @@ function renderSmc(r) {
       const d = raw && raw["1d"]; if (!d || !r.smc) return;
       // Daily memakai hasil SMC dari server (220 candle, sama dengan yang dipakai Kondisi & Rencana);
       // data yang lebih panjang hanya dipakai supaya MA200, RSI, dan MACD terhitung penuh
-      drawSmc({ ...r, smc: { ...r.smc, ind: indicators(d.b.map(b => b[3]), r.smc.b.length) } });
+      drawSmc({ ...r, smc: { ...r.smc, ind: indicators(d.b.map(b => b[3]), r.smc.b.length, d.v) } });
     }).catch(() => {});
   }
   else {
@@ -4018,7 +4061,7 @@ function renderSmc(r) {
     loadTF(r.t).then(raw => {
       if (curTF !== tf) return;
       const S = raw && raw[tf] ? buildTF(raw[tf], tf) : null;
-      if (S) S.ind = indicators(raw[tf].b.map(b => b[3]), S.b.length);
+      if (S) S.ind = indicators(raw[tf].b.map(b => b[3]), S.b.length, raw[tf].v);
       if (!S) { $("smc-box").innerHTML = '<div class="tf-msg">Data ' + esc(TF_NAME[tf]) + " belum cukup untuk saham ini.</div>"; return; }
       drawSmc({ ...r, smc: S, plan: tf === "1d" ? r.plan : r.plan });
     }).catch(() => {
@@ -4240,7 +4283,7 @@ function renderJournal() {
   const rows = a.slice().sort((x, y) => ((x.exit != null) - (y.exit != null)) || y.tgl.localeCompare(x.tgl));
   $("j-list").innerHTML = rows.length ? `<div class="table-wrap" style="max-height:none"><table class="j-tbl"><thead><tr><th>Tanggal</th><th>Saham</th><th>Setup</th><th class="num">Entry</th><th class="num">SL</th><th class="num">Target</th><th class="num">Lot</th><th class="num">Harga kini / keluar</th><th class="num">R</th><th>Aksi</th></tr></thead><tbody>${rows.map(j => {
     const cur = DATA.find(d => d.t === j.t), px = j.exit != null ? j.exit : cur ? cur.p : null, r = px != null ? rOf(j, px) : null;
-    return `<tr><td>${esc(j.tgl)}</td><td><b>${esc(j.t)}</b><div class="muted" style="font-size:0.72rem">${esc(j.tf)}${j.note ? " · " + esc(j.note) : ""}</div></td><td>${esc(j.setup)}</td><td class="num">${Number.isInteger(j.entry) ? fmtNum(j.entry) : fmtDec(j.entry, 1)}${j.tr ? `<div class="muted" style="font-size:0.72rem" title="${esc(j.tr.map(x => x.h + " x " + x.l + " lot").join("; "))}">rata-rata ${j.tr.length} pembelian</div>` : ""}</td><td class="num">${fmtNum(j.sl)}</td><td class="num">${j.tp ? fmtNum(j.tp) : "-"}</td><td class="num">${fmtNum(j.lot)}</td>
+    return `<tr><td>${esc(j.tgl)}</td><td><b>${esc(j.t)}</b><div class="muted" style="font-size:0.72rem">${esc(j.tf)}${j.note ? " · " + esc(j.note) : ""}</div></td><td>${esc(j.setup)}</td><td class="num">${fmtNum(j.entry)}</td><td class="num">${fmtNum(j.sl)}</td><td class="num">${j.tp ? fmtNum(j.tp) : "-"}</td><td class="num">${fmtNum(j.lot)}</td>
       <td class="num">${px != null ? fmtNum(px) : "-"}${j.exit == null ? '<div class="muted" style="font-size:0.72rem">masih terbuka</div>' : ""}${j.exit == null && cur && cur.p <= j.sl ? '<div class="neg" style="font-size:0.72rem">sudah di bawah SL</div>' : ""}${j.exit == null && cur && j.tp && cur.p >= j.tp ? '<div class="pos" style="font-size:0.72rem">sudah capai target</div>' : ""}</td>
       <td class="num ${r == null ? "" : r >= 0 ? "pos" : "neg"}">${r == null ? "-" : fmtDec(r, 2) + "R"}</td>
       <td class="j-act" data-id="${j.id}">${j.exit == null ? `<button class="icon-btn" data-add="${j.id}" type="button" title="Average up/down: tambah pembelian di trade ini">+ Beli</button> <button class="icon-btn" data-close="${j.id}" type="button">Tutup</button>` : ""} <button class="icon-btn" data-del="${j.id}" type="button">Hapus</button></td></tr>`;
@@ -4780,7 +4823,7 @@ let cpopT = null, cpopPinned = false, cpopTimer = null, cpopN = ls.get("idxs:cpo
 function cpopSvg(r, n) {
   const S = r.smc; if (!S || !S.b) return '<p class="muted">Data chart belum tersedia.</p>';
   const all = S.b, b = all.slice(-n), off = all.length - b.length, W = 520, H = 250, L = 6, R = 62, T = 8, B = 20, iw = W - L - R, ih = H - T - B;
-  const ma = all.map((_, i) => i >= 19 ? all.slice(i - 19, i + 1).reduce((s, x) => s + x[3], 0) / 20 : null).slice(off);
+  const ma = indVWMA(all.map(x => x[3]), S.v, 20).slice(off);          // VWMA20
   let max = Math.max(...b.map(x => x[1])), min = Math.min(...b.map(x => x[2])); const pad = (max - min) * 0.05 || 1; max += pad; min -= pad;
   const sw = iw / b.length, bw = Math.max(1.5, sw * 0.62), x = i => L + i * sw + sw / 2, y = v => T + (max - v) / (max - min) * ih;
   const raw = (max - min) / 5, mag = Math.pow(10, Math.floor(Math.log10(raw || 1))), st = [1, 2, 2.5, 5, 10].map(k => k * mag).find(k => k >= raw) || mag * 10;
@@ -4789,7 +4832,7 @@ function cpopSvg(r, n) {
   b.forEach((c, i) => { const [o, hi, lo, cl] = c, col = cl >= o ? "var(--up)" : "var(--down)", top = Math.min(y(o), y(cl)), bh = Math.max(1, Math.abs(y(cl) - y(o)));
     s += `<line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${y(hi).toFixed(1)}" y2="${y(lo).toFixed(1)}" stroke="${col}"/><rect x="${(x(i) - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${col}"/>`; });
   const pts = ma.map((v, i) => v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean);
-  if (pts.length > 1) s += `<polyline points="${pts.join(" ")}" fill="none" stroke="var(--blue)" stroke-width="1.4" opacity="0.9"/>`;
+  if (pts.length > 1) s += `<polyline points="${pts.join(" ")}" fill="none" stroke="#22C55E" stroke-width="1.4" opacity="0.9"/>`;
   const last = b[b.length - 1][3], col = last >= b[b.length - 1][0] ? "var(--up)" : "var(--down)";
   s += `<line x1="${L}" x2="${L + iw}" y1="${y(last).toFixed(1)}" y2="${y(last).toFixed(1)}" stroke="${col}" stroke-dasharray="2 3"/>`;
   s += `<rect x="${L + iw + 2}" y="${(y(last) - 8).toFixed(1)}" width="${R - 4}" height="16" rx="3" fill="${col}"/><text x="${L + iw + 6}" y="${(y(last) + 4).toFixed(1)}" font-size="10.5" font-weight="800" fill="#fff">${fmtNum(last)}</text>`;
@@ -4803,7 +4846,7 @@ function cpopRender() {
   box.innerHTML = `<div class="cpop-head"><div><b>${esc(r.t)}</b> <span class="muted">${esc(r.nm)}</span><div style="font-size:0.84rem">${fmtNum(r.p)} <span class="${r.chg >= 0 ? "pos" : "neg"}">${r.chg >= 0 ? "+" : ""}${fmtDec(r.chg, 2)}%</span>${r.kd ? ` <span class="kd ${r.kd.c}">${esc(r.kd.l)}</span>` : ""}</div></div>
       <div class="cpop-ctl"><div class="seg">${[30, 60, 120].map(k => `<button type="button" data-cn="${k}" class="${cpopN === k ? "on" : ""}">${k} hari</button>`).join("")}</div>${cpopPinned ? '<button type="button" class="icon-btn dw-small" id="cpop-x" aria-label="Tutup">✕</button>' : ""}</div></div>
     ${cpopSvg(r, n)}
-    <div class="cpop-foot"><span class="muted">${n} hari: <b class="${chgN >= 0 ? "pos" : "neg"}">${chgN == null ? "-" : (chgN >= 0 ? "+" : "") + fmtDec(chgN, 1) + "%"}</b> · tertinggi ${fmtNum(hi)} · terendah ${fmtNum(lo)} · <span style="color:var(--blue)">━</span> MA20</span>
+    <div class="cpop-foot"><span class="muted">${n} hari: <b class="${chgN >= 0 ? "pos" : "neg"}">${chgN == null ? "-" : (chgN >= 0 ? "+" : "") + fmtDec(chgN, 1) + "%"}</b> · tertinggi ${fmtNum(hi)} · terendah ${fmtNum(lo)} · <span style="color:#22C55E">━</span> VWMA20</span>
       <button type="button" class="icon-btn dw-small" id="cpop-open">Buka detail →</button></div>`;
   box.querySelectorAll("[data-cn]").forEach(bt => bt.addEventListener("click", () => { cpopN = +bt.dataset.cn; ls.set("idxs:cpopn", cpopN); cpopPinned = true; cpopRender(); }));
   const x = $("cpop-x"); if (x) x.addEventListener("click", cpopHide);
