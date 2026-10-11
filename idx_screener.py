@@ -2041,6 +2041,32 @@ TEMPLATE = r'''<!DOCTYPE html>
   .sy-btn.busy .sy-ic { animation:rfspin 1.1s linear infinite; display:inline-block; }
   .sy-steps { padding-left:18px; margin:0 0 8px; font-size:0.84rem; }
   @media (max-width:760px) { .sy-lab { display:none; } }
+  .pf-lock { max-width:420px; margin:40px auto; text-align:center; }
+  .pf-lock[hidden] { display:none; }
+  .pf-lock-ic { font-size:2.2rem; } .pf-lock h2 { margin:6px 0; }
+  .pf-lock .rf-row { justify-content:center; margin-top:10px; } .pf-lock input { max-width:220px; text-align:center; letter-spacing:.3em; font-size:1.1rem; }
+  .pf-sum { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:0; padding:0; overflow:hidden; margin-bottom:14px; }
+  .pf-sum > div { padding:16px 18px; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:4px; text-align:center; }
+  .pf-sum > div:last-child { border-right:0; }
+  .pf-sum small { color:var(--muted); font-size:0.8rem; } .pf-sum b { font-size:1.25rem; font-weight:800; }
+  .pf-grid { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:14px; align-items:start; }
+  .pf-bar { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin-bottom:10px; }
+  .pf-bar select { padding:7px 10px; border:1px solid var(--field-line); border-radius:999px; background:color-mix(in srgb, var(--up) 14%, var(--field-bg)); color:var(--up); font-weight:800; }
+  .pf-tbl td, .pf-tbl th { white-space:nowrap; }
+  .pf-go { cursor:pointer; } .pf-go:hover { color:var(--accent); }
+  .pf-menu-cell { position:relative; }
+  .pf-pop { position:absolute; right:0; top:100%; z-index:30; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 10px 26px rgba(0,0,0,.3); display:grid; min-width:180px; padding:4px; }
+  .pf-pop button { text-align:left; background:none; border:0; color:var(--ink); padding:8px 10px; border-radius:7px; cursor:pointer; font-weight:600; }
+  .pf-pop button:hover { background:var(--panel2); }
+  .pf-tabs { margin-bottom:12px; display:flex; } .pf-tabs button { flex:1; }
+  .pf-side { display:flex; margin-bottom:10px; } .pf-side button { flex:1; }
+  .pf-side button[data-side="beli"].on { background:var(--up); color:#fff; } .pf-side button[data-side="jual"].on { background:var(--down); color:#fff; }
+  .pf-f { display:grid; gap:4px; margin-bottom:8px; } .pf-f label { font-size:0.8rem; color:var(--muted); font-weight:700; }
+  .pf-f input, .pf-f select { padding:8px 10px; border:1px solid var(--field-line); border-radius:9px; background:var(--field-bg); color:var(--ink); width:100%; }
+  .pf-f2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .pf-sell { background:var(--down) !important; color:#fff !important; }
+  .pf-hstat { grid-template-columns:repeat(2, minmax(0,1fr)); margin-bottom:10px; }
+  @media (max-width:980px) { .pf-grid { grid-template-columns:1fr; } .pf-sum { grid-template-columns:repeat(2, minmax(0,1fr)); } .pf-sum > div { border-bottom:1px solid var(--line); } }
   .rf-btn { display:inline-flex; align-items:center; gap:6px; }
   .rf-ic { font-size:1.05rem; line-height:1; display:inline-block; }
   .rf-btn.busy { border-color:var(--accent); color:var(--accent); }
@@ -2126,7 +2152,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <nav class="tabs" aria-label="Halaman">
         <button class="tab-btn" type="button" data-view="screener">Screener</button>
         <button class="tab-btn" type="button" data-view="kalender">Kalender</button>
-        <button class="tab-btn" type="button" data-view="jurnal">Jurnal</button>
+        <button class="tab-btn" type="button" data-view="jurnal">Portofolio</button>
         <button class="tab-btn" type="button" data-view="panduan">Panduan</button>
       </nav>
       <button class="icon-btn rf-btn sy-btn" id="sy-btn" type="button" title="Sinkron watchlist & gambar chart ke semua perangkat" aria-label="Sinkron"><span class="sy-ic" aria-hidden="true">☁</span><span class="sy-lab">Sinkron</span></button>
@@ -2300,15 +2326,21 @@ TEMPLATE = r'''<!DOCTYPE html>
   </div>
 
   <div class="view" id="v-jurnal" hidden>
-  <section class="card" id="jurnal" aria-label="Jurnal trading">
-    <div class="cal-head"><h2>Jurnal trading</h2>
-      <div class="cal-opts"><button class="icon-btn" id="j-export" type="button">Unduh CSV</button></div></div>
-    <div class="plan-box j-stats" id="j-stats"></div>
-    <div id="j-setups" style="margin-top:12px"></div>
-    <div id="j-list" style="margin-top:12px"></div>
-    <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Jurnal tersimpan di browser ini saja, tidak ikut ke GitHub atau perangkat lain. Unduh CSV secara berkala sebagai cadangan. R = hasil dibagi risiko awal (entry − stop loss): +2R berarti untung 2 kali risiko.</p>
+  <section class="card pf-lock" id="pf-lock" aria-label="Portofolio terkunci">
+    <div class="pf-lock-in"><div class="pf-lock-ic">🔒</div><h2>Portofolio terkunci</h2><p class="muted">Masukkan password untuk membuka portofolio.</p>
+      <div class="rf-row"><input type="password" id="pf-pin" inputmode="numeric" autocomplete="current-password" placeholder="Password"><button type="button" class="icon-btn" id="pf-pin-ok">Buka</button></div>
+      <p class="neg" id="pf-pin-msg" style="min-height:1.2em;margin:8px 0 0;font-weight:700"></p></div>
   </section>
-
+  <div id="pf-main" hidden>
+    <section class="card pf-sum" id="pf-sum" aria-label="Ringkasan portofolio"></section>
+    <div class="pf-grid">
+      <section class="card" id="pf-left" aria-label="Posisi"><div class="pf-bar" id="pf-bar"></div><div id="pf-pos"></div>
+        <p class="muted" style="font-size:0.76rem;margin:10px 0 0">Harga terakhir mengikuti data aplikasi (tertunda ±10–15 menit, diperbarui saat update berjalan). P&amp;L sudah memperhitungkan biaya broker. Data tersimpan di browser ini dan ikut ☁ Sinkron kalau terhubung.</p></section>
+      <section class="card" id="pf-right" aria-label="Order dan riwayat">
+        <div class="seg pf-tabs"><button type="button" data-pt="order" class="on">Order</button><button type="button" data-pt="hist">Riwayat</button><button type="button" data-pt="set">Pengaturan</button></div>
+        <div id="pf-panel"></div></section>
+    </div>
+  </div>
   </div>
 
   <div class="view" id="v-panduan" hidden>
@@ -2373,7 +2405,7 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p><b>2. Tunggu harga ke area bagus.</b> Di chart SMC panel detail, cari order block bullish atau zona discount di bawah harga. Order block yang berada di area volume tinggi (lapisan Volume profile, dekat POC atau value area) biasanya lebih kuat.</p>
         <p><b>3. Konfirmasi di timeframe kecil.</b> Saat harga masuk area itu, tunggu CHoCH naik di 4 jam atau 1 jam (cek di Stockbit/TradingView). Kalau bisa, cek juga broker summary: apakah broker besar sedang akumulasi.</p>
         <p><b>4. Rencana dan ukuran posisi.</b> Di bagian Rencana, pilih "Berbasis struktur (order block)": entry di order block, stop loss sedikit di bawahnya, target di order block bearish berikutnya atau 2 kali risiko. Kalkulator lot menghitung jumlah lot dari risiko per transaksi.</p>
-        <p><b>5. Catat dan evaluasi.</b> Klik "Catat ke jurnal", lalu tutup trade dengan harga keluar. Setelah sekitar 30 trade, bagian Jurnal trading menunjukkan setup mana yang benar-benar menghasilkan untukmu.</p>
+        <p><b>5. Catat dan evaluasi.</b> Klik "Catat ke portofolio", lalu catat penjualannya di tab Portofolio (Order → Jual). Setelah sekitar 30 trade, bagian Jurnal trading menunjukkan setup mana yang benar-benar menghasilkan untukmu.</p>
         <p>Peringatan kuning muncul untuk saham dengan transaksi di bawah Rp 5 M/hari, karena di saham sepi struktur SMC mudah terbentuk oleh sedikit order besar.</p>
       </div>
     </details>
@@ -2442,6 +2474,13 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>Sinkron antar perangkat (☁ Sinkron)</summary>
       <div class="guide-body">
         <p>Tombol <b>☁ Sinkron</b> menyimpan semua watchlist dan gambar di chart ke <b>GitHub Gist rahasia</b> milikmu, supaya sama di laptop, HP, dan tablet. Sekali per perangkat, buat token GitHub (classic) yang hanya mencentang izin <b>gist</b>, lalu tempel di kotak Sinkron; token yang sama boleh dipakai di semua perangkatmu. Setelah terhubung, perubahan tersimpan otomatis sekitar 1–2 detik kemudian, dan perangkat lain mengambil versi terbaru saat aplikasi dibuka atau tab-nya kembali dilihat. Saat pertama terhubung, data di perangkat itu digabung dengan yang sudah ada di cloud.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Portofolio (terkunci password)</summary>
+      <div class="guide-body">
+        <p>Tab <b>Portofolio</b> dikunci password (bisa diganti di Portofolio → Pengaturan). Password ini kunci layar di browser, bukan enkripsi. Setelah dibuka, portofolio tetap terbuka sampai tab ditutup atau kamu klik <b>🔒 Kunci</b>.</p>
+        <p>Di atas: <b>Saldo kas</b>, <b>Invested</b>, jumlah posisi <b>Open</b>, <b>P&amp;L</b> (belum dan sudah terealisasi), dan <b>Total equity</b>. Kamu bisa punya beberapa portofolio (pilihan hijau di kiri atas tabel). Catat pembelian lewat panel <b>Order → Beli</b> atau tombol "Catat ke portofolio" di detail saham; membeli saham yang sudah dipegang otomatis menjadi average up/down. Penjualan dicatat lewat <b>Order → Jual</b> (bisa sebagian). Tombol <b>⋮</b> di tiap posisi: beli lagi, jual, ubah SL/TP, lihat chart, hapus. <b>Riwayat</b> berisi semua transaksi, P&amp;L terealisasi, win rate, dan rata-rata R, plus unduh CSV. Biaya broker (default 0,15% beli, 0,25% jual) bisa diubah di Pengaturan. Harga terakhir mengikuti data aplikasi, jadi bisa sedikit berbeda dari aplikasi sekuritasmu yang real-time.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -2611,7 +2650,7 @@ const STORE = "idxs:v2", WATCH = "idxs:watch", CALC = "idxs:calc", THEME = "idxs
 const $ = id => document.getElementById(id);
 const ls = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} if ((k === "idxs:wls" || k === "idxs:draw") && !window._syncApplying && window.syncMark) window.syncMark(); },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} if ((k === "idxs:wls" || k === "idxs:draw" || k === "idxs:jurnal" || k === "idxs:pf") && !window._syncApplying && window.syncMark) window.syncMark(); },
 };
 
 let page = 0, sortKey = "score", sortDir = -1, activePreset = "golden", openT = null;
@@ -4296,7 +4335,7 @@ function renderPlan(r0, r) {
       <div class="f"><label for="c-risk" title="Berapa persen modal yang siap kamu relakan hilang kalau harga menyentuh stop loss. Umumnya 1–2%.">Maks. rugi kalau kena stop loss (% modal)</label><input type="number" id="c-risk" min="0.1" max="100" step="0.1" value="${calc.risk}"></div>
     </div>
     <div class="calc-out" id="c-out"></div>
-    <div class="d-actions"><button class="icon-btn" id="j-add" type="button">Catat ke jurnal</button></div>
+    <div class="d-actions"><button class="icon-btn" id="j-add" type="button">Catat ke portofolio</button></div>
     <div id="j-form"></div>`;
   box.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => { ls.set(PLAN_KEY, b.dataset.mode); renderPlan(r0, r); }));
   let lot = 0;
@@ -4393,82 +4432,243 @@ function journalForm(r, p, lot, mode) {
     const e = Math.round(avg * 100) / 100;
     if (!(sl > 0) || sl >= e) { alert("Stop loss harus di bawah harga entry (rata-rata)."); return; }
     const a = jrLoad();
-    a.push({ id: Date.now(), t: r.t, tgl: $("jf-tgl").value, entry: e, sl, tp: +$("jf-tp").value || null, lot: totLot,
-      tr: ok.length > 1 ? ok.map(x => ({ h: x.h, l: x.l })) : undefined,
+    a.push({ id: Date.now(), t: r.t, pf: pf.active, tgl: $("jf-tgl").value, entry: e, sl, tp: +$("jf-tp").value || null, lot: totLot,
+      tr: ok.map(x => ({ h: x.h, l: x.l, d: $("jf-tgl").value })),
       setup: $("jf-setup").value, tf: $("jf-tf").value, note: $("jf-note").value.trim(), exit: null, tglExit: null });
-    jrSave(a); renderJournal();
-    $("j-form").innerHTML = `<p class="calc-out">Tersimpan di jurnal. Buka tab Jurnal di kanan atas untuk melihatnya.</p>`;
+    jrSave(a); cashAdj(pf.active, -ok.reduce((sm, x) => sm + x.h * x.l * 100, 0) * (1 + feeB())); renderJournal();
+    $("j-form").innerHTML = `<p class="calc-out">Tersimpan di portofolio "${esc(pf.active)}". Buka tab Portofolio di kanan atas untuk melihatnya.</p>`;
   });
 }
 const rOf = (j, px) => (px - j.entry) / (j.entry - j.sl);
-function renderJournal() {
-  const a = jrLoad(), closed = a.filter(j => j.exit != null), open = a.filter(j => j.exit == null);
-  const wins = closed.filter(j => j.exit > j.entry).length, tot = closed.reduce((s, j) => s + rOf(j, j.exit), 0);
-  const bySetup = {}; closed.forEach(j => { const b = bySetup[j.setup] = bySetup[j.setup] || { n: 0, w: 0, r: 0 }; b.n++; b.r += rOf(j, j.exit); if (j.exit > j.entry) b.w++; });
-  const stat = (lab, val) => `<div><small>${lab}</small><b>${val}</b></div>`;
-  $("j-stats").innerHTML = closed.length
-    ? stat("Trade selesai", closed.length) + stat("Win rate", fmtDec(wins / closed.length * 100, 0) + "%") + stat("Rata-rata R", fmtDec(tot / closed.length, 2) + "R") + stat("Total R", fmtDec(tot, 2) + "R")
-    : stat("Trade selesai", 0) + stat("Masih terbuka", open.length);
-  $("j-setups").innerHTML = Object.keys(bySetup).length ? `<table class="j-tbl"><thead><tr><th>Setup</th><th class="num">Trade</th><th class="num">Win rate</th><th class="num">Rata-rata R</th></tr></thead><tbody>${Object.entries(bySetup).sort((x, y) => y[1].r / y[1].n - x[1].r / x[1].n).map(([k, b]) => `<tr><td>${esc(k)}</td><td class="num">${b.n}</td><td class="num">${fmtDec(b.w / b.n * 100, 0)}%</td><td class="num ${b.r >= 0 ? "pos" : "neg"}">${fmtDec(b.r / b.n, 2)}R</td></tr>`).join("")}</tbody></table>${closed.length < 30 ? '<p class="muted" style="font-size:0.8rem">Kesimpulan per setup baru bisa dipercaya setelah sekitar 30 trade selesai.</p>' : ""}` : "";
-  const rows = a.slice().sort((x, y) => ((x.exit != null) - (y.exit != null)) || y.tgl.localeCompare(x.tgl));
-  $("j-list").innerHTML = rows.length ? `<div class="table-wrap" style="max-height:none"><table class="j-tbl"><thead><tr><th>Tanggal</th><th>Saham</th><th>Setup</th><th class="num">Entry</th><th class="num">SL</th><th class="num">Target</th><th class="num">Lot</th><th class="num">Harga kini / keluar</th><th class="num">R</th><th>Aksi</th></tr></thead><tbody>${rows.map(j => {
-    const cur = DATA.find(d => d.t === j.t), px = j.exit != null ? j.exit : cur ? cur.p : null, r = px != null ? rOf(j, px) : null;
-    return `<tr><td>${esc(j.tgl)}</td><td><b>${esc(j.t)}</b><div class="muted" style="font-size:0.72rem">${esc(j.tf)}${j.note ? " · " + esc(j.note) : ""}</div></td><td>${esc(j.setup)}</td><td class="num">${fmtNum(j.entry)}</td><td class="num">${fmtNum(j.sl)}</td><td class="num">${j.tp ? fmtNum(j.tp) : "-"}</td><td class="num">${fmtNum(j.lot)}</td>
-      <td class="num">${px != null ? fmtNum(px) : "-"}${j.exit == null ? '<div class="muted" style="font-size:0.72rem">masih terbuka</div>' : ""}${j.exit == null && cur && cur.p <= j.sl ? '<div class="neg" style="font-size:0.72rem">sudah di bawah SL</div>' : ""}${j.exit == null && cur && j.tp && cur.p >= j.tp ? '<div class="pos" style="font-size:0.72rem">sudah capai target</div>' : ""}</td>
-      <td class="num ${r == null ? "" : r >= 0 ? "pos" : "neg"}">${r == null ? "-" : fmtDec(r, 2) + "R"}</td>
-      <td class="j-act" data-id="${j.id}">${j.exit == null ? `<button class="icon-btn" data-add="${j.id}" type="button" title="Average up/down: tambah pembelian di trade ini">+ Beli</button> <button class="icon-btn" data-close="${j.id}" type="button">Tutup</button>` : ""} <button class="icon-btn" data-del="${j.id}" type="button">Hapus</button></td></tr>`;
-  }).join("")}</tbody></table></div>` : '<p class="muted">Belum ada trade. Buka panel detail saham, lalu klik "Catat ke jurnal" di bagian Rencana.</p>';
-  $("j-list").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { if (confirm("Hapus trade ini dari jurnal?")) { jrSave(jrLoad().filter(j => j.id !== +b.dataset.del)); renderJournal(); } }));
-  $("j-list").querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => {
-    const td = b.closest("td"), j0 = jrLoad().find(x => x.id === +b.dataset.add), cur = DATA.find(d => d.t === j0.t);
-    const base = j0.tr || [{ h: j0.entry, l: j0.lot }];
-    td.innerHTML = `<div class="jr-add">
-      <input type="number" data-k="h" value="${cur ? Math.round(cur.p) : j0.entry}" aria-label="Harga beli tambahan" placeholder="Harga beli">
-      <input type="number" data-k="l" value="1" min="1" aria-label="Lot tambahan" placeholder="Lot">
-      <div class="muted jr-out" style="font-size:0.72rem"></div>
-      <label class="muted" style="font-size:0.72rem">SL <input type="number" data-k="sl" value="${j0.sl}"></label>
-      <label class="muted" style="font-size:0.72rem">Target <input type="number" data-k="tp" value="${j0.tp || ""}"></label>
-      <div><button class="icon-btn" data-k="ok" type="button">Simpan</button> <button class="icon-btn" data-k="no" type="button">Batal</button></div></div>`;
-    const g = k => td.querySelector('[data-k="' + k + '"]'), out = td.querySelector(".jr-out");
-    let dSL = false, dTP = false, nAvg = 0, nLot = 0;
-    const calc = () => {
-      const h = +g("h").value, l = +g("l").value;
-      if (!(h > 0 && l > 0)) { out.textContent = "Isi harga beli dan lot."; nLot = 0; return; }
-      const c = ls.get(CALC, { modal: 10000000, risk: 1 });
-      nLot = j0.lot + l; nAvg = (j0.entry * j0.lot + h * l) / nLot;
-      const sg = exitSuggest(nAvg, nLot, { sl: j0.sl, tp: j0.tp || 0 }, cur || {}, c.modal, c.risk);
-      if (!dSL) g("sl").value = sg.sl;
-      if (!dTP) g("tp").value = sg.tp;
-      out.innerHTML = `Rata-rata baru <b>${fmtDec(nAvg, Number.isInteger(nAvg) ? 0 : 1)}</b> · ${fmtNum(nLot)} lot<br>Saran SL ${fmtNum(sg.sl)}, target ${fmtNum(sg.tp)}. Rugi di SL ±Rp ${fmtNum(sg.loss)} (${fmtDec(sg.lossPct, 2)}% modal).${sg.notes.map(n => "<br>" + esc(n)).join("")}`;
-    };
-    g("h").addEventListener("input", calc); g("l").addEventListener("input", calc);
-    g("sl").addEventListener("input", () => dSL = true); g("tp").addEventListener("input", () => dTP = true);
-    g("no").addEventListener("click", () => renderJournal());
-    g("ok").addEventListener("click", () => {
-      const h = +g("h").value, l = +g("l").value, sl = +g("sl").value, e = Math.round(nAvg * 100) / 100;
-      if (!(h > 0 && l > 0 && nLot > 0)) { alert("Isi harga beli dan lot."); return; }
-      if (!(sl > 0) || sl >= e) { alert("Stop loss harus di bawah rata-rata entry baru (" + e + ")."); return; }
-      const arr = jrLoad(), it = arr.find(x => x.id === j0.id);
-      it.tr = base.concat([{ h, l, d: ymd(new Date()) }]); it.entry = e; it.lot = nLot; it.sl = sl; it.tp = +g("tp").value || null;
-      jrSave(arr); renderJournal();
-    });
-    calc();
-  }));
-  $("j-list").querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => {
-    const td = b.closest("td"), j = jrLoad().find(x => x.id === +b.dataset.close), cur = DATA.find(d => d.t === j.t);
-    td.innerHTML = `<input type="number" class="j-exit" value="${cur ? cur.p : j.entry}" aria-label="Harga keluar"> <button class="icon-btn" type="button">OK</button>`;
-    td.querySelector("button").addEventListener("click", () => {
-      const v = +td.querySelector("input").value; if (!(v > 0)) return;
-      const arr = jrLoad(); const it = arr.find(x => x.id === j.id); it.exit = v; it.tglExit = ymd(new Date()); jrSave(arr); renderJournal();
-    });
-  }));
+/* ---------- PORTOFOLIO (dibangun di atas data jurnal; dikunci PIN) ---------- */
+const PF_KEY = "idxs:pf", PIN_HASH_DEF = "62cc0cd5fb7d13c66dedcc3b1d15970827bf684c94c50e4f9a68f8cd7ad3a9ae";
+let pf = ls.get(PF_KEY, null);
+if (!pf || !pf.list || !Object.keys(pf.list).length) pf = { active: "Utama", list: { "Utama": { cash: null } }, fee: { b: 0.15, s: 0.25 } };
+if (!pf.list[pf.active]) pf.active = Object.keys(pf.list)[0];
+if (!pf.fee) pf.fee = { b: 0.15, s: 0.25 };
+let pfTab = "order", pfSide = "beli", pfPre = null;
+const pfSave = () => ls.set(PF_KEY, pf);
+const trPf = j => (j.pf && pf.list[j.pf]) ? j.pf : (pf.list["Utama"] ? "Utama" : Object.keys(pf.list)[0]);
+const buysOf = j => j.tr && j.tr.length ? j.tr.map(x => ({ h: x.h, l: x.l, d: x.d || j.tgl })) : [{ h: j.entry, l: j.lot, d: j.tgl }];
+const sellsOf = j => j.sells && j.sells.length ? j.sells : (j.exit != null ? [{ h: j.exit, l: j.lot, d: j.tglExit || j.tgl }] : []);
+const remLot = j => j.lot - sellsOf(j).reduce((s, x) => s + x.l, 0);
+const feeB = () => (+pf.fee.b || 0) / 100, feeS = () => (+pf.fee.s || 0) / 100;
+const lastPx = t => { const d = DATA.find(x => x.t === t); return d ? d.p : null; };
+function cashAdj(name, delta) { const p = pf.list[name]; if (p && p.cash != null) { p.cash = Math.round(p.cash + delta); pfSave(); } }
+function sha256(str) {                                  // SHA-256 murni JS (tidak butuh koneksi aman)
+  const K = [], H = [1779033703, -1150833019, 1013904242, -1521486534, 1359893119, -1694144372, 528734635, 1541459225];
+  const isP = n => { for (let f = 2; f * f <= n; f++) if (n % f === 0) return false; return true; };
+  for (let n = 2, c = 0; c < 64; n++) if (isP(n)) K[c++] = (Math.pow(n, 1 / 3) % 1) * 4294967296 | 0;
+  const b = unescape(encodeURIComponent(str)), w = [], l = b.length * 8;
+  for (let i = 0; i < b.length; i++) w[i >> 2] |= b.charCodeAt(i) << (24 - (i % 4) * 8);
+  w[l >> 5] |= 0x80 << (24 - l % 32); w[((l + 64 >> 9) << 4) + 15] = l;
+  const r = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let j = 0; j < w.length; j += 16) {
+    const W = Array.from({ length: 16 }, (_, k) => w[j + k] | 0); let [a, bb, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      if (i >= 16) { const s0 = r(W[i - 15], 7) ^ r(W[i - 15], 18) ^ (W[i - 15] >>> 3), s1 = r(W[i - 2], 17) ^ r(W[i - 2], 19) ^ (W[i - 2] >>> 10); W[i] = (W[i - 16] + s0 + W[i - 7] + s1) | 0; }
+      const t1 = (h + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + (W[i] | 0)) | 0, t2 = ((r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & bb) ^ (a & c) ^ (bb & c))) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = bb; bb = a; a = (t1 + t2) | 0;
+    }
+    H[0] = (H[0] + a) | 0; H[1] = (H[1] + bb) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0; H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+  }
+  return H.map(x => (x >>> 0).toString(16).padStart(8, "0")).join("");
 }
-$("j-export").addEventListener("click", () => {
-  const a = jrLoad(), head = ["tanggal", "saham", "setup", "timeframe", "entry", "stop_loss", "target", "lot", "harga_keluar", "tanggal_keluar", "R", "catatan", "rincian_pembelian"];
-  const lines = [head.join(",")].concat(a.map(j => [j.tgl, j.t, j.setup, j.tf, j.entry, j.sl, j.tp ?? "", j.lot, j.exit ?? "", j.tglExit ?? "", j.exit != null ? rOf(j, j.exit).toFixed(2) : "", `"${(j.note || "").replace(/"/g, '""')}"`, `"${(j.tr || []).map(x => x.h + " x " + x.l).join("; ")}"`].join(",")));
+const pinHash = () => ls.get("idxs:pfpin", PIN_HASH_DEF);
+const pfUnlocked = () => { try { return sessionStorage.getItem("idxs:pfok") === pinHash(); } catch (e) { return false; } };
+function pfLockUI() {
+  const ok = pfUnlocked();
+  $("pf-lock").hidden = ok; $("pf-main").hidden = !ok;
+  if (!ok) { $("pf-pin").value = ""; $("pf-pin-msg").textContent = ""; setTimeout(() => { if ($("v-jurnal") && !$("v-jurnal").hidden) $("pf-pin").focus(); }, 50); }
+  else renderJournal();
+}
+function pfTry() {
+  const v = $("pf-pin").value.trim();
+  if (sha256(v) === pinHash()) { try { sessionStorage.setItem("idxs:pfok", pinHash()); } catch (e) {} pfLockUI(); }
+  else { $("pf-pin-msg").textContent = "Password salah."; $("pf-pin").value = ""; $("pf-pin").focus(); }
+}
+
+function pfRows(name) { return jrLoad().filter(j => trPf(j) === name); }
+function pfStats(name) {
+  const fb = feeB(), fs = feeS(), rows = pfRows(name), open = rows.filter(j => remLot(j) > 0);
+  let inv = 0, mv = 0, upl = 0, rpl = 0;
+  open.forEach(j => { const lot = remLot(j), px = lastPx(j.t) ?? j.entry; inv += j.entry * lot * 100; mv += px * lot * 100; upl += (px * (1 - fs) - j.entry * (1 + fb)) * lot * 100; });
+  rows.forEach(j => sellsOf(j).forEach(s => { rpl += (s.h * (1 - fs) - j.entry * (1 + fb)) * s.l * 100; }));
+  const closed = rows.filter(j => remLot(j) <= 0), wins = closed.filter(j => (j.exit ?? 0) > j.entry).length, totR = closed.reduce((s, j) => s + rOf(j, j.exit ?? j.entry), 0);
+  return { open, closed, inv, mv, upl, rpl, wins, totR };
+}
+function renderJournal() {
+  if (!$("pf-main") || $("pf-main").hidden) return;
+  const name = pf.active, st = pfStats(name), cash = pf.list[name].cash, rp = v => (v < 0 ? "−Rp " : "Rp ") + fmtNum(Math.abs(Math.round(v)));
+  const uplPct = st.inv ? st.upl / (st.inv * (1 + feeB())) * 100 : 0;
+  $("pf-sum").innerHTML = `
+    <div><small>Saldo kas</small><b>${cash == null ? `<button type="button" class="link-btn" id="pf-cash0">Atur saldo</button>` : rp(cash)}</b></div>
+    <div><small>Invested</small><b>${rp(st.inv)}</b></div>
+    <div><small>Open</small><b>${st.open.length}</b></div>
+    <div><small>P&amp;L belum terealisasi</small><b class="${st.upl >= 0 ? "pos" : "neg"}">${st.upl >= 0 ? "+" : ""}${rp(st.upl)} <span style="font-size:0.8rem">(${st.upl >= 0 ? "+" : ""}${fmtDec(uplPct, 2)}%)</span></b><small class="muted">terealisasi ${st.rpl >= 0 ? "+" : ""}${rp(st.rpl)}</small></div>
+    <div><small>Total equity</small><b>${rp((cash || 0) + st.mv)}</b>${cash == null ? '<small class="muted">tanpa saldo kas</small>' : ""}</div>`;
+  const c0 = $("pf-cash0"); if (c0) c0.addEventListener("click", pfSetCash);
+  $("pf-bar").innerHTML = `<select id="pf-sel" aria-label="Pilih portofolio">${Object.keys(pf.list).map(n => `<option value="${esc(n)}" ${n === name ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
+    <button type="button" class="icon-btn dw-small" id="pf-new">+ Baru</button><button type="button" class="icon-btn dw-small" id="pf-ren" title="Ganti nama">✎</button><button type="button" class="icon-btn dw-small" id="pf-del" title="Hapus portofolio">🗑</button>
+    <button type="button" class="icon-btn dw-small" id="pf-cash">Atur saldo kas</button><span style="flex:1"></span><button type="button" class="icon-btn dw-small" id="pf-lockbtn">🔒 Kunci</button>`;
+  $("pf-sel").addEventListener("change", e => { pf.active = e.target.value; pfSave(); renderJournal(); });
+  $("pf-new").addEventListener("click", () => { const n = (prompt("Nama portofolio baru:") || "").trim().slice(0, 40); if (!n) return; if (pf.list[n]) { alert("Nama sudah dipakai."); return; } pf.list[n] = { cash: null }; pf.active = n; pfSave(); renderJournal(); });
+  $("pf-ren").addEventListener("click", () => { const n = (prompt("Ganti nama portofolio:", name) || "").trim().slice(0, 40); if (!n || n === name) return; if (pf.list[n]) { alert("Nama sudah dipakai."); return; }
+    const a = jrLoad(); a.forEach(j => { if (trPf(j) === name) j.pf = n; }); jrSave(a); const L = {}; Object.keys(pf.list).forEach(k => L[k === name ? n : k] = pf.list[k]); pf.list = L; pf.active = n; pfSave(); renderJournal(); });
+  $("pf-del").addEventListener("click", () => {
+    if (st.open.length) { alert("Portofolio ini masih punya posisi terbuka. Jual atau hapus posisinya dulu."); return; }
+    if (Object.keys(pf.list).length === 1) { alert("Minimal harus ada satu portofolio."); return; }
+    if (!confirm(`Hapus portofolio "${name}" beserta riwayat transaksinya?`)) return;
+    jrSave(jrLoad().filter(j => trPf(j) !== name)); delete pf.list[name]; pf.active = Object.keys(pf.list)[0]; pfSave(); renderJournal();
+  });
+  $("pf-cash").addEventListener("click", pfSetCash);
+  $("pf-lockbtn").addEventListener("click", () => { try { sessionStorage.removeItem("idxs:pfok"); } catch (e) {} pfLockUI(); });
+  // tabel posisi
+  const fb = feeB(), fs = feeS();
+  $("pf-pos").innerHTML = st.open.length ? `<div class="table-wrap" style="max-height:none"><table class="j-tbl pf-tbl"><thead><tr><th>Saham</th><th>Chart 30 hari</th><th class="num">Harga</th><th class="num">Avg price</th><th class="num">Lot</th><th class="num">Invested</th><th class="num">P&amp;L</th><th class="num">%</th><th>SL / TP</th><th></th></tr></thead><tbody>${st.open.map(j => {
+    const d = DATA.find(x => x.t === j.t), lot = remLot(j), px = d ? d.p : null, inv = j.entry * lot * 100, cost = inv * (1 + fb), pl = px != null ? px * lot * 100 * (1 - fs) - cost : null, pct = pl != null ? pl / cost * 100 : null;
+    const nearSL = px != null && j.sl && px <= j.sl, hitTP = px != null && j.tp && px >= j.tp;
+    return `<tr><td><b class="pf-go" data-go="${j.t}">${esc(j.t)}</b><div class="muted" style="font-size:0.72rem">${esc(d ? d.nm : "")}${j.setup ? " · " + esc(j.setup) : ""}</div></td>
+      <td class="spark-cell" data-sp="${j.t}">${d ? candleSvg(d.ohlc || (d.smc ? d.smc.b.slice(-30) : [])) : ""}</td>
+      <td class="num">${px != null ? fmtNum(px) : "-"}${d && d.chg != null ? `<div class="${d.chg >= 0 ? "pos" : "neg"}" style="font-size:0.72rem">${d.chg >= 0 ? "+" : ""}${fmtDec(d.chg, 2)}%</div>` : ""}</td>
+      <td class="num">${fmtDec(j.entry, Number.isInteger(j.entry) ? 0 : 1)}</td><td class="num">${fmtNum(lot)}</td><td class="num">${fmtValue(inv)}</td>
+      <td class="num ${pl == null ? "" : pl >= 0 ? "pos" : "neg"}">${pl == null ? "-" : (pl >= 0 ? "+" : "−") + fmtValue(Math.abs(pl))}</td>
+      <td class="num ${pct == null ? "" : pct >= 0 ? "pos" : "neg"}"><b>${pct == null ? "-" : (pct >= 0 ? "+" : "") + fmtDec(pct, 2) + "%"}</b></td>
+      <td style="font-size:0.78rem"><span class="neg">${j.sl ? fmtNum(j.sl) : "-"}</span> / <span class="pos">${j.tp ? fmtNum(j.tp) : "-"}</span>${nearSL ? '<div class="neg" style="font-weight:800">⚠ kena SL</div>' : hitTP ? '<div class="pos" style="font-weight:800">✓ sampai TP</div>' : ""}</td>
+      <td class="pf-menu-cell"><button type="button" class="icon-btn dw-small" data-pm="${j.id}" aria-label="Menu ${esc(j.t)}">⋮</button></td></tr>`;
+  }).join("")}</tbody></table></div>` : `<p class="muted" style="margin:14px 0">Belum ada posisi di portofolio "${esc(name)}". Catat pembelian lewat panel <b>Order</b> di samping, atau lewat tombol "Catat ke portofolio" di bagian Rencana pada detail saham.</p>`;
+  $("pf-pos").querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => openDrawer(b.dataset.go)));
+  $("pf-pos").querySelectorAll("[data-pm]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); pfMenu(b, +b.dataset.pm); }));
+  pfPanel();
+}
+function pfSetCash() {
+  const cur = pf.list[pf.active].cash, v = prompt("Saldo kas portofolio ini (Rp). Kosongkan untuk tidak memakai saldo kas:", cur == null ? "" : cur);
+  if (v === null) return; const t = v.replace(/[^\d-]/g, "");
+  pf.list[pf.active].cash = t === "" ? null : +t; pfSave(); renderJournal();
+}
+function pfMenu(btn, id) {
+  document.querySelectorAll(".pf-pop").forEach(x => x.remove());
+  const j = jrLoad().find(x => x.id === id); if (!j) return;
+  const m = document.createElement("div"); m.className = "pf-pop";
+  m.innerHTML = `<button data-a="buy">Beli lagi (average)</button><button data-a="sell">Jual</button><button data-a="sltp">Ubah SL / TP</button><button data-a="chart">Lihat chart</button><button data-a="del" class="neg">Hapus posisi</button>`;
+  btn.parentElement.style.position = "relative"; btn.parentElement.appendChild(m);
+  m.addEventListener("click", e => {
+    e.stopPropagation(); const a = e.target.dataset.a; if (!a) return; m.remove();
+    if (a === "buy") { pfTab = "order"; pfSide = "beli"; pfPre = j.t; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); }
+    else if (a === "sell") { pfTab = "order"; pfSide = "jual"; pfPre = j.id; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); }
+    else if (a === "chart") openDrawer(j.t);
+    else if (a === "sltp") {
+      const sl = prompt("Stop loss baru:", j.sl ?? ""); if (sl === null) return; const tp = prompt("Target baru:", j.tp ?? ""); if (tp === null) return;
+      const arr = jrLoad(), it = arr.find(x => x.id === id); it.sl = +sl || it.sl; it.tp = +tp || null; jrSave(arr); renderJournal();
+    } else if (a === "del") { if (confirm(`Hapus posisi ${j.t} dari portofolio (beserta riwayatnya)? Saldo kas tidak diubah.`)) { jrSave(jrLoad().filter(x => x.id !== id)); renderJournal(); } }
+  });
+  setTimeout(() => document.addEventListener("click", () => m.remove(), { once: true }), 0);
+}
+function pfPanel() {
+  const box = $("pf-panel"); if (!box) return;
+  document.querySelectorAll("#pf-right [data-pt]").forEach(b => b.classList.toggle("on", b.dataset.pt === pfTab));
+  if (pfTab === "hist") return pfHistory(box);
+  if (pfTab === "set") return pfSettings(box);
+  const name = pf.active, fb = feeB(), fs = feeS(), today = ymd(new Date()), open = pfRows(name).filter(j => remLot(j) > 0);
+  box.innerHTML = `<div class="seg pf-side"><button type="button" data-side="beli" class="${pfSide === "beli" ? "on" : ""}">Beli</button><button type="button" data-side="jual" class="${pfSide === "jual" ? "on" : ""}">Jual</button></div><div id="pf-form"></div>`;
+  box.querySelectorAll("[data-side]").forEach(b => b.addEventListener("click", () => { pfSide = b.dataset.side; pfPre = null; pfPanel(); }));
+  const f = $("pf-form");
+  if (pfSide === "jual") {
+    if (!open.length) { f.innerHTML = `<p class="muted">Tidak ada posisi terbuka untuk dijual.</p>`; return; }
+    const sel = open.find(j => j.id === pfPre) || open[0];
+    f.innerHTML = `<div class="pf-f"><label>Saham</label><select id="pfs-pos">${open.map(j => `<option value="${j.id}" ${j.id === sel.id ? "selected" : ""}>${esc(j.t)} · ${fmtNum(remLot(j))} lot · avg ${fmtNum(j.entry)}</option>`).join("")}</select></div>
+      <div class="pf-f2"><div class="pf-f"><label>Harga jual</label><input type="number" id="pfs-h"></div><div class="pf-f"><label>Lot</label><input type="number" id="pfs-l" min="1"></div></div>
+      <div class="pf-f"><label>Tanggal</label><input type="date" id="pfs-d" value="${today}"></div>
+      <div class="calc-out" id="pfs-out"></div><button type="button" class="rf-go pf-sell" id="pfs-ok">Catat penjualan</button>`;
+    const fill = () => { const j = open.find(x => x.id === +$("pfs-pos").value); $("pfs-h").value = lastPx(j.t) ?? j.entry; $("pfs-l").value = remLot(j); calc(); };
+    const calc = () => { const j = open.find(x => x.id === +$("pfs-pos").value), h = +$("pfs-h").value, l = +$("pfs-l").value; if (!(h > 0 && l > 0)) { $("pfs-out").textContent = "Isi harga dan lot."; return; }
+      const proceeds = h * l * 100 * (1 - fs), pl = proceeds - j.entry * l * 100 * (1 + fb);
+      $("pfs-out").innerHTML = `Diterima ±<b>Rp ${fmtNum(Math.round(proceeds))}</b> (setelah biaya ${fmtDec(fs * 100, 2)}%)<br>P&amp;L terealisasi <b class="${pl >= 0 ? "pos" : "neg"}">${pl >= 0 ? "+" : "−"}Rp ${fmtNum(Math.abs(Math.round(pl)))} (${fmtDec(pl / (j.entry * l * 100 * (1 + fb)) * 100, 2)}%)</b>${l > remLot(j) ? '<br><b class="neg">Lot melebihi yang dimiliki.</b>' : ""}`; };
+    $("pfs-pos").addEventListener("change", fill); $("pfs-h").addEventListener("input", calc); $("pfs-l").addEventListener("input", calc); fill();
+    $("pfs-ok").addEventListener("click", () => {
+      const id = +$("pfs-pos").value, h = +$("pfs-h").value, l = Math.round(+$("pfs-l").value), d = $("pfs-d").value || today, arr = jrLoad(), it = arr.find(x => x.id === id);
+      if (!(h > 0 && l > 0)) { alert("Isi harga dan lot."); return; } if (l > remLot(it)) { alert("Lot melebihi yang dimiliki."); return; }
+      it.sells = sellsOf(it).concat([{ h, l, d }]);
+      if (remLot(it) <= 0) { const S = it.sells, tl = S.reduce((s, x) => s + x.l, 0); it.exit = Math.round(S.reduce((s, x) => s + x.h * x.l, 0) / tl * 100) / 100; it.tglExit = d; }
+      jrSave(arr); cashAdj(name, h * l * 100 * (1 - fs)); pfPre = null; renderJournal();
+    });
+    return;
+  }
+  // Beli
+  f.innerHTML = `<div class="pf-f"><label>Kode saham</label><input type="text" id="pfb-t" list="pfb-list" placeholder="mis. BBRI" autocomplete="off" value="${esc(pfPre || "")}"><datalist id="pfb-list">${DATA.map(d => `<option value="${d.t}">${esc(d.nm)}</option>`).join("")}</datalist></div>
+    <div class="pf-f2"><div class="pf-f"><label>Harga beli</label><input type="number" id="pfb-h"></div><div class="pf-f"><label>Lot</label><input type="number" id="pfb-l" min="1" value="1"></div></div>
+    <div class="pf-f2"><div class="pf-f"><label>Stop loss</label><input type="number" id="pfb-sl"></div><div class="pf-f"><label>Target</label><input type="number" id="pfb-tp"></div></div>
+    <div class="pf-f2"><div class="pf-f"><label>Tanggal</label><input type="date" id="pfb-d" value="${today}"></div><div class="pf-f"><label>Setup</label><select id="pfb-s">${SETUPS.map(s => `<option>${s}</option>`).join("")}</select></div></div>
+    <div class="pf-f"><label>Catatan</label><input type="text" id="pfb-n" placeholder="opsional"></div>
+    <div class="calc-out" id="pfb-out"></div><button type="button" class="rf-go" id="pfb-ok">Catat pembelian</button>`;
+  let dSL = false, dTP = false;
+  const calc = () => {
+    const t = $("pfb-t").value.trim().toUpperCase(), d = DATA.find(x => x.t === t), h = +$("pfb-h").value, l = +$("pfb-l").value;
+    if (!d) { $("pfb-out").textContent = t ? "Kode tidak ditemukan di data aplikasi." : "Ketik kode saham."; return; }
+    if (!(h > 0 && l > 0)) { $("pfb-out").textContent = "Isi harga dan lot."; return; }
+    const ex = open.find(j => j.t === t), nLot = (ex ? remLot(ex) : 0) + l, avg = ex ? (ex.entry * remLot(ex) + h * l) / nLot : h;
+    const c = ls.get(CALC, { modal: 10000000, risk: 1 }), sg = exitSuggest(avg, nLot, ex ? { sl: ex.sl, tp: ex.tp || 0 } : (d.plan || { sl: 0, tp: 0 }), d, c.modal, c.risk);
+    if (!dSL) $("pfb-sl").value = sg.sl; if (!dTP) $("pfb-tp").value = sg.tp;
+    const cost = h * l * 100 * (1 + fb), cash = pf.list[name].cash;
+    $("pfb-out").innerHTML = `Biaya total ±<b>Rp ${fmtNum(Math.round(cost))}</b> (termasuk biaya ${fmtDec(fb * 100, 2)}%)${ex ? `<br>Menambah posisi ${t}: rata-rata baru <b>${fmtDec(avg, Number.isInteger(avg) ? 0 : 1)}</b> · ${fmtNum(nLot)} lot` : ""}
+      <br>Saran SL <b class="neg">${fmtNum(sg.sl)}</b>, target <b class="pos">${fmtNum(sg.tp)}</b> (R:R 1:${fmtDec(sg.rr, 1)})${cash != null && cost > cash ? '<br><b class="neg">Melebihi saldo kas.</b>' : ""}`;
+  };
+  const pick = () => { const t = $("pfb-t").value.trim().toUpperCase(), d = DATA.find(x => x.t === t); if (d) $("pfb-h").value = d.p; dSL = dTP = false; calc(); };
+  $("pfb-t").addEventListener("change", pick); $("pfb-t").addEventListener("input", () => { if (DATA.some(x => x.t === $("pfb-t").value.trim().toUpperCase())) pick(); else calc(); });
+  ["pfb-h", "pfb-l"].forEach(k => $(k).addEventListener("input", calc));
+  $("pfb-sl").addEventListener("input", () => dSL = true); $("pfb-tp").addEventListener("input", () => dTP = true);
+  if (pfPre) pick(); else calc();
+  $("pfb-ok").addEventListener("click", () => {
+    const t = $("pfb-t").value.trim().toUpperCase(), h = +$("pfb-h").value, l = Math.round(+$("pfb-l").value), sl = +$("pfb-sl").value, tp = +$("pfb-tp").value || null, d = $("pfb-d").value || today;
+    if (!DATA.some(x => x.t === t)) { alert("Kode saham tidak ditemukan."); return; } if (!(h > 0 && l > 0)) { alert("Isi harga dan lot."); return; }
+    const arr = jrLoad(), ex = arr.find(j => j.t === t && trPf(j) === name && remLot(j) > 0);
+    if (ex) {                                            // average up/down ke posisi yang sama
+      const keep = remLot(ex), nLot = keep + l, avg = Math.round((ex.entry * keep + h * l) / nLot * 100) / 100;
+      if (sl && sl >= avg) { alert("Stop loss harus di bawah rata-rata entry (" + avg + ")."); return; }
+      const sold = sellsOf(ex).reduce((s, x) => s + x.l, 0);
+      ex.tr = buysOf(ex).concat([{ h, l, d }]); ex.lot = sold + nLot; ex.entry = avg; if (sl) ex.sl = sl; ex.tp = tp || ex.tp;
+    } else {
+      if (!(sl > 0) || sl >= h) { alert("Stop loss harus di bawah harga beli."); return; }
+      arr.push({ id: Date.now(), t, pf: name, tgl: d, entry: h, sl, tp, lot: l, tr: [{ h, l, d }], setup: $("pfb-s").value, tf: "Harian", note: $("pfb-n").value.trim(), exit: null, tglExit: null });
+    }
+    jrSave(arr); cashAdj(name, -h * l * 100 * (1 + fb)); pfPre = null; renderJournal();
+  });
+}
+function pfHistory(box) {
+  const name = pf.active, fb = feeB(), fs = feeS(), st = pfStats(name), ev = [];
+  pfRows(name).forEach(j => { buysOf(j).forEach(b => ev.push({ d: b.d, t: j.t, k: "Beli", h: b.h, l: b.l })); sellsOf(j).forEach(s => ev.push({ d: s.d, t: j.t, k: "Jual", h: s.h, l: s.l, pl: (s.h * (1 - fs) - j.entry * (1 + fb)) * s.l * 100 })); });
+  ev.sort((a, b) => String(b.d).localeCompare(String(a.d)));
+  const n = st.closed.length;
+  box.innerHTML = `<div class="plan-box pf-hstat"><div><small>Trade selesai</small><b>${n}</b></div><div><small>Win rate</small><b>${n ? fmtDec(st.wins / n * 100, 0) + "%" : "-"}</b></div>
+      <div><small>Rata-rata R</small><b>${n ? fmtDec(st.totR / n, 2) + "R" : "-"}</b></div><div><small>P&amp;L terealisasi</small><b class="${st.rpl >= 0 ? "pos" : "neg"}">${st.rpl >= 0 ? "+" : "−"}${fmtValue(Math.abs(st.rpl))}</b></div></div>
+    ${ev.length ? `<div class="table-wrap" style="max-height:420px"><table class="j-tbl"><thead><tr><th>Tanggal</th><th>Saham</th><th>Jenis</th><th class="num">Harga</th><th class="num">Lot</th><th class="num">P&amp;L</th></tr></thead><tbody>${ev.map(e => `<tr><td>${esc(e.d || "")}</td><td><b>${esc(e.t)}</b></td><td class="${e.k === "Beli" ? "pos" : "neg"}">${e.k}</td><td class="num">${fmtNum(e.h)}</td><td class="num">${fmtNum(e.l)}</td><td class="num ${e.pl == null ? "" : e.pl >= 0 ? "pos" : "neg"}">${e.pl == null ? "" : (e.pl >= 0 ? "+" : "−") + fmtValue(Math.abs(e.pl))}</td></tr>`).join("")}</tbody></table></div>` : '<p class="muted">Belum ada transaksi.</p>'}
+    <button type="button" class="icon-btn" id="j-export" style="margin-top:10px">Unduh CSV</button>`;
+  $("j-export").addEventListener("click", pfExport);
+}
+function pfSettings(box) {
+  box.innerHTML = `<div class="pf-f2"><div class="pf-f"><label>Biaya beli (%)</label><input type="number" step="0.01" id="pff-b" value="${pf.fee.b}"></div><div class="pf-f"><label>Biaya jual (%)</label><input type="number" step="0.01" id="pff-s" value="${pf.fee.s}"></div></div>
+    <p class="muted" style="font-size:0.78rem">Biaya broker dipakai untuk menghitung P&amp;L dan saldo kas. Umumnya 0,15% beli dan 0,25% jual; isi 0 kalau tidak ingin dihitung.</p>
+    <button type="button" class="icon-btn" id="pff-save">Simpan biaya</button>
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+    <div class="pf-f"><label>Ganti password portofolio</label><input type="password" id="pff-p1" placeholder="Password baru" autocomplete="new-password"></div>
+    <div class="pf-f"><input type="password" id="pff-p2" placeholder="Ulangi password baru" autocomplete="new-password"></div>
+    <button type="button" class="icon-btn" id="pff-pin">Ganti password</button>
+    <p class="muted" style="font-size:0.74rem">Password berlaku di browser ini. Password ini kunci layar, bukan enkripsi: mencegah orang lain membuka halaman portofolio di perangkatmu.</p>`;
+  $("pff-save").addEventListener("click", () => { pf.fee = { b: Math.max(0, +$("pff-b").value || 0), s: Math.max(0, +$("pff-s").value || 0) }; pfSave(); renderJournal(); });
+  $("pff-pin").addEventListener("click", () => { const a = $("pff-p1").value, b = $("pff-p2").value; if (a.length < 4) { alert("Password minimal 4 karakter."); return; } if (a !== b) { alert("Kedua password tidak sama."); return; }
+    ls.set("idxs:pfpin", sha256(a)); try { sessionStorage.setItem("idxs:pfok", sha256(a)); } catch (e) {} alert("Password diganti."); pfSettings(box); });
+}
+function pfExport() {
+  const fb = feeB(), fs = feeS(), lines = [["portofolio", "tanggal", "saham", "jenis", "harga", "lot", "pnl_terealisasi", "setup", "catatan"].join(",")];
+  jrLoad().forEach(j => { buysOf(j).forEach(b => lines.push([trPf(j), b.d, j.t, "beli", b.h, b.l, "", j.setup || "", `"${(j.note || "").replace(/"/g, '""')}"`].join(",")));
+    sellsOf(j).forEach(s => lines.push([trPf(j), s.d, j.t, "jual", s.h, s.l, Math.round((s.h * (1 - fs) - j.entry * (1 + fb)) * s.l * 100), j.setup || "", ""].join(","))); });
   const blob = new Blob([lines.join("\n")], { type: "text/csv" }), url = URL.createObjectURL(blob), el = document.createElement("a");
-  el.href = url; el.download = `jurnal_trading_${ymd(new Date())}.csv`; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
+  el.href = url; el.download = `portofolio_${ymd(new Date())}.csv`; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$("pf-pin-ok").addEventListener("click", pfTry);
+$("pf-pin").addEventListener("keydown", e => { if (e.key === "Enter") pfTry(); });
+document.querySelectorAll("#pf-right [data-pt]").forEach(b => b.addEventListener("click", () => { pfTab = b.dataset.pt; pfPanel(); }));
 
 /* ---------- riwayat harian ---------- */
 const HIST_KEY = "idxs:histn";
@@ -4967,7 +5167,7 @@ function syncGh(path, opt = {}) {
   return fetch("https://api.github.com" + path, { ...opt, headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + sync.token,
     "X-GitHub-Api-Version": "2022-11-28", ...(opt.body ? { "Content-Type": "application/json" } : {}), ...(opt.headers || {}) } });
 }
-function syncLocal() { return { wls: ls.get(WLS, null), draw: ls.get(DRAW_KEY, {}) }; }
+function syncLocal() { return { wls: ls.get(WLS, null), draw: ls.get(DRAW_KEY, {}), jr: ls.get("idxs:jurnal", []), pf: ls.get("idxs:pf", null) }; }
 function syncErrText(st) { return st === 401 ? "token ditolak atau sudah kedaluwarsa" : st === 403 ? "token tidak punya izin gist" : st === 404 ? "gist tidak ditemukan" : `kode ${st}`; }
 async function syncFind() {
   for (let page = 1; page <= 5; page++) {
@@ -4994,15 +5194,20 @@ function syncMerge(loc, rem) {                 // dipakai saat pertama terhubung
   if (!Object.keys(lists).length) lists["Utama"] = [];
   const active = loc.wls && lists[loc.wls.active] ? loc.wls.active : Object.keys(lists)[0];
   const draw = {}; [rem.draw, loc.draw].forEach(d => d && Object.entries(d).forEach(([k, arr]) => { const m = new Map((draw[k] || []).map(x => [x.id, x])); arr.forEach(x => m.set(x.id, x)); draw[k] = [...m.values()]; }));
-  return { wls: { active, lists }, draw };
+  const jm = new Map(); [rem.jr, loc.jr].forEach(a => (a || []).forEach(x => jm.set(x.id, x)));
+  let pfm = loc.pf || rem.pf || null;
+  if (loc.pf && rem.pf) { pfm = { ...rem.pf, ...loc.pf, list: { ...(rem.pf.list || {}), ...(loc.pf.list || {}) } }; }
+  return { wls: { active, lists }, draw, jr: [...jm.values()], pf: pfm };
 }
 function syncApply(d) {
   window._syncApplying = true;
   try {
     if (d.wls && d.wls.lists) { const act = wl.active; wl = d.wls; if (wl.lists[act]) wl.active = act; if (!wl.lists[wl.active]) wl.active = Object.keys(wl.lists)[0]; ls.set(WLS, wl); watch = new Set(wl.lists[wl.active] || []); ls.set(WATCH, [...watch]); }
     if (d.draw) ls.set(DRAW_KEY, d.draw);
+    if (Array.isArray(d.jr)) ls.set("idxs:jurnal", d.jr);
+    if (d.pf && d.pf.list) { ls.set("idxs:pf", d.pf); pf = d.pf; if (!pf.list[pf.active]) pf.active = Object.keys(pf.list)[0]; if (!pf.fee) pf.fee = { b: 0.15, s: 0.25 }; }
   } finally { window._syncApplying = false; }
-  renderWL(); render(); if (curChartR && $("smc-box") && $("smc-box").innerHTML) drawSmc(curChartR);
+  renderWL(); render(); renderJournal(); if (curChartR && $("smc-box") && $("smc-box").innerHTML) drawSmc(curChartR);
 }
 function syncUI() {
   const b = $("sy-btn"); if (!b) return;
@@ -5032,7 +5237,7 @@ window.syncMark = () => { sync.localTs = Date.now(); syncSave(); if (!sync.token
 function syRender() {
   const box = $("sy-pop"), ago = sync.last ? Math.round((Date.now() - sync.last) / 60000) : null;
   box.innerHTML = `<div class="rf-head"><b>Sinkron antar perangkat</b><button type="button" class="icon-btn dw-small" id="sy-x" aria-label="Tutup">✕</button></div>
-    <p class="muted" style="margin:0 0 10px;font-size:0.84rem">Watchlist dan gambar di chart disimpan di <b>GitHub Gist rahasia</b> milikmu, jadi sama di laptop, HP, dan tablet.</p>
+    <p class="muted" style="margin:0 0 10px;font-size:0.84rem">Watchlist, gambar di chart, dan portofolio disimpan di <b>GitHub Gist rahasia</b> milikmu, jadi sama di laptop, HP, dan tablet.</p>
     ${sync.token ? `<div class="rf-msg">${syncBusy ? "Menyinkronkan…" : syncErr ? `✗ Gagal: ${esc(syncErr)}.` : `✓ Tersinkron${ago != null ? ` (${ago < 1 ? "baru saja" : ago + " menit lalu"})` : ""}.`}</div>
         <button type="button" class="rf-go" id="sy-now" ${syncBusy ? "disabled" : ""}>☁ Sinkron sekarang</button>
         <p class="muted" style="font-size:0.76rem;margin:8px 0 0">Perubahan tersimpan otomatis. Perangkat lain mengambil versi terbaru saat aplikasi dibuka.
@@ -5238,6 +5443,7 @@ function showView(v) {
   VIEWS.forEach(k => { $("v-" + k).hidden = k !== v; });
   document.querySelectorAll(".tab-btn").forEach(b => { b.classList.toggle("on", b.dataset.view === v); b.setAttribute("aria-current", b.dataset.view === v ? "page" : "false"); });
   $("cmp-bar").style.visibility = v === "screener" ? "" : "hidden";
+  if (v === "jurnal") pfLockUI();
 }
 document.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => {
   const v = b.dataset.view, h = v === "screener" ? location.pathname + location.search : "#" + v;
