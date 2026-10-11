@@ -50,7 +50,7 @@ ARSIP = BASE / "arsip"
 CACHE_SEKTOR = BASE / "cache_sektor.json"
 RIWAYAT = BASE / "riwayat_top10.json"
 DAFTAR = BASE / "daftar_saham.csv"          # semua emiten BEI: kode, nama, sektor
-TAMBAHAN = BASE / "tambahan_tickers.txt"    # opsional: IPO baru yang belum ada di daftar
+TAMBAHAN_FILES = [BASE / "saham_tambahan.txt", BASE / "tambahan_tickers.txt"]   # kode saham tambahan (mis. baru IPO), satu per baris
 DAFTAR_INFO = BASE / "daftar_saham_info.json"  # kapan daftar terakhir diperbarui dari BEI
 
 # Daftar default: saham-saham likuid IDX. Edit sesukamu, atau pakai --tickers file.txt
@@ -250,6 +250,17 @@ def muat_daftar():
             nama[k] = r.nama.strip()
             if r.sektor.strip() and r.sektor.strip() != "-":
                 sektor[k] = r.sektor.strip()
+    for fpath in TAMBAHAN_FILES:             # saham yang belum ada di daftar (situs BEI tidak bisa diakses dari GitHub)
+        if not fpath.exists():
+            continue
+        for baris in fpath.read_text(encoding="utf-8").splitlines():
+            baris = baris.split("#")[0].strip()
+            if not baris:
+                continue
+            bag = [x.strip() for x in baris.split(",", 1)]
+            k = bag[0].upper().replace(".JK", "")
+            if k.isalnum() and 2 <= len(k) <= 6 and k not in nama:
+                nama[k] = bag[1] if len(bag) > 1 and bag[1] else k
     return nama, sektor
 
 
@@ -1378,9 +1389,7 @@ def main():
     if args.tickers:
         tickers = Path(args.tickers).read_text(encoding="utf-8").replace(",", " ").split()
     elif nama:
-        tickers = list(nama)
-        if TAMBAHAN.exists():
-            tickers += TAMBAHAN.read_text(encoding="utf-8").replace(",", " ").split()
+        tickers = list(nama)                 # sudah termasuk isi saham_tambahan.txt / tambahan_tickers.txt
     else:
         tickers = DEFAULT_TICKERS
     tickers = sorted({t.strip().upper().removesuffix(".JK") for t in tickers if t.strip()})
@@ -2135,28 +2144,6 @@ TEMPLATE = r'''<!DOCTYPE html>
 
   <div class="view" id="v-screener">
   <section class="market" id="market" aria-label="Kondisi pasar"></section>
-  <section class="card" id="movers-card" aria-label="Daftar teratas hari ini">
-    <details class="adv filt" id="movers-d"><summary>Daftar teratas hari ini <span class="muted" style="font-weight:500;font-size:0.82rem">· nilai transaksi, naik/turun</span></summary>
-      <div id="movers"></div></details>
-  </section>
-
-  <section class="card" aria-label="Preset">
-    <h2>Pilih gaya screening</h2>
-    <div class="presets" id="presets">
-      <button class="preset-btn watch-btn" id="watch-btn" type="button" aria-pressed="false">★ Watchlist <b id="watch-count">0</b></button>
-      <span class="wl-ctl" id="wl-ctl"></span>
-      <button class="preset-btn" data-preset="reset">Tampilkan semua</button>
-      <button class="preset-btn" data-preset="struct">Struktur searah naik</button>
-      <button class="preset-btn" data-preset="golden">Tren naik rapi</button>
-      <button class="preset-btn" data-preset="quality">Likuid &amp; konsisten</button>
-      <button class="preset-btn" data-preset="breakout">Breakout</button>
-      <button class="preset-btn" data-preset="allgreen">Kuat di semua timeframe</button>
-      <button class="preset-btn" data-preset="reversal">Pantulan dari bawah</button>
-      <button class="preset-btn" data-preset="pattern">Ada pola candle</button>
-    </div>
-    <p class="preset-desc" id="preset-desc"></p>
-  </section>
-
   <section class="card" aria-label="Filter" id="filter-card">
     <div class="top-filters">
       <div class="f search-f"><label for="search">Cari kode atau nama</label><input type="text" id="search" placeholder="mis. BBCA atau Astra" autocomplete="off"></div>
@@ -2213,6 +2200,29 @@ TEMPLATE = r'''<!DOCTYPE html>
     </details>
     </details>
   </section>
+
+  <section class="card" id="movers-card" aria-label="Daftar teratas hari ini">
+    <details class="adv filt" id="movers-d"><summary>Daftar teratas hari ini <span class="muted" style="font-weight:500;font-size:0.82rem">· nilai transaksi, naik/turun</span></summary>
+      <div id="movers"></div></details>
+  </section>
+
+  <section class="card" aria-label="Preset">
+    <h2>Pilih gaya screening</h2>
+    <div class="presets" id="presets">
+      <button class="preset-btn watch-btn" id="watch-btn" type="button" aria-pressed="false">★ Watchlist <b id="watch-count">0</b></button>
+      <span class="wl-ctl" id="wl-ctl"></span>
+      <button class="preset-btn" data-preset="reset">Tampilkan semua</button>
+      <button class="preset-btn" data-preset="struct">Struktur searah naik</button>
+      <button class="preset-btn" data-preset="golden">Tren naik rapi</button>
+      <button class="preset-btn" data-preset="quality">Likuid &amp; konsisten</button>
+      <button class="preset-btn" data-preset="breakout">Breakout</button>
+      <button class="preset-btn" data-preset="allgreen">Kuat di semua timeframe</button>
+      <button class="preset-btn" data-preset="reversal">Pantulan dari bawah</button>
+      <button class="preset-btn" data-preset="pattern">Ada pola candle</button>
+    </div>
+    <p class="preset-desc" id="preset-desc"></p>
+  </section>
+
 
   <div class="count-row"><div class="count-info" id="count-info" aria-live="polite"></div>
     <label class="chip pin-chip"><input type="checkbox" id="f-pin"> Sematkan Top 10 di atas</label></div>
@@ -3009,7 +3019,7 @@ function render() {
   if (page > 0) pinned.length = 0;              // blok Top 10 hanya di halaman pertama
   if (!slice.length && !pinned.length) {
     $("tbody").innerHTML = $("search").value.trim()
-      ? `<tr><td colspan="23" class="empty">Kode atau nama "${esc($("search").value.trim())}" tidak ada di data run ini. Mungkin saham itu baru IPO, sedang disuspensi, atau datanya gagal diambil dari Yahoo.</td></tr>`
+      ? `<tr><td colspan="23" class="empty">Kode atau nama "${esc($("search").value.trim())}" tidak ada di data run ini. Kalau saham itu baru IPO dan belum ada di daftar, tulis kodenya di file <b>saham_tambahan.txt</b> di repo GitHub (satu kode per baris), lalu jalankan update. Bisa juga karena sahamnya disuspensi lebih dari 60 hari atau datanya gagal diambil dari Yahoo.</td></tr>`
       : watchOn ? `<tr><td colspan="23" class="empty">Watchlist masih kosong. Klik bintang ☆ di samping kode saham untuk menambahkannya.</td></tr>`
       : `<tr><td colspan="23" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
     const er = $("empty-reset"); if (er) er.addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
