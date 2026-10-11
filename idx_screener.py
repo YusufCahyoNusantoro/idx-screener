@@ -1841,7 +1841,8 @@ TEMPLATE = r'''<!DOCTYPE html>
   .dw-colors input[type=color] { width:26px; height:24px; border:1px solid var(--line); border-radius:6px; padding:0; background:none; cursor:pointer; }
   .dw-small { padding:5px 10px; font-size:0.78rem; }
   .dw-small.on { border-color:var(--accent); color:var(--accent); }
-  .dw-hint-ov { position:absolute; left:10px; top:34px; z-index:3; max-width:min(560px, 80%); }
+  .dw-hint-ov { position:absolute; left:10px; top:34px; z-index:3; max-width:min(560px, 80%); pointer-events:none; }
+  .dw-hint-ov button { pointer-events:auto; }
   .dw-hint-ov:empty { display:none; }
   .dw-hint-ov .dw-hint { margin:0; box-shadow:0 4px 14px rgba(0,0,0,.25); }
   .dw-hint { margin-top:6px; font-size:0.82rem; color:var(--ink2); background:var(--accent-soft); border-radius:8px; padding:6px 10px; display:inline-block; }
@@ -1871,7 +1872,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   :root[data-theme="dark"] .tf-bar button.on { color:#0F1522; }
   .tf-bar button:disabled { opacity:.35; cursor:not-allowed; }
   .tf-msg { padding:60px 16px; text-align:center; color:var(--muted); background:var(--panel2); border-radius:12px; font-size:0.9rem; }
-  .xh-wrap svg.smc-svg { cursor:crosshair; touch-action:pan-y; }
+  .xh-wrap svg.smc-svg { cursor:crosshair; touch-action:none; -webkit-user-select:none; user-select:none; }
   .xh-legend { position:absolute; left:10px; top:6px; right:110px; z-index:1; font-size:0.78rem; color:var(--ink2); pointer-events:none;
     display:flex; flex-wrap:wrap; gap:2px 8px; align-items:baseline; background:color-mix(in srgb, var(--panel2) 82%, transparent); padding:3px 8px; border-radius:8px; width:max-content; max-width:calc(100% - 120px); }
   .xh-legend b { color:var(--ink); margin-right:4px; }
@@ -2017,6 +2018,20 @@ TEMPLATE = r'''<!DOCTYPE html>
   .cpop-ctl .seg button { padding:4px 9px; font-size:0.76rem; }
   .cpop-svg { width:100%; height:auto; display:block; background:var(--panel2); border-radius:10px; }
   .cpop-foot { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; font-size:0.8rem; }
+  .wl-ctl { display:inline-flex; align-items:center; gap:6px; margin-right:6px; }
+  .wl-ctl .icon-btn { white-space:nowrap; }
+  .wl-ctl select { padding:6px 8px; border:1px solid var(--field-line); border-radius:9px; background:var(--field-bg); color:var(--ink); font-weight:700; max-width:200px; }
+  .wl-wrap { position:relative; display:inline-block; }
+  .wl-menu { position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:240px; background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    box-shadow:0 12px 30px rgba(0,0,0,.3); padding:10px 12px; display:grid; gap:6px; }
+  .wl-menu[hidden] { display:none; }
+  .wl-menu label { display:flex; align-items:center; gap:8px; font-size:0.86rem; cursor:pointer; }
+  .wl-menu-h { font-size:0.78rem; color:var(--muted); font-weight:700; }
+  .sy-btn.ok { color:var(--up); border-color:color-mix(in srgb, var(--up) 45%, var(--line)); }
+  .sy-btn.err { color:var(--down); border-color:var(--down); }
+  .sy-btn.busy .sy-ic { animation:rfspin 1.1s linear infinite; display:inline-block; }
+  .sy-steps { padding-left:18px; margin:0 0 8px; font-size:0.84rem; }
+  @media (max-width:760px) { .sy-lab { display:none; } }
   .rf-btn { display:inline-flex; align-items:center; gap:6px; }
   .rf-ic { font-size:1.05rem; line-height:1; display:inline-block; }
   .rf-btn.busy { border-color:var(--accent); color:var(--accent); }
@@ -2105,6 +2120,7 @@ TEMPLATE = r'''<!DOCTYPE html>
         <button class="tab-btn" type="button" data-view="jurnal">Jurnal</button>
         <button class="tab-btn" type="button" data-view="panduan">Panduan</button>
       </nav>
+      <button class="icon-btn rf-btn sy-btn" id="sy-btn" type="button" title="Sinkron watchlist & gambar chart ke semua perangkat" aria-label="Sinkron"><span class="sy-ic" aria-hidden="true">☁</span><span class="sy-lab">Sinkron</span></button>
       <button class="icon-btn rf-btn" id="rf-btn" type="button" title="Perbarui data (jalankan screener)" aria-label="Perbarui data"><span class="rf-ic" aria-hidden="true">⟳</span><span class="rf-lab">Perbarui</span></button>
       <button class="icon-btn" id="theme-btn" type="button" aria-label="Ganti tema terang atau gelap">Tema gelap</button>
     </div>
@@ -2127,7 +2143,8 @@ TEMPLATE = r'''<!DOCTYPE html>
   <section class="card" aria-label="Preset">
     <h2>Pilih gaya screening</h2>
     <div class="presets" id="presets">
-      <button class="preset-btn watch-btn" id="watch-btn" type="button" aria-pressed="false">★ Watchlist saya <b id="watch-count">0</b></button>
+      <button class="preset-btn watch-btn" id="watch-btn" type="button" aria-pressed="false">★ Watchlist <b id="watch-count">0</b></button>
+      <span class="wl-ctl" id="wl-ctl"></span>
       <button class="preset-btn" data-preset="reset">Tampilkan semua</button>
       <button class="preset-btn" data-preset="struct">Struktur searah naik</button>
       <button class="preset-btn" data-preset="golden">Tren naik rapi</button>
@@ -2370,6 +2387,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>MA200, RSI, MACD, dan pasar global</summary>
       <div class="guide-body">
         <p><b>VWMA 20/50/100</b> (lapisan di chart): rata-rata harga yang ditimbang dengan volume (hari bertransaksi besar lebih berpengaruh). Hijau = VWMA20, kuning = VWMA50, merah = VWMA100. VWMA100 butuh 100 candle sebelumnya, jadi di timeframe dengan data pendek bisa belum tersedia. Untuk IHSG yang data volumenya kadang kosong, dipakai rata-rata biasa. Perhitungan analisa (skor Trend, badge Uptrend, Checklist, Kondisi, rencana ATR) tetap memakai MA biasa 20/50/200.</p>
+        <p><b>Di tablet/HP (layar sentuh)</b>: geser satu jari untuk menggeser chart (kiri/kanan, dan atas/bawah kalau geraknya jelas vertikal), cubit dua jari untuk zoom, ketuk sekali untuk crosshair dan info candle. Alat gambar dipakai dengan mengetuk titik-titiknya; Elliott Wave diakhiri dengan ketuk dua kali. Ketuk gambar untuk memilihnya, lalu geser bulatan pegangannya dengan jari; ketuk dua kali gambar untuk mengubah catatan.</p>
         <p><b>Geser &amp; zoom skala harga</b>: klik-tahan lalu geser chart ke atas/bawah untuk melihat harga yang lebih tinggi atau rendah; tarik angka di skala harga (kanan) ke atas/bawah atau putar roda mouse di sana (atau Shift + roda mouse) untuk merenggangkan/merapatkan; atau pakai tombol <b>Harga ▲ ▼ ⇕+ ⇕−</b>. <b>Auto</b> (atau ⟲) mengembalikan skala harga otomatis mengikuti candle.</p>
         <p><b>Area prediksi</b>: di kanan candle terakhir ada ruang kosong (awalnya 8 candle, bisa sampai 60). Klik <b>⇥ Area prediksi</b>, tombol ▶, atau geser chart ke kiri untuk memperluasnya, lalu gambar perkiraan arah harga dengan garis, catatan, atau Elliott Wave. Tanggal di area ini adalah perkiraan (hari kerja berikutnya; intraday mengikuti jam bursa). Gambar ditambatkan ke tanggal dan harga, jadi saat candle baru muncul kamu bisa membandingkan prediksi dengan harga sebenarnya.</p>
         <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), <b>Fibonacci</b> (klik titik awal lalu titik akhir, misalnya swing low lalu swing high; menampilkan level 0 sampai 1 beserta harganya, zona 0,618–0,786, dan target 1,272 serta 1,618), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Gelombang digambar tanpa label; kalau perlu, label bisa ditambahkan sendiri lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya: tarik bulatan pegangan untuk menggeser satu titik, tarik garisnya untuk memindahkan seluruh gambar, atau klik dua kali untuk mengubah catatan. Untuk menghapus, pilih gambarnya lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
@@ -2408,6 +2426,18 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p><b>Screener indikator</b> (dropdown di samping kotak cari) menampilkan saham yang candle terakhirnya memberi sinyal tertentu: <b>Conversion break</b> = harga tutup menembus ke atas garis Conversion Ichimoku (Tenkan-sen, rata-rata harga tertinggi dan terendah 9 candle) di 2H, 1D, atau 1W; <b>Conversion breakdown</b> = menembus ke bawah; <b>EMA21 break/breakdown 1D</b> dan <b>EMA20 break 1W</b> = menembus EMA tersebut; <b>MACD</b> 2H = MACD di atas garis sinyal (atau baru memotong ke atas); <b>Higher TF</b> = struktur SMC Mingguan dan Harian juga bullish. Angka di dalam kurung adalah jumlah saham yang cocok. Saat screener indikator dipilih, filter lain diabaikan. Sinyal 2H hanya untuk saham dengan data intraday (transaksi ≥ Rp 1 M/hari).</p>
         <p><b>Timeframe utama</b>: pilih 1H/2H/4H/D/W/M untuk menyorot kolom rating itu dan mengurutkan tabel dari Strong Buy ke Sell (atau sebaliknya). Kolom rating timeframe juga bisa diklik langsung untuk mengurutkan.</p>
         <p><b>Vol 1D/10D</b>: nilai transaksi hari ini dibanding rata-rata 10 hari sebelumnya (1,00 = sama dengan rata-rata). Oranye kalau ≥ 1,5; saat sesi berjalan diproyeksikan ke satu hari penuh.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Sinkron antar perangkat (☁ Sinkron)</summary>
+      <div class="guide-body">
+        <p>Tombol <b>☁ Sinkron</b> menyimpan semua watchlist dan gambar di chart ke <b>GitHub Gist rahasia</b> milikmu, supaya sama di laptop, HP, dan tablet. Sekali per perangkat, buat token GitHub (classic) yang hanya mencentang izin <b>gist</b>, lalu tempel di kotak Sinkron; token yang sama boleh dipakai di semua perangkatmu. Setelah terhubung, perubahan tersimpan otomatis sekitar 1–2 detik kemudian, dan perangkat lain mengambil versi terbaru saat aplikasi dibuka atau tab-nya kembali dilihat. Saat pertama terhubung, data di perangkat itu digabung dengan yang sudah ada di cloud.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Beberapa watchlist</summary>
+      <div class="guide-body">
+        <p>Di samping tombol <b>★ Watchlist</b> ada pilihan watchlist: pilih watchlist yang ingin dibuka, <b>+ Baru</b> untuk membuat watchlist baru, <b>✎</b> untuk ganti nama, dan <b>🗑</b> untuk menghapus. Bintang ☆ di tabel memasukkan/mengeluarkan saham dari watchlist yang sedang dipilih. Di panel detail saham, tombol <b>Watchlist</b> membuka daftar centang semua watchlist, jadi satu saham bisa masuk ke beberapa watchlist sekaligus. Semua watchlist tersimpan di browser ini.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -2537,6 +2567,7 @@ TEMPLATE = r'''<!DOCTYPE html>
 <div class="cmp-bar" id="cmp-bar" role="region" aria-label="Saham yang akan dibandingkan"></div>
 <button type="button" class="to-top" id="to-top" aria-label="Kembali ke paling atas">↑ Ke atas</button>
 <div class="rf-pop" id="rf-pop" role="dialog" aria-label="Perbarui data" hidden></div>
+<div class="rf-pop" id="sy-pop" role="dialog" aria-label="Sinkron antar perangkat" hidden></div>
 <div class="cpop" id="cpop" role="dialog" aria-label="Chart saham" hidden></div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" tabindex="-1"></aside>
@@ -2570,11 +2601,55 @@ const STORE = "idxs:v2", WATCH = "idxs:watch", CALC = "idxs:calc", THEME = "idxs
 const $ = id => document.getElementById(id);
 const ls = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} if ((k === "idxs:wls" || k === "idxs:draw") && !window._syncApplying && window.syncMark) window.syncMark(); },
 };
 
 let page = 0, sortKey = "score", sortDir = -1, activePreset = "golden", openT = null;
-let watch = new Set(ls.get(WATCH, []));
+const WLS = "idxs:wls";
+let wl = ls.get(WLS, null);
+if (!wl || !wl.lists || !Object.keys(wl.lists).length) { wl = { active: "Utama", lists: { "Utama": ls.get(WATCH, []) } }; }   // watchlist lama -> "Utama"
+if (!wl.lists[wl.active]) wl.active = Object.keys(wl.lists)[0];
+ls.set(WLS, wl);
+let watch = new Set(wl.lists[wl.active]);
+function wlSave() { wl.lists[wl.active] = [...watch]; ls.set(WLS, wl); ls.set(WATCH, [...watch]); }
+function wlNames() { return Object.keys(wl.lists); }
+function wlOf(t) { return wlNames().filter(n => (n === wl.active ? watch : new Set(wl.lists[n])).has(t)); }
+function wlSwitch(name) { wlSave(); wl.active = name; watch = new Set(wl.lists[name] || []); ls.set(WLS, wl); page = 0; render(); renderWL(); }
+function wlToggleIn(name, t) {
+  if (name === wl.active) { watch.has(t) ? watch.delete(t) : watch.add(t); wlSave(); }
+  else { const set = new Set(wl.lists[name] || []); set.has(t) ? set.delete(t) : set.add(t); wl.lists[name] = [...set]; ls.set(WLS, wl); }
+  render(); renderWL();
+}
+function wlNewName(msg, cur) {
+  const v = (prompt(msg, cur || "") || "").trim().slice(0, 40);
+  if (!v) return null;
+  if (v !== cur && wl.lists[v]) { alert(`Watchlist "${v}" sudah ada.`); return null; }
+  return v;
+}
+function wlCreate(addT) {
+  const n = wlNewName("Nama watchlist baru (mis. Swing minggu ini):"); if (!n) return null;
+  wlSave(); wl.lists[n] = addT ? [addT] : []; ls.set(WLS, wl); renderWL(); render(); return n;
+}
+function renderWL() {
+  const box = $("wl-ctl"); if (!box) return;
+  box.innerHTML = `<select id="wl-sel" aria-label="Pilih watchlist">${wlNames().map(n => `<option value="${esc(n)}" ${n === wl.active ? "selected" : ""}>${esc(n)} (${(n === wl.active ? watch.size : (wl.lists[n] || []).length)})</option>`).join("")}</select>
+    <button type="button" class="icon-btn dw-small" id="wl-new" title="Buat watchlist baru">+ Baru</button>
+    <button type="button" class="icon-btn dw-small" id="wl-ren" title="Ganti nama watchlist ini">✎</button>
+    <button type="button" class="icon-btn dw-small" id="wl-del" title="Hapus watchlist ini">🗑</button>`;
+  $("wl-sel").addEventListener("change", e => { wlSwitch(e.target.value); if (!$("f-watch").checked) { $("f-watch").checked = true; markPreset(); save(); render(); } });
+  $("wl-new").addEventListener("click", () => { const n = wlCreate(); if (n) { wlSwitch(n); $("f-watch").checked = true; markPreset(); save(); render(); } });
+  $("wl-ren").addEventListener("click", () => {
+    const n = wlNewName("Ganti nama watchlist:", wl.active); if (!n || n === wl.active) return;
+    wlSave(); const lists = {}; wlNames().forEach(k => lists[k === wl.active ? n : k] = wl.lists[k]); wl.lists = lists; wl.active = n; ls.set(WLS, wl); renderWL(); markPreset();
+  });
+  $("wl-del").addEventListener("click", () => {
+    if (!confirm(`Hapus watchlist "${wl.active}" (${watch.size} saham)? Saham-sahamnya tidak terhapus dari aplikasi, hanya daftarnya.`)) return;
+    delete wl.lists[wl.active];
+    if (!wlNames().length) wl.lists["Utama"] = [];
+    wl.active = wlNames()[0]; watch = new Set(wl.lists[wl.active]); ls.set(WLS, wl); ls.set(WATCH, [...watch]); page = 0; renderWL(); markPreset(); render();
+  });
+  $("watch-count").textContent = watch.size;
+}
 
 /* ---------- format ---------- */
 function fmtNum(n) { return (n === null || n === undefined) ? "-" : Number(n).toLocaleString("id-ID", { maximumFractionDigits: 0 }); }
@@ -2754,7 +2829,7 @@ function load() {
 function markPreset() {
   const wOn = $("f-watch").checked;
   document.querySelectorAll(".preset-btn[data-preset]").forEach(b => b.classList.toggle("active", !wOn && b.dataset.preset === activePreset));
-  $("preset-desc").textContent = wOn ? "Semua saham yang kamu tandai bintang, tanpa filter apa pun. Tanda bintang tersimpan di browser ini."
+  $("preset-desc").textContent = wOn ? `Isi watchlist "${wl.active}", tanpa filter apa pun. Klik bintang di tabel untuk memasukkan/mengeluarkan saham dari watchlist ini; ganti atau buat watchlist lewat pilihan di samping tombol. Tersimpan di browser ini.`
     : activePreset && PRESETS[activePreset] ? PRESETS[activePreset].desc : "Pengaturan manual.";
   document.querySelectorAll("thead th").forEach(th => { th.classList.toggle("active", th.dataset.key === sortKey); th.classList.toggle("asc", th.dataset.key === sortKey && sortDir === 1); });
 }
@@ -2828,7 +2903,7 @@ function filtered() {
 
 function rowHtml(r) {
   return `<tr data-t="${r.t}" tabindex="0"${r.top ? ' class="top10"' : ""}>
-      <td class="sticky1"><button class="star ${watch.has(r.t) ? "on" : ""}" data-star="${r.t}" type="button" aria-label="Watchlist ${r.t}" aria-pressed="${watch.has(r.t)}">★</button></td>
+      <td class="sticky1"><button class="star ${watch.has(r.t) ? "on" : ""}" data-star="${r.t}" type="button" aria-label="Watchlist ${r.t}" aria-pressed="${watch.has(r.t)}" title="${watch.has(r.t) ? "Keluarkan dari" : "Masukkan ke"} watchlist &quot;${esc(wl.active)}&quot;">★</button></td>
       <td class="sticky2"><div class="tk">${r.t}${r.top ? `<span class="top-badge" title="Top 10 hari ini: peringkat ${r.top} (skor bobot standar, hanya saham uptrend dengan struktur W▲ D▲ dan transaksi minimal Rp 5 M/hari)">#${r.top}</span>` : ""}</div><div class="tk-name" title="${esc(r.nm)}">${esc(r.nm) || "&nbsp;"}</div></td>
       <td class="spark-cell" data-sp="${r.t}" title="Arahkan kursor untuk chart lebih besar, klik untuk menahannya">${candleSvg(r.ohlc)}</td>
       <td class="num">${fmtNum(r.p)}</td>
@@ -2924,7 +2999,7 @@ function render() {
   $("fcount").textContent = nAct ? `${nAct} aktif` : "";
   $("count-info").textContent = $("search").value.trim()
     ? `${fmtNum(rows.length)} hasil pencarian. Pencarian mengabaikan filter lain. Hapus isi kotak cari untuk kembali ke filter.`
-    : watchOn ? `Watchlist-mu: ${fmtNum(rows.length)} saham. Filter lain diabaikan. Klik preset mana saja untuk kembali.`
+    : watchOn ? `Watchlist "${esc(wl.active)}": ${fmtNum(rows.length)} saham. Filter lain diabaikan. Klik preset mana saja untuk kembali.`
     : topOn ? `Top 10 hari ini: ${fmtNum(rows.length)} saham (skor bobot standar, hanya saham uptrend dengan struktur W▲ D▲, transaksi minimal Rp 5 M/hari). Filter lain diabaikan; hapus centang untuk kembali.`
     : `${fmtNum(rows.length + (pinActive() ? DATA.filter(r => r.top).length : 0))} saham ditampilkan dari ${fmtNum(DATA.length)}${pinActive() ? " (Top 10 disematkan di atas)" : ""}. Klik baris untuk melihat detail.`;
   document.querySelectorAll(".kd-count").forEach(b => b.classList.toggle("on", b.dataset.kd === $("kd-filter").value));
@@ -3349,8 +3424,7 @@ function dwDragEnd() {
 }
 window.addEventListener("mousemove", e => { if (dwDrag) dwDragMove(e.clientX, e.clientY); });
 window.addEventListener("mouseup", dwDragEnd);
-window.addEventListener("touchmove", e => { if (dwDrag && e.touches.length === 1) { dwDragMove(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }, { passive: false });
-window.addEventListener("touchend", dwDragEnd);
+
 let drawStyle = Object.assign({ color: "#F59E0B", w: 2, magnet: true }, ls.get("idxs:drawstyle", {}));
 const saveStyle = () => ls.set("idxs:drawstyle", drawStyle);
 const drawAll = () => ls.get(DRAW_KEY, {}) || {};
@@ -3581,13 +3655,41 @@ window.addEventListener("mousemove", e => {
   if (!Y.started && Math.abs(dy) < 10) return;          // geser horizontal biasa tidak ikut menggeser harga
   Y.started = true; pvSet(Y.r, Y.off + dy / Y.ihPx * Y.scale, Y.scale); redrawSoon(Y.r);
 });
-window.addEventListener("touchmove", e => {
+function pinchMove(e) {
   if (!pinchState || e.touches.length !== 2) return;
   const dd = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
   const P = pinchState, nb = P.r.smc.b.length, n2 = Math.max(15, Math.min(nb + FUT, Math.round(P.n * P.d / dd)));
   setView(P.r, nb, P.ic - (P.ic - P.v0) * n2 / P.n, n2); redrawSoon(P.r); e.preventDefault();
-}, { passive: false });
-window.addEventListener("touchend", e => { if (pinchState && e.touches.length < 2) pinchState = null; });
+}
+
+// layar sentuh: satu jari = geser chart, ketukan = klik (crosshair, pilih gambar, taruh titik gambar)
+let touchSt = null, lastTapT = 0;
+function tsMove(e) {
+  if (dwDrag && e.touches.length === 1) { dwDragMove(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); return; }
+  if (pinchState && e.touches.length === 2) { pinchMove(e); return; }
+  const S0 = touchSt; if (!S0 || e.touches.length !== 1) return;
+  const x = e.touches[0].clientX, y = e.touches[0].clientY;
+  if (!S0.moved && Math.hypot(x - S0.x, y - S0.y) > 8) S0.moved = true;
+  if (S0.mode === "pan" && S0.moved) {
+    const P = S0.pan;
+    setView(P.r, P.r.smc.b.length, P.v0 + Math.round((P.x - x) / P.pxPerBar), P.n);
+    if (!P.yStarted && Math.abs(y - P.y) > 14) P.yStarted = true;
+    if (P.yStarted) pvSet(P.r, P.off + (y - P.y) / P.ihPx * P.scale, P.scale);
+    redrawSoon(P.r);
+  } else if (S0.onMove) S0.onMove(x, y);
+  e.preventDefault();
+}
+function tsEnd(e) {
+  if (dwDrag && (!e.touches || !e.touches.length)) { dwDragEnd(); return; }
+  if (pinchState && (!e.touches || e.touches.length < 2)) pinchState = null;
+  const S0 = touchSt; if (!S0) return; touchSt = null; document.body.classList.remove("chart-panning");
+  if (e.type === "touchend" && !S0.moved && Date.now() - S0.t < 700 && S0.onTap) S0.onTap(S0.x, S0.y);
+}
+function tsBind(tgt) {                       // ikuti jari dari elemen yang pertama disentuh
+  if (!tgt || tgt._tsBound) return; tgt._tsBound = true;
+  tgt.addEventListener("touchmove", tsMove, { passive: false });
+  tgt.addEventListener("touchend", tsEnd); tgt.addEventListener("touchcancel", tsEnd);
+}
 function tglIdx(S, i) {
   if (i >= S.b.length) { const t = timeOf(S, i); return S.ts ? fmtWaktu(t, S.tf) : new Date(t).toISOString().slice(0, 10); }
   if (S.ts) return fmtWaktu(S.ts[i], S.tf);
@@ -3925,9 +4027,21 @@ function attachCrosshair(r, box) {
     document.body.classList.add("chart-panning"); return true;
   };
   svg.addEventListener("mousedown", e => { downAt = [e.clientX, e.clientY]; if (e.button === 0 && startDwDrag(e, e.clientX, e.clientY)) e.preventDefault(); });
-  svg.addEventListener("touchstart", e => { if (e.touches.length === 1 && startDwDrag(e, e.touches[0].clientX, e.touches[0].clientY)) e.preventDefault(); }, { passive: false });
-  svg.addEventListener("click", e => {
-    const moved = downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5; downAt = null;
+  svg.addEventListener("touchstart", e => tsBind(e.target), { capture: true, passive: true });
+  svg.addEventListener("touchstart", e => {
+    if (e.touches.length !== 1 || frvpMode) return;                    // dua jari = cubit; mode volume profile punya penanganan sendiri
+    const t0 = e.touches[0];
+    if (startDwDrag(e, t0.clientX, t0.clientY)) { e.preventDefault(); return; }   // geser titik / gambar terpilih
+    const rc = svg.getBoundingClientRect(), pv = pvOf(r) || { off: 0, scale: 1 };
+    touchSt = { x: t0.clientX, y: t0.clientY, t: Date.now(), moved: false, mode: drawTool ? "draw" : "pan",
+      pan: { r, x: t0.clientX, y: t0.clientY, v0, n: nbv, pxPerBar: sw * rc.width / W, off: pv.off, scale: pv.scale, ihPx: ih * rc.height / H, yStarted: !!pvOf(r) },
+      onMove: (x, y) => move({ clientX: x, clientY: y }),
+      onTap: (x, y) => { move({ clientX: x, clientY: y }); handleClick({ clientX: x, clientY: y, target: document.elementFromPoint(x, y) || svg, tap: true }); } };
+    if (drawTool) move({ clientX: t0.clientX, clientY: t0.clientY });
+    e.preventDefault();
+  }, { passive: false });
+  const handleClick = e => {
+    const moved = !e.tap && downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5; downAt = null;
     if (!drawTool) {
       if (moved) return;
       const hit = e.target.closest && (e.target.closest("[data-dw]") || e.target.closest("[data-dwh]"));
@@ -3945,10 +4059,15 @@ function attachCrosshair(r, box) {
     if (drawStyle.magnet && i < S.b.length) { const bb = S.b[i], yy = v => T + (max - v) / (max - min) * ih;
       if (Math.abs(sy - yy(bb[1])) < 14) pr = bb[1]; else if (Math.abs(sy - yy(bb[2])) < 14) pr = bb[2]; }
     const tt = timeOf(S, i), last = drawPending[drawPending.length - 1];
+    if (e.tap && drawTool === "ew") {                                // ketuk dua kali = selesai
+      const now = Date.now(), dbl = now - lastTapT < 380; lastTapT = now;
+      if (dbl && drawPending.length >= 2) { finishDrawing(r); return; }
+    }
     if (drawTool === "ew" && last && last.t === tt) return;          // klik kedua dari klik-dua-kali
     drawPending.push({ t: tt, p: pr });
     if (drawPending.length >= TOOL_PTS[drawTool]) finishDrawing(r); else drawSmc(r);
-  });
+  };
+  svg.addEventListener("click", handleClick);
   svg.addEventListener("dblclick", e => {
     if (drawTool === "ew" && drawPending.length >= 2) { e.preventDefault(); finishDrawing(r); return; }
     // klik dua kali pada gambar ditangani di handler klik (lebih andal karena chart digambar ulang saat memilih)
@@ -3974,10 +4093,11 @@ function attachCrosshair(r, box) {
     if (e.touches.length !== 2) return;
     const [sx] = toSvg({ clientX: (e.touches[0].clientX + e.touches[1].clientX) / 2, clientY: e.touches[0].clientY });
     pinchState = { r, d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1, v0, n: nbv, ic: v0 + (sx - L) / sw };
+    touchSt = null;                                                   // jari kedua: batalkan geser/ketuk satu jari
     e.preventDefault();
   }, { passive: false });
   svg.addEventListener("mousemove", move); svg.addEventListener("mouseleave", hide);
-  svg.addEventListener("touchstart", move, { passive: false }); svg.addEventListener("touchmove", move, { passive: false }); svg.addEventListener("touchend", hide);
+  // sentuhan satu jari ditangani di atas (geser chart & ketukan); crosshair muncul di titik yang diketuk
 }
 function frvpControls(r) {
   const box = $("frvp-ctl"); if (!box) return;
@@ -4638,7 +4758,7 @@ function detailParts(r, r0, w) {
     skor: `<div class="d-sec"><h3>Rincian skor</h3><div class="bars">${comp.map(([n, v, wt]) => `<div class="bar-row"><span>${n}</span><span class="track"><i style="width:${v}%"></i></span><span>${v}/100, bobot ${wt}</span></div>`).join("")}</div></div>`,
     tf: `<div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>`,
     lain: `<div class="d-sec"><h3>Data lain</h3><div class="muted" style="font-size:0.86rem">RSI ${fmtDec(r.rsi, 1)}. Volume ${fmtDec(r.vr, 2)}× rata-rata. Transaksi ${fmtValue(r.val)}/hari. Beta ${r.beta == null ? "-" : fmtDec(r.beta, 2)}. ${r.cst && r.cst.total ? `Masuk Top 10 ${r.cst.count} dari ${r.cst.total} hari terakhir.` : ""}</div></div>`,
-    star: `<button class="icon-btn" id="d-star" type="button">${watch.has(r.t) ? "★ Hapus dari watchlist" : "☆ Tambah ke watchlist"}</button>`,
+    star: `<span class="wl-wrap"><button class="icon-btn" id="d-star" type="button" aria-haspopup="true">${wlOf(r.t).length ? `★ Watchlist (${wlOf(r.t).length})` : "☆ Tambah ke watchlist"}</button><div class="wl-menu" id="wl-menu" hidden></div></span>`,
     cmpb: `<button class="icon-btn" id="d-cmp" type="button">${cmp.includes(r.t) ? "✓ Di perbandingan" : "+ Bandingkan"}</button>${cmp.includes(r.t) && cmp.length >= 2 ? `<button class="icon-btn" id="d-cmp-open" type="button">Buka perbandingan (${cmp.length})</button>` : ""}`,
     sim: '<div class="d-sec" id="sim-sec"></div>',
     foot: '<p class="d-foot">Semua angka dihitung otomatis dari data Yahoo Finance dan bisa tertunda. Cocokkan dengan chart di aplikasi trading-mu sebelum mengambil keputusan.</p>',
@@ -4702,7 +4822,17 @@ function openDetail(t, mode, opt = {}) {
     $("d-full").addEventListener("click", () => openDetail(t, "full", { keepNav: true }));
   }
   $("d-close").addEventListener("click", mode === "full" ? closeFull : closeDrawer);
-  $("d-star").addEventListener("click", () => { toggleWatch(t); openDetail(t, mode, { keepNav: true, fromPop: true, keepFocus: true }); });
+  const wlMenu = () => {
+    const m = $("wl-menu"), inL = new Set(wlOf(t));
+    m.innerHTML = `<div class="wl-menu-h">Masukkan ${esc(t)} ke watchlist:</div>${wlNames().map(n => `<label><input type="checkbox" data-wl="${esc(n)}" ${inL.has(n) ? "checked" : ""}> ${esc(n)} <span class="muted">(${(n === wl.active ? watch.size : (wl.lists[n] || []).length)})</span></label>`).join("")}
+      <button type="button" class="icon-btn dw-small" id="wl-menu-new">+ Buat watchlist baru</button>`;
+    m.querySelectorAll("[data-wl]").forEach(cb => cb.addEventListener("change", () => { wlToggleIn(cb.dataset.wl, t); upd(); }));
+    $("wl-menu-new").addEventListener("click", () => { if (wlCreate(t)) { upd(); wlMenu(); } });
+  };
+  const upd = () => { const n = wlOf(t).length; $("d-star").textContent = n ? `★ Watchlist (${n})` : "☆ Tambah ke watchlist"; };
+  $("d-star").addEventListener("click", e => { e.stopPropagation(); const m = $("wl-menu"); m.hidden = !m.hidden; if (!m.hidden) wlMenu(); });
+  $("wl-menu").addEventListener("click", e => e.stopPropagation());
+  document.addEventListener("click", () => { const m = $("wl-menu"); if (m) m.hidden = true; }, { once: true });
   $("d-cmp").addEventListener("click", () => { if (toggleCmp(t) !== false) openDetail(t, mode, { keepNav: true, fromPop: true, keepFocus: true }); });
   const co = $("d-cmp-open"); if (co) co.addEventListener("click", () => openCompare());
   const pv = $("d-prev"), nx = $("d-next");
@@ -4774,7 +4904,7 @@ function openIhsg() {
 }
 
 function closeDrawer() { $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); const tr = openT === "IHSG" ? $("ihsg-card") : document.querySelector(`tr[data-t="${openT}"]`); openT = null; if (tr) tr.focus(); }
-function toggleWatch(t) { watch.has(t) ? watch.delete(t) : watch.add(t); ls.set(WATCH, [...watch]); render(); }
+function toggleWatch(t) { watch.has(t) ? watch.delete(t) : watch.add(t); wlSave(); render(); renderWL(); }
 
 /* ---------- events ---------- */
 document.querySelectorAll(".preset-btn[data-preset]").forEach(b => b.addEventListener("click", () => applyPreset(b.dataset.preset)));
@@ -4803,6 +4933,7 @@ $("scrim").addEventListener("click", closeDrawer);
 document.addEventListener("keydown", e => {
   const inField = e.target && e.target.closest && e.target.closest("input, textarea, select");
   if (e.key === "Escape" && !$("rf-pop").hidden) { $("rf-pop").hidden = true; return; }
+  if (e.key === "Escape" && !$("sy-pop").hidden) { $("sy-pop").hidden = true; return; }
   if (e.key === "Escape" && !$("cpop").hidden) { cpopHide(); return; }
   if (e.key === "Escape" && $("cmpv").classList.contains("open")) { closeCompare(); return; }
   if (drawTool === "ew" && curChartR && !inField) {
@@ -4817,6 +4948,100 @@ document.addEventListener("keydown", e => {
     e.preventDefault(); stepDetail(e.key === "ArrowLeft" ? -1 : 1);
   }
 });
+
+/* ---------- sinkron watchlist & gambar chart antar perangkat (GitHub Gist rahasia) ---------- */
+const SYNC_KEY = "idxs:sync", SYNC_FILE = "dibalik-saham-sinkron.json";
+let sync = ls.get(SYNC_KEY, {}) || {}, syncTimer = null, syncBusy = false, syncErr = "", syncLastPull = 0;
+const syncSave = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) {} };
+function syncGh(path, opt = {}) {
+  return fetch("https://api.github.com" + path, { ...opt, headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + sync.token,
+    "X-GitHub-Api-Version": "2022-11-28", ...(opt.body ? { "Content-Type": "application/json" } : {}), ...(opt.headers || {}) } });
+}
+function syncLocal() { return { wls: ls.get(WLS, null), draw: ls.get(DRAW_KEY, {}) }; }
+function syncErrText(st) { return st === 401 ? "token ditolak atau sudah kedaluwarsa" : st === 403 ? "token tidak punya izin gist" : st === 404 ? "gist tidak ditemukan" : `kode ${st}`; }
+async function syncFind() {
+  for (let page = 1; page <= 5; page++) {
+    const r = await syncGh(`/gists?per_page=100&page=${page}`); if (!r.ok) throw new Error(syncErrText(r.status));
+    const a = await r.json(), g = a.find(x => x.files && x.files[SYNC_FILE]); if (g) return g.id; if (a.length < 100) break;
+  }
+  return null;
+}
+async function syncPull() {
+  const r = await syncGh(`/gists/${sync.gist}`); if (!r.ok) throw new Error(syncErrText(r.status));
+  const f = (await r.json()).files[SYNC_FILE]; if (!f) return {};
+  const txt = f.truncated ? await (await fetch(f.raw_url)).text() : f.content;
+  try { return JSON.parse(txt || "{}"); } catch (e) { return {}; }
+}
+async function syncPush() {
+  const content = JSON.stringify({ v: 1, updated: new Date().toISOString(), ...syncLocal() });
+  const r = sync.gist ? await syncGh(`/gists/${sync.gist}`, { method: "PATCH", body: JSON.stringify({ files: { [SYNC_FILE]: { content } } }) })
+    : await syncGh("/gists", { method: "POST", body: JSON.stringify({ description: "Dibalik Saham: sinkron watchlist & gambar chart", public: false, files: { [SYNC_FILE]: { content } } }) });
+  if (!r.ok) throw new Error(syncErrText(r.status));
+  sync.gist = (await r.json()).id; sync.remoteTs = Date.parse(JSON.parse(content).updated); sync.localTs = sync.remoteTs; syncSave();
+}
+function syncMerge(loc, rem) {                 // dipakai saat pertama terhubung: gabungkan, tidak ada yang hilang
+  const lists = {}; [rem.wls, loc.wls].forEach(w => w && w.lists && Object.entries(w.lists).forEach(([n, a]) => { lists[n] = [...new Set([...(lists[n] || []), ...a])]; }));
+  if (!Object.keys(lists).length) lists["Utama"] = [];
+  const active = loc.wls && lists[loc.wls.active] ? loc.wls.active : Object.keys(lists)[0];
+  const draw = {}; [rem.draw, loc.draw].forEach(d => d && Object.entries(d).forEach(([k, arr]) => { const m = new Map((draw[k] || []).map(x => [x.id, x])); arr.forEach(x => m.set(x.id, x)); draw[k] = [...m.values()]; }));
+  return { wls: { active, lists }, draw };
+}
+function syncApply(d) {
+  window._syncApplying = true;
+  try {
+    if (d.wls && d.wls.lists) { const act = wl.active; wl = d.wls; if (wl.lists[act]) wl.active = act; if (!wl.lists[wl.active]) wl.active = Object.keys(wl.lists)[0]; ls.set(WLS, wl); watch = new Set(wl.lists[wl.active] || []); ls.set(WATCH, [...watch]); }
+    if (d.draw) ls.set(DRAW_KEY, d.draw);
+  } finally { window._syncApplying = false; }
+  renderWL(); render(); if (curChartR && $("smc-box") && $("smc-box").innerHTML) drawSmc(curChartR);
+}
+function syncUI() {
+  const b = $("sy-btn"); if (!b) return;
+  b.classList.toggle("busy", syncBusy); b.classList.toggle("ok", !!sync.token && !syncBusy && !syncErr); b.classList.toggle("err", !!syncErr);
+  b.querySelector(".sy-lab").textContent = !sync.token ? "Sinkron" : syncBusy ? "Menyimpan…" : syncErr ? "Sinkron gagal" : "Tersinkron";
+  b.querySelector(".sy-ic").textContent = syncErr ? "⚠" : sync.token && !syncBusy ? "☁✓" : "☁";
+  if (!$("sy-pop").hidden) syRender();
+}
+async function syncRun(kind) {
+  if (!sync.token || syncBusy) return;
+  syncBusy = true; syncErr = ""; syncUI();
+  try {
+    if (!sync.gist) sync.gist = await syncFind();
+    if (!sync.gist) { await syncPush(); sync.connected = true; }
+    else if (kind === "push") await syncPush();
+    else {
+      const rem = await syncPull(), rTs = Date.parse(rem.updated || 0) || 0; syncLastPull = Date.now();
+      if (!sync.connected) { syncApply(syncMerge(syncLocal(), rem)); await syncPush(); sync.connected = true; }
+      else if (rTs > (sync.localTs || 0) + 500) { syncApply(rem); sync.localTs = sync.remoteTs = rTs; }
+      else if ((sync.localTs || 0) > rTs + 500) await syncPush();
+    }
+    sync.last = Date.now(); syncSave();
+  } catch (e) { syncErr = e.message || "gagal terhubung"; }
+  syncBusy = false; syncUI();
+}
+window.syncMark = () => { sync.localTs = Date.now(); syncSave(); if (!sync.token) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => syncRun("push"), 1500); };
+function syRender() {
+  const box = $("sy-pop"), ago = sync.last ? Math.round((Date.now() - sync.last) / 60000) : null;
+  box.innerHTML = `<div class="rf-head"><b>Sinkron antar perangkat</b><button type="button" class="icon-btn dw-small" id="sy-x" aria-label="Tutup">✕</button></div>
+    <p class="muted" style="margin:0 0 10px;font-size:0.84rem">Watchlist dan gambar di chart disimpan di <b>GitHub Gist rahasia</b> milikmu, jadi sama di laptop, HP, dan tablet.</p>
+    ${sync.token ? `<div class="rf-msg">${syncBusy ? "Menyinkronkan…" : syncErr ? `✗ Gagal: ${esc(syncErr)}.` : `✓ Tersinkron${ago != null ? ` (${ago < 1 ? "baru saja" : ago + " menit lalu"})` : ""}.`}</div>
+        <button type="button" class="rf-go" id="sy-now" ${syncBusy ? "disabled" : ""}>☁ Sinkron sekarang</button>
+        <p class="muted" style="font-size:0.76rem;margin:8px 0 0">Perubahan tersimpan otomatis. Perangkat lain mengambil versi terbaru saat aplikasi dibuka.
+          <button type="button" class="link-btn" id="sy-off">Putuskan di perangkat ini</button></p>`
+      : `<ol class="sy-steps">
+          <li>Di GitHub: foto profil → <b>Settings</b> → <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Tokens (classic)</b> → <b>Generate new token (classic)</b>.</li>
+          <li>Isi <b>Note</b> (mis. <i>sinkron dibalik saham</i>), pilih masa berlaku, lalu centang <b>hanya</b> kotak <b>gist</b>.</li>
+          <li>Klik <b>Generate token</b>, salin, lalu tempel di bawah. Token yang sama bisa dipakai di semua perangkatmu.</li>
+        </ol>
+        <div class="rf-row"><input type="password" id="sy-tok" placeholder="ghp_..." autocomplete="off"><button type="button" class="icon-btn" id="sy-save">Hubungkan</button></div>
+        <p class="muted" style="font-size:0.74rem;margin:6px 0 0">Token hanya disimpan di browser perangkat ini. Izin <b>gist</b> tidak bisa mengubah repo atau pengaturan akunmu. Saat pertama terhubung, watchlist dan gambar di perangkat ini digabung dengan yang sudah ada di cloud.</p>`}`;
+  $("sy-x").addEventListener("click", () => { $("sy-pop").hidden = true; });
+  const nw = $("sy-now"); if (nw) nw.addEventListener("click", () => syncRun("pull"));
+  const off = $("sy-off"); if (off) off.addEventListener("click", () => { if (!confirm("Putuskan sinkron di perangkat ini? Watchlist dan gambar di perangkat ini tetap ada; hanya tidak disinkronkan lagi.")) return; sync = {}; syncSave(); syncErr = ""; syncUI(); syRender(); });
+  const sv = $("sy-save"); if (sv) sv.addEventListener("click", () => { const v = $("sy-tok").value.trim(); if (!v) return; sync = { token: v }; syncSave(); syncRun("pull"); });
+}
+$("sy-btn").addEventListener("click", () => { const p = $("sy-pop"); if (p.hidden) { $("rf-pop").hidden = true; syRender(); p.hidden = false; } else p.hidden = true; });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && sync.token && Date.now() - syncLastPull > 20000) syncRun("pull"); });
+if (location.protocol === "file:") $("sy-btn").hidden = true;
 
 /* ---------- popup chart dari chart mini di tabel ---------- */
 let cpopT = null, cpopPinned = false, cpopTimer = null, cpopN = ls.get("idxs:cpopn", 60);
@@ -5025,6 +5250,8 @@ $("page-size").addEventListener("change", () => { PAGE_SIZE = +$("page-size").va
     if (c) c.scrollTo ? c.scrollTo(opt) : (c.scrollTop = 0); else window.scrollTo ? window.scrollTo(opt) : (document.documentElement.scrollTop = 0); });
 })();
 $("f-pin").checked = ls.get(PIN_KEY, true);
+renderWL();
+setTimeout(() => { syncUI(); if (sync.token) syncRun("pull"); }, 300);
 renderSigOptions(); $("sig-filter").value = ls.get("idxs:sig", "");
 $("sig-filter").addEventListener("change", () => { ls.set("idxs:sig", $("sig-filter").value); page = 0; render(); });
 renderPref();
