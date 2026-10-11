@@ -1,0 +1,5 @@
+# Saham tambahan yang belum ada di daftar_saham.csv (mis. baru IPO).
+# Tulis satu kode per baris, boleh diberi nama setelah koma. Contoh:
+#   ABCD
+#   EFGH, Contoh Perusahaan Tbk.
+# Baris yang diawali tanda # diabaikan.
