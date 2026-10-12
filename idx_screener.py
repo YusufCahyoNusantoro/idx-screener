@@ -2027,6 +2027,22 @@ TEMPLATE = r'''<!DOCTYPE html>
   .cpop-ctl .seg button { padding:4px 9px; font-size:0.76rem; }
   .cpop-svg { width:100%; height:auto; display:block; background:var(--panel2); border-radius:10px; }
   .cpop-foot { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; font-size:0.8rem; }
+  .wl-tabs { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding-bottom:12px; margin-bottom:12px; border-bottom:1px solid var(--line); }
+  .wl-lab { font-weight:800; color:var(--orange); margin-right:4px; }
+  .wl-tab { border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:999px; padding:7px 14px; font-weight:700; cursor:pointer; font-size:0.88rem; }
+  .wl-tab b { display:inline-block; min-width:20px; padding:0 6px; margin-left:4px; border-radius:999px; background:var(--panel2); font-size:0.78rem; }
+  .wl-tab.cur { border-color:color-mix(in srgb, var(--orange) 55%, var(--line)); }
+  .wl-tab.on { background:var(--orange); border-color:var(--orange); color:#1F1600; }
+  .wl-tab.on b { background:rgba(0,0,0,.15); }
+  .wl-tab:hover:not(.on) { border-color:var(--orange); }
+  .wl-menu-wrap { position:relative; display:inline-block; }
+  .wl-burger { padding:6px 12px; font-size:1.05rem; line-height:1; }
+  .wl-bmenu { position:absolute; left:0; top:calc(100% + 6px); z-index:30; min-width:260px; max-width:min(420px, 90vw); background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    box-shadow:0 12px 30px rgba(0,0,0,.3); padding:4px; display:grid; }
+  .wl-bmenu[hidden] { display:none; }
+  .wl-bmenu button { text-align:left; background:none; border:0; color:var(--ink); padding:9px 12px; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.88rem; white-space:nowrap; }
+  .wl-bmenu button:hover { background:var(--panel2); }
+  .wl-bmenu button.neg { color:var(--down); }
   .wl-ctl { display:inline-flex; align-items:center; gap:6px; margin-right:6px; }
   .wl-ctl .icon-btn { white-space:nowrap; }
   .wl-ctl select { padding:6px 8px; border:1px solid var(--field-line); border-radius:9px; background:var(--field-bg); color:var(--ink); font-weight:700; max-width:200px; }
@@ -2233,10 +2249,10 @@ TEMPLATE = r'''<!DOCTYPE html>
   </section>
 
   <section class="card" aria-label="Preset">
+    <div class="wl-tabs" id="wl-ctl" role="tablist" aria-label="Watchlist"></div>
     <h2>Pilih gaya screening</h2>
     <div class="presets" id="presets">
-      <button class="preset-btn watch-btn" id="watch-btn" type="button" aria-pressed="false">★ Watchlist <b id="watch-count">0</b></button>
-      <span class="wl-ctl" id="wl-ctl"></span>
+      <button class="preset-btn watch-btn" id="watch-btn" type="button" aria-pressed="false" hidden>★ Watchlist <b id="watch-count">0</b></button>
       <button class="preset-btn" data-preset="reset">Tampilkan semua</button>
       <button class="preset-btn" data-preset="struct">Struktur searah naik</button>
       <button class="preset-btn" data-preset="golden">Tren naik rapi</button>
@@ -2486,7 +2502,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <details class="guide-item">
       <summary>Beberapa watchlist</summary>
       <div class="guide-body">
-        <p>Di samping tombol <b>★ Watchlist</b> ada pilihan watchlist: pilih watchlist yang ingin dibuka, <b>+ Baru</b> untuk membuat watchlist baru, <b>✎</b> untuk ganti nama, dan <b>🗑</b> untuk menghapus. Bintang ☆ di tabel memasukkan/mengeluarkan saham dari watchlist yang sedang dipilih. Di panel detail saham, tombol <b>Watchlist</b> membuka daftar centang semua watchlist, jadi satu saham bisa masuk ke beberapa watchlist sekaligus. Semua watchlist tersimpan di browser ini.</p>
+        <p>Semua watchlist tampil sebagai tab di baris <b>★ Watchlist</b>: klik tab untuk menampilkan isinya, klik lagi (atau klik salah satu preset) untuk kembali ke screening biasa. Tombol <b>☰</b> di ujung baris berisi menu membuat watchlist baru, serta mengganti nama atau menghapus watchlist yang tab-nya bergaris oranye. Bintang ☆ di tabel memasukkan/mengeluarkan saham dari watchlist yang sedang dipilih. Di panel detail saham, tombol <b>Watchlist</b> membuka daftar centang semua watchlist, jadi satu saham bisa masuk ke beberapa watchlist sekaligus. Semua watchlist tersimpan di browser ini.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -2681,12 +2697,27 @@ function wlCreate(addT) {
 }
 function renderWL() {
   const box = $("wl-ctl"); if (!box) return;
-  box.innerHTML = `<select id="wl-sel" aria-label="Pilih watchlist">${wlNames().map(n => `<option value="${esc(n)}" ${n === wl.active ? "selected" : ""}>${esc(n)} (${(n === wl.active ? watch.size : (wl.lists[n] || []).length)})</option>`).join("")}</select>
-    <button type="button" class="icon-btn dw-small" id="wl-new" title="Buat watchlist baru">+ Baru</button>
-    <button type="button" class="icon-btn dw-small" id="wl-ren" title="Ganti nama watchlist ini">✎</button>
-    <button type="button" class="icon-btn dw-small" id="wl-del" title="Hapus watchlist ini">🗑</button>`;
-  $("wl-sel").addEventListener("change", e => { wlSwitch(e.target.value); if (!$("f-watch").checked) { $("f-watch").checked = true; markPreset(); save(); render(); } });
-  $("wl-new").addEventListener("click", () => { const n = wlCreate(); if (n) { wlSwitch(n); $("f-watch").checked = true; markPreset(); save(); render(); } });
+  const on = $("f-watch") && $("f-watch").checked;
+  box.innerHTML = `<span class="wl-lab">★ Watchlist</span>${wlNames().map(n => {
+      const cnt = n === wl.active ? watch.size : (wl.lists[n] || []).length, act = on && n === wl.active;
+      return `<button type="button" role="tab" class="wl-tab${act ? " on" : ""}${n === wl.active ? " cur" : ""}" data-wl-tab="${esc(n)}" aria-selected="${act}" title="${act ? "Klik lagi untuk kembali ke screening biasa" : "Tampilkan isi watchlist ini"}">${esc(n)} <b>${cnt}</b></button>`;
+    }).join("")}
+    <span class="wl-menu-wrap"><button type="button" class="icon-btn wl-burger" id="wl-burger" aria-haspopup="true" aria-expanded="false" title="Kelola watchlist">☰</button>
+      <div class="wl-bmenu" id="wl-bmenu" hidden>
+        <button type="button" id="wl-new">＋ Buat watchlist baru</button>
+        <button type="button" id="wl-ren">✎ Ganti nama "${esc(wl.active)}"</button>
+        <button type="button" id="wl-del" class="neg">🗑 Hapus "${esc(wl.active)}"</button>
+      </div></span>`;
+  const bm = $("wl-bmenu");
+  $("wl-burger").addEventListener("click", e => { e.stopPropagation(); bm.hidden = !bm.hidden; $("wl-burger").setAttribute("aria-expanded", !bm.hidden); });
+  bm.addEventListener("click", () => { bm.hidden = true; });
+  document.addEventListener("click", () => { if (bm) bm.hidden = true; }, { once: true });
+  box.querySelectorAll("[data-wl-tab]").forEach(b => b.addEventListener("click", () => {
+    const n = b.dataset.wlTab, wasOn = $("f-watch").checked && n === wl.active;
+    if (n !== wl.active) wlSwitch(n);
+    $("f-watch").checked = !wasOn; $("search").value = ""; page = 0; markPreset(); save(); render(); renderWL();
+  }));
+  $("wl-new").addEventListener("click", () => { const n = wlCreate(); if (n) { wlSwitch(n); $("f-watch").checked = true; markPreset(); save(); render(); renderWL(); } });
   $("wl-ren").addEventListener("click", () => {
     const n = wlNewName("Ganti nama watchlist:", wl.active); if (!n || n === wl.active) return;
     wlSave(); const lists = {}; wlNames().forEach(k => lists[k === wl.active ? n : k] = wl.lists[k]); wl.lists = lists; wl.active = n; ls.set(WLS, wl); renderWL(); markPreset();
@@ -3033,6 +3064,7 @@ function render() {
   const { pinned, rows } = displayRows();
   const watchOn = $("f-watch").checked && !$("search").value.trim();
   $("watch-btn").classList.toggle("on", watchOn); $("watch-btn").setAttribute("aria-pressed", watchOn);
+  document.querySelectorAll("[data-wl-tab]").forEach(b => { const act = watchOn && b.dataset.wlTab === wl.active; b.classList.toggle("on", act); b.setAttribute("aria-selected", act); });
   $("watch-count").textContent = watch.size;
   const topOn = !watchOn && $("f-top").checked && !$("search").value.trim();
   $("filter-card").classList.toggle("dim", watchOn || topOn || !!$("search").value.trim() || !!$("sig-filter").value);
@@ -5225,7 +5257,11 @@ async function syncRun(kind) {
     else if (kind === "push") await syncPush();
     else {
       const rem = await syncPull(), rTs = Date.parse(rem.updated || 0) || 0; syncLastPull = Date.now();
-      if (!sync.connected) { syncApply(syncMerge(syncLocal(), rem)); await syncPush(); sync.connected = true; }
+      if (!sync.connected) {
+        const nW = rem.wls && rem.wls.lists ? Object.keys(rem.wls.lists).length : 0, nD = rem.draw ? Object.values(rem.draw).reduce((a, x) => a + x.length, 0) : 0, nJ = (rem.jr || []).length;
+        const useCloud = (nW || nD || nJ) && confirm(`Di cloud sudah ada data dari perangkat lain: ${nW} watchlist${rem.wls && rem.wls.lists ? " (" + Object.keys(rem.wls.lists).join(", ") + ")" : ""}, ${nD} gambar chart, ${nJ} transaksi portofolio.\n\nOK = pakai data cloud saja (watchlist, gambar, dan portofolio di perangkat ini DIGANTI, supaya sama persis dengan perangkat lain).\nBatal = gabungkan data perangkat ini dengan data cloud.`);
+        syncApply(useCloud ? rem : syncMerge(syncLocal(), rem)); await syncPush(); sync.connected = true;
+      }
       else if (rTs > (sync.localTs || 0) + 500) { syncApply(rem); sync.localTs = sync.remoteTs = rTs; }
       else if ((sync.localTs || 0) > rTs + 500) await syncPush();
     }
@@ -5241,7 +5277,8 @@ function syRender() {
     ${sync.token ? `<div class="rf-msg">${syncBusy ? "Menyinkronkan…" : syncErr ? `✗ Gagal: ${esc(syncErr)}.` : `✓ Tersinkron${ago != null ? ` (${ago < 1 ? "baru saja" : ago + " menit lalu"})` : ""}.`}</div>
         <button type="button" class="rf-go" id="sy-now" ${syncBusy ? "disabled" : ""}>☁ Sinkron sekarang</button>
         <p class="muted" style="font-size:0.76rem;margin:8px 0 0">Perubahan tersimpan otomatis. Perangkat lain mengambil versi terbaru saat aplikasi dibuka.
-          <button type="button" class="link-btn" id="sy-off">Putuskan di perangkat ini</button></p>`
+          <button type="button" class="link-btn" id="sy-off">Putuskan di perangkat ini</button></p>
+        <p class="muted" style="font-size:0.76rem;margin:6px 0 0">Menghubungkan HP/tablet: <button type="button" class="link-btn" id="sy-copy">Salin token</button>, kirim ke perangkat itu lewat cara yang aman (mis. chat ke diri sendiri), lalu tempel di kotak Sinkron di sana. Hapus pesannya setelah dipakai.</p>`
       : `<ol class="sy-steps">
           <li>Di GitHub: foto profil → <b>Settings</b> → <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Tokens (classic)</b> → <b>Generate new token (classic)</b>.</li>
           <li>Isi <b>Note</b> (mis. <i>sinkron dibalik saham</i>), pilih masa berlaku, lalu centang <b>hanya</b> kotak <b>gist</b>.</li>
@@ -5251,6 +5288,11 @@ function syRender() {
         <p class="muted" style="font-size:0.74rem;margin:6px 0 0">Token hanya disimpan di browser perangkat ini. Izin <b>gist</b> tidak bisa mengubah repo atau pengaturan akunmu. Saat pertama terhubung, watchlist dan gambar di perangkat ini digabung dengan yang sudah ada di cloud.</p>`}`;
   $("sy-x").addEventListener("click", () => { $("sy-pop").hidden = true; });
   const nw = $("sy-now"); if (nw) nw.addEventListener("click", () => syncRun("pull"));
+  const cp = $("sy-copy"); if (cp) cp.addEventListener("click", () => {
+    const done = () => { cp.textContent = "✓ Token disalin"; setTimeout(() => { if (cp) cp.textContent = "Salin token"; }, 2500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(sync.token).then(done, () => prompt("Salin token ini:", sync.token));
+    else prompt("Salin token ini:", sync.token);
+  });
   const off = $("sy-off"); if (off) off.addEventListener("click", () => { if (!confirm("Putuskan sinkron di perangkat ini? Watchlist dan gambar di perangkat ini tetap ada; hanya tidak disinkronkan lagi.")) return; sync = {}; syncSave(); syncErr = ""; syncUI(); syRender(); });
   const sv = $("sy-save"); if (sv) sv.addEventListener("click", () => { const v = $("sy-tok").value.trim(); if (!v) return; sync = { token: v }; syncSave(); syncRun("pull"); });
 }
@@ -5396,11 +5438,16 @@ function checkUpdate() {
     if (m && m[1] !== GEN && !m[1].startsWith("__")) { $("update-text").textContent = `Data baru (${m[1]} WIB) sudah tersedia. Filter dan watchlist-mu tetap tersimpan.`; $("update-bar").style.display = "flex"; }
   }).catch(() => {});
 }
-$("update-btn").addEventListener("click", () => location.reload());
+// muat ulang dengan alamat unik supaya browser/tablet tidak memakai versi lama dari cache
+$("update-btn").addEventListener("click", () => { location.replace(location.pathname + "?v=" + Date.now() + location.hash); });
 if (location.protocol === "file:") {
   let last = Date.now(); ["click", "keydown", "scroll", "input"].forEach(ev => window.addEventListener(ev, () => last = Date.now(), { passive: true }));
   setInterval(() => { if (!openT && Date.now() - last > 120000) location.reload(); }, 300000);
-} else setInterval(checkUpdate, 300000);
+} else {
+  setInterval(checkUpdate, 300000);
+  setTimeout(checkUpdate, 4000);                 // cek versi baru tak lama setelah halaman dibuka
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkUpdate(); });
+}
 
 (() => {
   const cnt = {}; DATA.forEach(r => { const k = r.sector && r.sector !== "-" ? r.sector : "-"; cnt[k] = (cnt[k] || 0) + 1; });
