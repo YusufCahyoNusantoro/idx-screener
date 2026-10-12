@@ -1,16 +1,4 @@
 {
- "2026-09-28": [
-  "UVCR",
-  "RSCH",
-  "SGER",
-  "MAPI",
-  "PTBA",
-  "DOOH",
-  "KETR",
-  "BSSR",
-  "PKPK",
-  "ERAA"
- ],
  "2026-09-29": [
   "PKPK",
   "SEMA",
@@ -118,5 +106,17 @@
   "PKPK",
   "RSCH",
   "SGER"
+ ],
+ "2026-10-12": [
+  "PKPK",
+  "RSCH",
+  "SMIL",
+  "TEBE",
+  "SEMA",
+  "DEWI",
+  "MMIX",
+  "BDKR",
+  "SGER",
+  "NAYZ"
  ]
 }
