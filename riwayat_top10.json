@@ -109,14 +109,14 @@
  ],
  "2026-10-12": [
   "PKPK",
-  "DEWI",
+  "RSCH",
   "TEBE",
-  "AUTO",
   "SEMA",
+  "MMIX",
   "BDMN",
   "SMIL",
-  "RSCH",
-  "MARK",
-  "MMIX"
+  "DEWI",
+  "NEST",
+  "AUTO"
  ]
 }
