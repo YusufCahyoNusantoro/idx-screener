@@ -2057,6 +2057,25 @@ TEMPLATE = r'''<!DOCTYPE html>
   .sy-btn.busy .sy-ic { animation:rfspin 1.1s linear infinite; display:inline-block; }
   .sy-steps { padding-left:18px; margin:0 0 8px; font-size:0.84rem; }
   @media (max-width:760px) { .sy-lab { display:none; } }
+  .pf-row { cursor:pointer; } .pf-row:hover td { background:var(--row-hover); }
+  .pf-note-ic { font-size:0.8rem; }
+  .pf-detail { position:fixed; inset:0; z-index:50; background:rgba(5,8,15,.55); display:flex; justify-content:flex-end; }
+  .pf-detail[hidden] { display:none; }
+  .pfd-card { width:min(460px, 100%); height:100%; background:var(--panel); border-left:1px solid var(--line); display:flex; flex-direction:column; box-shadow:-10px 0 30px rgba(0,0,0,.3); }
+  .pfd-head { display:flex; gap:12px; align-items:flex-start; padding:16px 18px; border-bottom:6px solid var(--panel2); padding-top:calc(16px + env(safe-area-inset-top, 0px)); }
+  .pfd-head > div:first-child { flex:1; min-width:0; }
+  .pfd-tk { font-size:1.4rem; font-weight:800; } .pfd-px { font-size:1.4rem; font-weight:800; }
+  .pfd-body { flex:1; overflow:auto; padding:10px 18px 16px; display:grid; gap:10px; align-content:start; }
+  .pfd-row { display:flex; justify-content:space-between; padding:6px 0; font-size:0.95rem; } .pfd-row span { color:var(--ink2); }
+  .pfd-box { border:1px solid var(--line); border-radius:10px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .pfd-col { flex-direction:column; align-items:stretch; display:grid; grid-template-columns:minmax(0, 1fr); justify-content:stretch; }
+  .pfd-sub { font-weight:800; }
+  .pfd-alloc { display:flex; align-items:center; gap:8px; }
+  .pfd-col > * { min-width:0; }
+  .pfd-box textarea { box-sizing:border-box; justify-self:stretch; width:100% !important; max-width:none; padding:8px 10px; border:1px solid var(--field-line); border-radius:9px; background:var(--field-bg); color:var(--ink); font:inherit; resize:vertical; }
+  .pfd-foot { display:grid; grid-template-columns:1fr 2fr auto; gap:10px; padding:14px 18px calc(14px + env(safe-area-inset-bottom, 0px)); border-top:1px solid var(--line); }
+  .pfd-buy, .pfd-sell { border-radius:10px; padding:12px; font-weight:800; font-size:1rem; cursor:pointer; background:transparent; }
+  .pfd-buy { border:1.5px solid var(--up); color:var(--up); } .pfd-sell { border:1.5px solid var(--down); color:var(--down); }
   .pf-lock { max-width:420px; margin:40px auto; text-align:center; }
   .pf-lock[hidden] { display:none; }
   .pf-lock-ic { font-size:2.2rem; } .pf-lock h2 { margin:6px 0; }
@@ -2495,7 +2514,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <details class="guide-item">
       <summary>Portofolio (terkunci password)</summary>
       <div class="guide-body">
-        <p>Tab <b>Portofolio</b> dikunci password (bisa diganti di Portofolio → Pengaturan). Password ini kunci layar di browser, bukan enkripsi. Setelah dibuka, portofolio tetap terbuka sampai tab ditutup atau kamu klik <b>🔒 Kunci</b>.</p>
+        <p>Tab <b>Portofolio</b> dikunci password (bisa diganti di Portofolio → Pengaturan). Password ini kunci layar di browser, bukan enkripsi. Setiap kali kamu pindah ke tab lain (Screener, Kalender, Panduan), portofolio otomatis terkunci lagi; tombol <b>🔒 Kunci</b> mengunci saat itu juga. Klik baris saham untuk membuka <b>Detail</b>: balance lot, average price, market value, potential P&amp;L, alokasi, SL/TP (bisa diubah), catatan (bisa diubah), dan riwayat transaksinya.</p>
         <p>Di atas: <b>Saldo kas</b>, <b>Invested</b>, jumlah posisi <b>Open</b>, <b>P&amp;L</b> (belum dan sudah terealisasi), dan <b>Total equity</b>. Kamu bisa punya beberapa portofolio (pilihan hijau di kiri atas tabel). Catat pembelian lewat panel <b>Order → Beli</b> atau tombol "Catat ke portofolio" di detail saham; membeli saham yang sudah dipegang otomatis menjadi average up/down. Penjualan dicatat lewat <b>Order → Jual</b> (bisa sebagian). Tombol <b>⋮</b> di tiap posisi: beli lagi, jual, ubah SL/TP, lihat chart, hapus. <b>Riwayat</b> berisi semua transaksi, P&amp;L terealisasi, win rate, dan rata-rata R, plus unduh CSV. Biaya broker (default 0,15% beli, 0,25% jual) bisa diubah di Pengaturan. Harga terakhir mengikuti data aplikasi, jadi bisa sedikit berbeda dari aplikasi sekuritasmu yang real-time.</p>
       </div>
     </details>
@@ -2634,6 +2653,7 @@ TEMPLATE = r'''<!DOCTYPE html>
 <div class="rf-pop" id="rf-pop" role="dialog" aria-label="Perbarui data" hidden></div>
 <div class="rf-pop" id="sy-pop" role="dialog" aria-label="Sinkron antar perangkat" hidden></div>
 <div class="cpop" id="cpop" role="dialog" aria-label="Chart saham" hidden></div>
+<div class="pf-detail" id="pf-detail" role="dialog" aria-modal="true" aria-label="Detail portofolio" hidden></div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" tabindex="-1"></aside>
 
@@ -4560,7 +4580,7 @@ function renderJournal() {
   $("pf-pos").innerHTML = st.open.length ? `<div class="table-wrap" style="max-height:none"><table class="j-tbl pf-tbl"><thead><tr><th>Saham</th><th>Chart 30 hari</th><th class="num">Harga</th><th class="num">Avg price</th><th class="num">Lot</th><th class="num">Invested</th><th class="num">P&amp;L</th><th class="num">%</th><th>SL / TP</th><th></th></tr></thead><tbody>${st.open.map(j => {
     const d = DATA.find(x => x.t === j.t), lot = remLot(j), px = d ? d.p : null, inv = j.entry * lot * 100, cost = inv * (1 + fb), pl = px != null ? px * lot * 100 * (1 - fs) - cost : null, pct = pl != null ? pl / cost * 100 : null;
     const nearSL = px != null && j.sl && px <= j.sl, hitTP = px != null && j.tp && px >= j.tp;
-    return `<tr><td><b class="pf-go" data-go="${j.t}">${esc(j.t)}</b><div class="muted" style="font-size:0.72rem">${esc(d ? d.nm : "")}${j.setup ? " · " + esc(j.setup) : ""}</div></td>
+    return `<tr data-pid="${j.id}" class="pf-row" title="Klik untuk detail"><td><b class="pf-go">${esc(j.t)}</b>${j.note ? ' <span class="pf-note-ic" title="Ada catatan">📝</span>' : ""}<div class="muted" style="font-size:0.72rem">${esc(d ? d.nm : "")}${j.setup ? " · " + esc(j.setup) : ""}</div></td>
       <td class="spark-cell" data-sp="${j.t}">${d ? candleSvg(d.ohlc || (d.smc ? d.smc.b.slice(-30) : [])) : ""}</td>
       <td class="num">${px != null ? fmtNum(px) : "-"}${d && d.chg != null ? `<div class="${d.chg >= 0 ? "pos" : "neg"}" style="font-size:0.72rem">${d.chg >= 0 ? "+" : ""}${fmtDec(d.chg, 2)}%</div>` : ""}</td>
       <td class="num">${fmtDec(j.entry, Number.isInteger(j.entry) ? 0 : 1)}</td><td class="num">${fmtNum(lot)}</td><td class="num">${fmtValue(inv)}</td>
@@ -4569,9 +4589,56 @@ function renderJournal() {
       <td style="font-size:0.78rem"><span class="neg">${j.sl ? fmtNum(j.sl) : "-"}</span> / <span class="pos">${j.tp ? fmtNum(j.tp) : "-"}</span>${nearSL ? '<div class="neg" style="font-weight:800">⚠ kena SL</div>' : hitTP ? '<div class="pos" style="font-weight:800">✓ sampai TP</div>' : ""}</td>
       <td class="pf-menu-cell"><button type="button" class="icon-btn dw-small" data-pm="${j.id}" aria-label="Menu ${esc(j.t)}">⋮</button></td></tr>`;
   }).join("")}</tbody></table></div>` : `<p class="muted" style="margin:14px 0">Belum ada posisi di portofolio "${esc(name)}". Catat pembelian lewat panel <b>Order</b> di samping, atau lewat tombol "Catat ke portofolio" di bagian Rencana pada detail saham.</p>`;
-  $("pf-pos").querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => openDrawer(b.dataset.go)));
+  $("pf-pos").querySelectorAll("tbody tr[data-pid]").forEach(tr => tr.addEventListener("click", e => {
+    if (e.target.closest(".pf-menu-cell") || e.target.closest(".spark-cell")) return;
+    pfDetail(+tr.dataset.pid);
+  }));
   $("pf-pos").querySelectorAll("[data-pm]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); pfMenu(b, +b.dataset.pm); }));
   pfPanel();
+}
+function pfDetail(id) {
+  const box = $("pf-detail"), j = jrLoad().find(x => x.id === id); if (!j) return;
+  const d = DATA.find(x => x.t === j.t), fb = feeB(), fs = feeS(), lot = remLot(j), px = d ? d.p : j.entry;
+  const inv = j.entry * lot * 100, mv = px * lot * 100, cost = inv * (1 + fb), pl = mv * (1 - fs) - cost, pct = cost ? pl / cost * 100 : 0;
+  const st = pfStats(trPf(j)), alloc = st.mv ? mv / st.mv * 100 : 0;
+  const dist = v => v ? `${v >= px ? "+" : ""}${fmtDec((v - px) / px * 100, 1)}%` : "";
+  const ev = []; jrLoad().filter(x => x.t === j.t && trPf(x) === trPf(j)).forEach(x => {
+    buysOf(x).forEach(b => ev.push({ d: b.d, k: "Beli", h: b.h, l: b.l }));
+    sellsOf(x).forEach(sl => ev.push({ d: sl.d, k: "Jual", h: sl.h, l: sl.l, pl: (sl.h * (1 - fs) - x.entry * (1 + fb)) * sl.l * 100 })); });
+  ev.sort((a, b) => String(b.d).localeCompare(String(a.d)));
+  const row = (k, v, cls = "") => `<div class="pfd-row"><span>${k}</span><b class="${cls}">${v}</b></div>`;
+  box.innerHTML = `<div class="pfd-card">
+    <div class="pfd-head"><div><div class="pfd-tk">${esc(j.t)} <span class="muted" style="font-size:0.8rem;font-weight:600">${esc(trPf(j))}</span></div><div class="muted">${esc(d ? d.nm : "")}${d && d.sector && d.sector !== "-" ? " · " + esc(d.sector) : ""}</div></div>
+      <div style="text-align:right"><div class="pfd-px">${fmtNum(px)}</div>${d && d.chg != null ? `<div class="${d.chg >= 0 ? "pos" : "neg"}">${d.chg >= 0 ? "▲" : "▼"} ${d.chg >= 0 ? "+" : ""}${fmtDec(d.chg, 2)}%</div>` : ""}</div>
+      <button type="button" class="icon-btn dw-small pfd-x" id="pfd-x" aria-label="Tutup">✕</button></div>
+    <div class="pfd-body">
+      ${row("Balance lot", fmtNum(lot))}${row("Average price", fmtDec(j.entry, Number.isInteger(j.entry) ? 0 : 2))}${row("Current price", fmtNum(px))}
+      ${row("Invested", "Rp " + fmtNum(Math.round(inv)))}${row("Market value", "Rp " + fmtNum(Math.round(mv)))}
+      ${row("Potential P&amp;L", (pl >= 0 ? "+" : "−") + "Rp " + fmtNum(Math.abs(Math.round(pl))), pl >= 0 ? "pos" : "neg")}${row("Percentage", (pct >= 0 ? "+" : "") + fmtDec(pct, 2) + "%", pct >= 0 ? "pos" : "neg")}
+      <div class="pfd-box"><span>Portfolio allocation</span><span class="pfd-alloc"><svg viewBox="0 0 36 36" width="26" height="26"><circle cx="18" cy="18" r="15" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="18" cy="18" r="15" fill="none" stroke="var(--up)" stroke-width="4" stroke-dasharray="${(alloc / 100 * 94.25).toFixed(1)} 94.25" transform="rotate(-90 18 18)"/></svg><b>${fmtDec(alloc, 2)}%</b></span></div>
+      <div class="pfd-box pfd-col"><div class="pfd-sub">Stop loss / Take profit</div>
+        <div class="pf-f2"><div class="pf-f"><label>Stop loss <span class="neg">${dist(j.sl)}</span></label><input type="number" id="pfd-sl" value="${j.sl ?? ""}"></div><div class="pf-f"><label>Take profit <span class="pos">${dist(j.tp)}</span></label><input type="number" id="pfd-tp" value="${j.tp ?? ""}"></div></div></div>
+      <div class="pfd-box pfd-col"><div class="pfd-sub">Catatan${j.setup ? ` <span class="muted" style="font-weight:600">· ${esc(j.setup)}</span>` : ""}</div>
+        <textarea id="pfd-note" rows="3" placeholder="mis. alasan masuk, broker yang akumulasi, rencana keluar">${esc(j.note || "")}</textarea>
+        <button type="button" class="icon-btn dw-small" id="pfd-save" style="justify-self:start">Simpan SL/TP &amp; catatan</button><span class="muted" id="pfd-msg" style="font-size:0.78rem"></span></div>
+      <div class="pfd-box pfd-col"><div class="pfd-sub">Riwayat transaksi</div>
+        ${ev.length ? `<table class="j-tbl"><tbody>${ev.map(e => `<tr><td>${esc(e.d || "")}</td><td class="${e.k === "Beli" ? "pos" : "neg"}">${e.k}</td><td class="num">${fmtNum(e.h)}</td><td class="num">${fmtNum(e.l)} lot</td><td class="num ${e.pl == null ? "" : e.pl >= 0 ? "pos" : "neg"}">${e.pl == null ? "" : (e.pl >= 0 ? "+" : "−") + fmtValue(Math.abs(e.pl))}</td></tr>`).join("")}</tbody></table>` : '<span class="muted">-</span>'}</div>
+    </div>
+    <div class="pfd-foot"><button type="button" class="pfd-buy" id="pfd-buy">Buy</button><button type="button" class="pfd-sell" id="pfd-sell">Sell</button><button type="button" class="icon-btn" id="pfd-chart">Lihat chart</button></div>
+  </div>`;
+  box.hidden = false;
+  const close = () => { box.hidden = true; };
+  $("pfd-x").addEventListener("click", close);
+  box.onclick = e => { if (e.target === box) close(); };
+  $("pfd-save").addEventListener("click", () => {
+    const sl = +$("pfd-sl").value, tp = +$("pfd-tp").value, arr = jrLoad(), it = arr.find(x => x.id === id);
+    if (sl && sl >= it.entry) { $("pfd-msg").textContent = "Stop loss harus di bawah average price."; return; }
+    it.sl = sl || it.sl; it.tp = tp || null; it.note = $("pfd-note").value.trim(); jrSave(arr); renderJournal(); pfDetail(id);
+    const m = $("pfd-msg"); if (m) m.textContent = "✓ Tersimpan";
+  });
+  $("pfd-buy").addEventListener("click", () => { close(); pfTab = "order"; pfSide = "beli"; pfPre = j.t; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); });
+  $("pfd-sell").addEventListener("click", () => { close(); pfTab = "order"; pfSide = "jual"; pfPre = j.id; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); });
+  $("pfd-chart").addEventListener("click", () => { close(); openDrawer(j.t); });
 }
 function pfSetCash() {
   const cur = pf.list[pf.active].cash, v = prompt("Saldo kas portofolio ini (Rp). Kosongkan untuk tidak memakai saldo kas:", cur == null ? "" : cur);
@@ -4582,11 +4649,12 @@ function pfMenu(btn, id) {
   document.querySelectorAll(".pf-pop").forEach(x => x.remove());
   const j = jrLoad().find(x => x.id === id); if (!j) return;
   const m = document.createElement("div"); m.className = "pf-pop";
-  m.innerHTML = `<button data-a="buy">Beli lagi (average)</button><button data-a="sell">Jual</button><button data-a="sltp">Ubah SL / TP</button><button data-a="chart">Lihat chart</button><button data-a="del" class="neg">Hapus posisi</button>`;
+  m.innerHTML = `<button data-a="det">Detail</button><button data-a="buy">Beli lagi (average)</button><button data-a="sell">Jual</button><button data-a="sltp">Ubah SL / TP</button><button data-a="chart">Lihat chart</button><button data-a="del" class="neg">Hapus posisi</button>`;
   btn.parentElement.style.position = "relative"; btn.parentElement.appendChild(m);
   m.addEventListener("click", e => {
     e.stopPropagation(); const a = e.target.dataset.a; if (!a) return; m.remove();
-    if (a === "buy") { pfTab = "order"; pfSide = "beli"; pfPre = j.t; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); }
+    if (a === "det") pfDetail(id);
+    else if (a === "buy") { pfTab = "order"; pfSide = "beli"; pfPre = j.t; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); }
     else if (a === "sell") { pfTab = "order"; pfSide = "jual"; pfPre = j.id; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); }
     else if (a === "chart") openDrawer(j.t);
     else if (a === "sltp") {
@@ -5176,6 +5244,7 @@ document.addEventListener("keydown", e => {
   const inField = e.target && e.target.closest && e.target.closest("input, textarea, select");
   if (e.key === "Escape" && !$("rf-pop").hidden) { $("rf-pop").hidden = true; return; }
   if (e.key === "Escape" && !$("sy-pop").hidden) { $("sy-pop").hidden = true; return; }
+  if (e.key === "Escape" && $("pf-detail") && !$("pf-detail").hidden) { $("pf-detail").hidden = true; return; }
   if (e.key === "Escape" && !$("cpop").hidden) { cpopHide(); return; }
   if (e.key === "Escape" && $("cmpv").classList.contains("open")) { closeCompare(); return; }
   if (drawTool === "ew" && curChartR && !inField) {
@@ -5491,6 +5560,7 @@ function showView(v) {
   document.querySelectorAll(".tab-btn").forEach(b => { b.classList.toggle("on", b.dataset.view === v); b.setAttribute("aria-current", b.dataset.view === v ? "page" : "false"); });
   $("cmp-bar").style.visibility = v === "screener" ? "" : "hidden";
   if (v === "jurnal") pfLockUI();
+  else { try { sessionStorage.removeItem("idxs:pfok"); } catch (e) {} const dm = $("pf-detail"); if (dm) dm.hidden = true; }   // keluar dari Portofolio = terkunci lagi
 }
 document.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => {
   const v = b.dataset.view, h = v === "screener" ? location.pathname + location.search : "#" + v;
