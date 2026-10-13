@@ -1,16 +1,4 @@
 {
- "2026-09-29": [
-  "PKPK",
-  "SEMA",
-  "BSSR",
-  "TEBE",
-  "RSCH",
-  "CSMI",
-  "MBSS",
-  "NEST",
-  "SMIL",
-  "MARK"
- ],
  "2026-09-30": [
   "TEBE",
   "SMIL",
@@ -118,5 +106,17 @@
   "MBSS",
   "VICI",
   "ERAA"
+ ],
+ "2026-10-13": [
+  "TEBE",
+  "MMIX",
+  "BDKR",
+  "SMDR",
+  "PKPK",
+  "MEJA",
+  "AKRA",
+  "AALI",
+  "AUTO",
+  "NAYZ"
  ]
 }
