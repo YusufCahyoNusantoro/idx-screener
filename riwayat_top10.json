@@ -1,16 +1,4 @@
 {
- "2026-09-30": [
-  "TEBE",
-  "SMIL",
-  "MEJA",
-  "NASI",
-  "SMLE",
-  "SEMA",
-  "SAPX",
-  "SRSN",
-  "DEWI",
-  "RSCH"
- ],
  "2026-10-01": [
   "CSMI",
   "SAPX",
@@ -118,5 +106,17 @@
   "SMDR",
   "SRSN",
   "VICI"
+ ],
+ "2026-10-14": [
+  "CLEO",
+  "SGER",
+  "BSSR",
+  "MMIX",
+  "BDMN",
+  "BDKR",
+  "MPXL",
+  "ERAA",
+  "AUTO",
+  "RSCH"
  ]
 }
