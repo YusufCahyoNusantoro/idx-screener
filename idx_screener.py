@@ -2035,6 +2035,11 @@ TEMPLATE = r'''<!DOCTYPE html>
   .wl-tab.on { background:var(--orange); border-color:var(--orange); color:#1F1600; }
   .wl-tab.on b { background:rgba(0,0,0,.15); }
   .wl-tab:hover:not(.on) { border-color:var(--orange); }
+  .wl-pick { position:fixed; z-index:60; min-width:250px; max-width:min(360px, 92vw); background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    box-shadow:0 12px 30px rgba(0,0,0,.35); padding:10px 12px; display:grid; gap:7px; }
+  .wl-pick[hidden] { display:none; }
+  .wl-pick label { display:flex; align-items:center; gap:8px; font-size:0.9rem; cursor:pointer; padding:3px 0; }
+  .wl-pick label input { width:18px; height:18px; accent-color:var(--orange); }
   .wl-menu-wrap { position:relative; display:inline-block; }
   .wl-burger { padding:6px 12px; font-size:1.05rem; line-height:1; }
   .wl-bmenu { position:absolute; left:0; top:calc(100% + 6px); z-index:30; min-width:260px; max-width:min(420px, 90vw); background:var(--panel); border:1px solid var(--line); border-radius:12px;
@@ -2084,7 +2089,9 @@ TEMPLATE = r'''<!DOCTYPE html>
   .pf-sum > div { padding:16px 18px; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:4px; text-align:center; }
   .pf-sum > div:last-child { border-right:0; }
   .pf-sum small { color:var(--muted); font-size:0.8rem; } .pf-sum b { font-size:1.25rem; font-weight:800; }
-  .pf-grid { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:14px; align-items:start; }
+  .pf-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; align-items:start; }
+  .pf-om-card { width:min(480px, 100%); }
+  .pf-ordbtn { width:auto !important; display:inline-block; padding:7px 16px !important; font-size:0.86rem !important; }
   .pf-bar { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin-bottom:10px; }
   .pf-bar select { padding:7px 10px; border:1px solid var(--field-line); border-radius:999px; background:color-mix(in srgb, var(--up) 14%, var(--field-bg)); color:var(--up); font-weight:800; }
   .pf-tbl td, .pf-tbl th { white-space:nowrap; }
@@ -2371,9 +2378,6 @@ TEMPLATE = r'''<!DOCTYPE html>
     <div class="pf-grid">
       <section class="card" id="pf-left" aria-label="Posisi"><div class="pf-bar" id="pf-bar"></div><div id="pf-pos"></div>
         <p class="muted" style="font-size:0.76rem;margin:10px 0 0">Harga terakhir mengikuti data aplikasi (tertunda ±10–15 menit, diperbarui saat update berjalan). P&amp;L sudah memperhitungkan biaya broker. Data tersimpan di browser ini dan ikut ☁ Sinkron kalau terhubung.</p></section>
-      <section class="card" id="pf-right" aria-label="Order dan riwayat">
-        <div class="seg pf-tabs"><button type="button" data-pt="order" class="on">Order</button><button type="button" data-pt="hist">Riwayat</button><button type="button" data-pt="set">Pengaturan</button></div>
-        <div id="pf-panel"></div></section>
     </div>
   </div>
   </div>
@@ -2393,7 +2397,7 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p>1. Lihat strip biru tua di atas. Kalau IHSG sedang turun, kurangi agresivitas atau tunggu dulu.</p>
         <p>2. Pilih satu gaya screening, misalnya "Tren naik rapi".</p>
         <p>3. Klik baris saham untuk membuka detailnya di panel kanan. Tombol ‹ › (atau panah kiri/kanan di keyboard) pindah ke saham berikutnya di hasil filter, dan tombol "⤢ Layar penuh" membuka tampilan dua kolom: chart besar dan riwayat di kiri, struktur, rencana, dan checklist di kanan. Tampilan layar penuh punya link sendiri (misalnya …/idx-screener/#s=PTBA) yang bisa di-bookmark.</p>
-        <p>4. Tandai saham incaran dengan bintang ☆, lalu klik tombol "★ Watchlist saya" untuk melihat semuanya sekaligus, apa pun filternya.</p>
+        <p>4. Tandai saham incaran dengan bintang ☆ (pilih watchlist tujuannya), lalu klik tab watchlist di baris ★ Watchlist untuk melihat isinya sekaligus, apa pun filternya.</p>
         <p>5. Kalender, Jurnal, dan Panduan ada di tab kanan atas. Cocokkan dengan chart di aplikasi trading-mu sebelum entry. Checklist yang banyak terpenuhi menambah keyakinan, tapi tidak menjamin harga naik.</p>
       </div>
     </details>
@@ -2515,13 +2519,13 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>Portofolio (terkunci password)</summary>
       <div class="guide-body">
         <p>Tab <b>Portofolio</b> dikunci password (bisa diganti di Portofolio → Pengaturan). Password ini kunci layar di browser, bukan enkripsi. Setiap kali kamu pindah ke tab lain (Screener, Kalender, Panduan), portofolio otomatis terkunci lagi; tombol <b>🔒 Kunci</b> mengunci saat itu juga. Klik baris saham untuk membuka <b>Detail</b>: balance lot, average price, market value, potential P&amp;L, alokasi, SL/TP (bisa diubah), catatan (bisa diubah), dan riwayat transaksinya.</p>
-        <p>Di atas: <b>Saldo kas</b>, <b>Invested</b>, jumlah posisi <b>Open</b>, <b>P&amp;L</b> (belum dan sudah terealisasi), dan <b>Total equity</b>. Kamu bisa punya beberapa portofolio (pilihan hijau di kiri atas tabel). Catat pembelian lewat panel <b>Order → Beli</b> atau tombol "Catat ke portofolio" di detail saham; membeli saham yang sudah dipegang otomatis menjadi average up/down. Penjualan dicatat lewat <b>Order → Jual</b> (bisa sebagian). Tombol <b>⋮</b> di tiap posisi: beli lagi, jual, ubah SL/TP, lihat chart, hapus. <b>Riwayat</b> berisi semua transaksi, P&amp;L terealisasi, win rate, dan rata-rata R, plus unduh CSV. Biaya broker (default 0,15% beli, 0,25% jual) bisa diubah di Pengaturan. Harga terakhir mengikuti data aplikasi, jadi bisa sedikit berbeda dari aplikasi sekuritasmu yang real-time.</p>
+        <p>Di atas: <b>Saldo kas</b>, <b>Invested</b>, jumlah posisi <b>Open</b>, <b>P&amp;L</b> (belum dan sudah terealisasi), dan <b>Total equity</b>. Kamu bisa punya beberapa portofolio (pilihan hijau di kiri atas tabel). Catat pembelian lewat tombol <b>＋ Order</b> (pop-up Order → Beli) atau tombol "Catat ke portofolio" di detail saham; membeli saham yang sudah dipegang otomatis menjadi average up/down. Penjualan dicatat lewat <b>Order → Jual</b> (bisa sebagian). Tombol <b>⋮</b> di tiap posisi: beli lagi, jual, ubah SL/TP, lihat chart, hapus. <b>Riwayat</b> berisi semua transaksi, P&amp;L terealisasi, win rate, dan rata-rata R, plus unduh CSV. Biaya broker (default 0,15% beli, 0,25% jual) bisa diubah di Pengaturan. Harga terakhir mengikuti data aplikasi, jadi bisa sedikit berbeda dari aplikasi sekuritasmu yang real-time.</p>
       </div>
     </details>
     <details class="guide-item">
       <summary>Beberapa watchlist</summary>
       <div class="guide-body">
-        <p>Semua watchlist tampil sebagai tab di baris <b>★ Watchlist</b>: klik tab untuk menampilkan isinya, klik lagi (atau klik salah satu preset) untuk kembali ke screening biasa. Tombol <b>☰</b> di ujung baris berisi menu membuat watchlist baru, serta mengganti nama atau menghapus watchlist yang tab-nya bergaris oranye. Bintang ☆ di tabel memasukkan/mengeluarkan saham dari watchlist yang sedang dipilih. Di panel detail saham, tombol <b>Watchlist</b> membuka daftar centang semua watchlist, jadi satu saham bisa masuk ke beberapa watchlist sekaligus. Semua watchlist tersimpan di browser ini.</p>
+        <p>Semua watchlist tampil sebagai tab di baris <b>★ Watchlist</b>: klik tab untuk menampilkan isinya, klik lagi (atau klik salah satu preset) untuk kembali ke screening biasa. Tombol <b>☰</b> di ujung baris berisi menu membuat watchlist baru, serta mengganti nama atau menghapus watchlist yang tab-nya bergaris oranye. Klik bintang ☆ di tabel untuk memilih watchlist tujuan (bisa lebih dari satu); bintang menyala kalau saham itu ada di watchlist mana pun. Di panel detail saham, tombol <b>Watchlist</b> membuka daftar centang semua watchlist, jadi satu saham bisa masuk ke beberapa watchlist sekaligus. Semua watchlist tersimpan di browser ini.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -2654,6 +2658,12 @@ TEMPLATE = r'''<!DOCTYPE html>
 <div class="rf-pop" id="sy-pop" role="dialog" aria-label="Sinkron antar perangkat" hidden></div>
 <div class="cpop" id="cpop" role="dialog" aria-label="Chart saham" hidden></div>
 <div class="pf-detail" id="pf-detail" role="dialog" aria-modal="true" aria-label="Detail portofolio" hidden></div>
+<div class="pf-detail" id="pf-om" role="dialog" aria-modal="true" aria-label="Order, riwayat, dan pengaturan" hidden>
+  <div class="pfd-card pf-om-card"><div class="pfd-head"><div><div class="pfd-tk" id="pf-om-title">Portofolio</div><div class="muted" id="pf-om-sub"></div></div><button type="button" class="icon-btn dw-small pfd-x" id="pf-om-x" aria-label="Tutup">✕</button></div>
+    <div class="pfd-body"><section id="pf-right" aria-label="Order dan riwayat">
+      <div class="seg pf-tabs"><button type="button" data-pt="order" class="on">Order</button><button type="button" data-pt="hist">Riwayat</button><button type="button" data-pt="set">Pengaturan</button></div>
+      <div id="pf-panel"></div></section></div></div>
+</div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" tabindex="-1"></aside>
 
@@ -2714,6 +2724,26 @@ function wlNewName(msg, cur) {
 function wlCreate(addT) {
   const n = wlNewName("Nama watchlist baru (mis. Swing minggu ini):"); if (!n) return null;
   wlSave(); wl.lists[n] = addT ? [addT] : []; ls.set(WLS, wl); renderWL(); render(); return n;
+}
+function wlPick(anchor, t) {                       // menu kecil di samping bintang: pilih watchlist tujuan
+  let m = $("wl-pick");
+  if (!m) { m = document.createElement("div"); m.id = "wl-pick"; m.className = "wl-pick"; m.setAttribute("role", "dialog"); document.body.appendChild(m);
+    m.addEventListener("click", e => e.stopPropagation());
+    document.addEventListener("click", () => { m.hidden = true; });
+    window.addEventListener("scroll", () => { m.hidden = true; }, { passive: true, capture: true }); }
+  const draw = () => {
+    const inL = new Set(wlOf(t));
+    m.innerHTML = `<div class="wl-menu-h">Masukkan <b>${esc(t)}</b> ke watchlist:</div>${wlNames().map(n => `<label><input type="checkbox" data-wlp="${esc(n)}" ${inL.has(n) ? "checked" : ""}> <span>${esc(n)}</span> <span class="muted">(${(n === wl.active ? watch.size : (wl.lists[n] || []).length)})</span></label>`).join("")}
+      <button type="button" class="icon-btn dw-small" id="wl-pick-new">＋ Buat watchlist baru</button>`;
+    m.querySelectorAll("[data-wlp]").forEach(cb => cb.addEventListener("change", () => { wlToggleIn(cb.dataset.wlp, t); draw(); }));
+    $("wl-pick-new").addEventListener("click", () => { if (wlCreate(t)) draw(); });
+  };
+  draw(); m.hidden = false;
+  const rc = anchor.getBoundingClientRect(), w = m.offsetWidth || 260, h = m.offsetHeight || 200;
+  let left = rc.right + 8, top = rc.top - 8;
+  if (left + w > innerWidth - 8) left = Math.max(8, rc.left - w - 8);
+  top = Math.max(8, Math.min(top, innerHeight - h - 8));
+  m.style.left = left + "px"; m.style.top = top + "px";
 }
 function renderWL() {
   const box = $("wl-ctl"); if (!box) return;
@@ -3003,7 +3033,7 @@ function filtered() {
 
 function rowHtml(r) {
   return `<tr data-t="${r.t}" tabindex="0"${r.top ? ' class="top10"' : ""}>
-      <td class="sticky1"><button class="star ${watch.has(r.t) ? "on" : ""}" data-star="${r.t}" type="button" aria-label="Watchlist ${r.t}" aria-pressed="${watch.has(r.t)}" title="${watch.has(r.t) ? "Keluarkan dari" : "Masukkan ke"} watchlist &quot;${esc(wl.active)}&quot;">★</button></td>
+      <td class="sticky1">${(() => { const inL = wlOf(r.t); return `<button class="star ${inL.length ? "on" : ""}" data-star="${r.t}" type="button" aria-label="Watchlist ${r.t}" aria-haspopup="true" aria-pressed="${inL.length > 0}" title="${inL.length ? "Ada di: " + esc(inL.join(", ")) + ". Klik untuk mengatur" : "Klik untuk memasukkan ke watchlist"}">★</button>`; })()}</td>
       <td class="sticky2"><div class="tk">${r.t}${r.top ? `<span class="top-badge" title="Top 10 hari ini: peringkat ${r.top} (skor bobot standar, hanya saham uptrend dengan struktur W▲ D▲ dan transaksi minimal Rp 5 M/hari)">#${r.top}</span>` : ""}</div><div class="tk-name" title="${esc(r.nm)}">${esc(r.nm) || "&nbsp;"}</div></td>
       <td class="spark-cell" data-sp="${r.t}" title="Arahkan kursor untuk chart lebih besar, klik untuk menahannya">${candleSvg(r.ohlc)}</td>
       <td class="num">${fmtNum(r.p)}</td>
@@ -4562,7 +4592,12 @@ function renderJournal() {
   const c0 = $("pf-cash0"); if (c0) c0.addEventListener("click", pfSetCash);
   $("pf-bar").innerHTML = `<select id="pf-sel" aria-label="Pilih portofolio">${Object.keys(pf.list).map(n => `<option value="${esc(n)}" ${n === name ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
     <button type="button" class="icon-btn dw-small" id="pf-new">+ Baru</button><button type="button" class="icon-btn dw-small" id="pf-ren" title="Ganti nama">✎</button><button type="button" class="icon-btn dw-small" id="pf-del" title="Hapus portofolio">🗑</button>
-    <button type="button" class="icon-btn dw-small" id="pf-cash">Atur saldo kas</button><span style="flex:1"></span><button type="button" class="icon-btn dw-small" id="pf-lockbtn">🔒 Kunci</button>`;
+    <button type="button" class="icon-btn dw-small" id="pf-cash">Atur saldo kas</button><span style="flex:1"></span>
+    <button type="button" class="rf-go pf-ordbtn" id="pf-ord">＋ Order</button><button type="button" class="icon-btn dw-small" id="pf-his">Riwayat</button><button type="button" class="icon-btn dw-small" id="pf-set">Pengaturan</button>
+    <button type="button" class="icon-btn dw-small" id="pf-lockbtn">🔒 Kunci</button>`;
+  $("pf-ord").addEventListener("click", () => { pfSide = "beli"; pfPre = null; pfOpen("order"); });
+  $("pf-his").addEventListener("click", () => pfOpen("hist"));
+  $("pf-set").addEventListener("click", () => pfOpen("set"));
   $("pf-sel").addEventListener("change", e => { pf.active = e.target.value; pfSave(); renderJournal(); });
   $("pf-new").addEventListener("click", () => { const n = (prompt("Nama portofolio baru:") || "").trim().slice(0, 40); if (!n) return; if (pf.list[n]) { alert("Nama sudah dipakai."); return; } pf.list[n] = { cash: null }; pf.active = n; pfSave(); renderJournal(); });
   $("pf-ren").addEventListener("click", () => { const n = (prompt("Ganti nama portofolio:", name) || "").trim().slice(0, 40); if (!n || n === name) return; if (pf.list[n]) { alert("Nama sudah dipakai."); return; }
@@ -4574,7 +4609,7 @@ function renderJournal() {
     jrSave(jrLoad().filter(j => trPf(j) !== name)); delete pf.list[name]; pf.active = Object.keys(pf.list)[0]; pfSave(); renderJournal();
   });
   $("pf-cash").addEventListener("click", pfSetCash);
-  $("pf-lockbtn").addEventListener("click", () => { try { sessionStorage.removeItem("idxs:pfok"); } catch (e) {} pfLockUI(); });
+  $("pf-lockbtn").addEventListener("click", () => { try { sessionStorage.removeItem("idxs:pfok"); } catch (e) {} pfClose(); pfLockUI(); });
   // tabel posisi
   const fb = feeB(), fs = feeS();
   $("pf-pos").innerHTML = st.open.length ? `<div class="table-wrap" style="max-height:none"><table class="j-tbl pf-tbl"><thead><tr><th>Saham</th><th>Chart 30 hari</th><th class="num">Harga</th><th class="num">Avg price</th><th class="num">Lot</th><th class="num">Invested</th><th class="num">P&amp;L</th><th class="num">%</th><th>SL / TP</th><th></th></tr></thead><tbody>${st.open.map(j => {
@@ -4588,14 +4623,16 @@ function renderJournal() {
       <td class="num ${pct == null ? "" : pct >= 0 ? "pos" : "neg"}"><b>${pct == null ? "-" : (pct >= 0 ? "+" : "") + fmtDec(pct, 2) + "%"}</b></td>
       <td style="font-size:0.78rem"><span class="neg">${j.sl ? fmtNum(j.sl) : "-"}</span> / <span class="pos">${j.tp ? fmtNum(j.tp) : "-"}</span>${nearSL ? '<div class="neg" style="font-weight:800">⚠ kena SL</div>' : hitTP ? '<div class="pos" style="font-weight:800">✓ sampai TP</div>' : ""}</td>
       <td class="pf-menu-cell"><button type="button" class="icon-btn dw-small" data-pm="${j.id}" aria-label="Menu ${esc(j.t)}">⋮</button></td></tr>`;
-  }).join("")}</tbody></table></div>` : `<p class="muted" style="margin:14px 0">Belum ada posisi di portofolio "${esc(name)}". Catat pembelian lewat panel <b>Order</b> di samping, atau lewat tombol "Catat ke portofolio" di bagian Rencana pada detail saham.</p>`;
+  }).join("")}</tbody></table></div>` : `<p class="muted" style="margin:14px 0">Belum ada posisi di portofolio "${esc(name)}". Catat pembelian lewat tombol <b>＋ Order</b> di atas tabel, atau lewat tombol "Catat ke portofolio" di bagian Rencana pada detail saham.</p>`;
   $("pf-pos").querySelectorAll("tbody tr[data-pid]").forEach(tr => tr.addEventListener("click", e => {
     if (e.target.closest(".pf-menu-cell") || e.target.closest(".spark-cell")) return;
     pfDetail(+tr.dataset.pid);
   }));
   $("pf-pos").querySelectorAll("[data-pm]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); pfMenu(b, +b.dataset.pm); }));
-  pfPanel();
+  if (!$("pf-om").hidden) pfPanel();
 }
+function pfOpen(tab) { if (tab) pfTab = tab; $("pf-om").hidden = false; $("pf-om-sub").textContent = `Portofolio "${pf.active}"`; pfPanel(); }
+function pfClose() { const m = $("pf-om"); if (m) m.hidden = true; }
 function pfDetail(id) {
   const box = $("pf-detail"), j = jrLoad().find(x => x.id === id); if (!j) return;
   const d = DATA.find(x => x.t === j.t), fb = feeB(), fs = feeS(), lot = remLot(j), px = d ? d.p : j.entry;
@@ -4636,8 +4673,8 @@ function pfDetail(id) {
     it.sl = sl || it.sl; it.tp = tp || null; it.note = $("pfd-note").value.trim(); jrSave(arr); renderJournal(); pfDetail(id);
     const m = $("pfd-msg"); if (m) m.textContent = "✓ Tersimpan";
   });
-  $("pfd-buy").addEventListener("click", () => { close(); pfTab = "order"; pfSide = "beli"; pfPre = j.t; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); });
-  $("pfd-sell").addEventListener("click", () => { close(); pfTab = "order"; pfSide = "jual"; pfPre = j.id; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); });
+  $("pfd-buy").addEventListener("click", () => { close(); pfTab = "order"; pfSide = "beli"; pfPre = j.t; pfOpen(); });
+  $("pfd-sell").addEventListener("click", () => { close(); pfTab = "order"; pfSide = "jual"; pfPre = j.id; pfOpen(); });
   $("pfd-chart").addEventListener("click", () => { close(); openDrawer(j.t); });
 }
 function pfSetCash() {
@@ -4654,8 +4691,8 @@ function pfMenu(btn, id) {
   m.addEventListener("click", e => {
     e.stopPropagation(); const a = e.target.dataset.a; if (!a) return; m.remove();
     if (a === "det") pfDetail(id);
-    else if (a === "buy") { pfTab = "order"; pfSide = "beli"; pfPre = j.t; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); }
-    else if (a === "sell") { pfTab = "order"; pfSide = "jual"; pfPre = j.id; pfPanel(); $("pf-right").scrollIntoView({ block: "nearest" }); }
+    else if (a === "buy") { pfTab = "order"; pfSide = "beli"; pfPre = j.t; pfOpen(); }
+    else if (a === "sell") { pfTab = "order"; pfSide = "jual"; pfPre = j.id; pfOpen(); }
     else if (a === "chart") openDrawer(j.t);
     else if (a === "sltp") {
       const sl = prompt("Stop loss baru:", j.sl ?? ""); if (sl === null) return; const tp = prompt("Target baru:", j.tp ?? ""); if (tp === null) return;
@@ -4667,6 +4704,7 @@ function pfMenu(btn, id) {
 function pfPanel() {
   const box = $("pf-panel"); if (!box) return;
   document.querySelectorAll("#pf-right [data-pt]").forEach(b => b.classList.toggle("on", b.dataset.pt === pfTab));
+  if ($("pf-om-title")) $("pf-om-title").textContent = { order: "Order", hist: "Riwayat", set: "Pengaturan" }[pfTab] || "Portofolio";
   if (pfTab === "hist") return pfHistory(box);
   if (pfTab === "set") return pfSettings(box);
   const name = pf.active, fb = feeB(), fs = feeS(), today = ymd(new Date()), open = pfRows(name).filter(j => remLot(j) > 0);
@@ -4690,7 +4728,7 @@ function pfPanel() {
       if (!(h > 0 && l > 0)) { alert("Isi harga dan lot."); return; } if (l > remLot(it)) { alert("Lot melebihi yang dimiliki."); return; }
       it.sells = sellsOf(it).concat([{ h, l, d }]);
       if (remLot(it) <= 0) { const S = it.sells, tl = S.reduce((s, x) => s + x.l, 0); it.exit = Math.round(S.reduce((s, x) => s + x.h * x.l, 0) / tl * 100) / 100; it.tglExit = d; }
-      jrSave(arr); cashAdj(name, h * l * 100 * (1 - fs)); pfPre = null; renderJournal();
+      jrSave(arr); cashAdj(name, h * l * 100 * (1 - fs)); pfPre = null; pfClose(); renderJournal();
     });
     return;
   }
@@ -4731,7 +4769,7 @@ function pfPanel() {
       if (!(sl > 0) || sl >= h) { alert("Stop loss harus di bawah harga beli."); return; }
       arr.push({ id: Date.now(), t, pf: name, tgl: d, entry: h, sl, tp, lot: l, tr: [{ h, l, d }], setup: $("pfb-s").value, tf: "Harian", note: $("pfb-n").value.trim(), exit: null, tglExit: null });
     }
-    jrSave(arr); cashAdj(name, -h * l * 100 * (1 + fb)); pfPre = null; renderJournal();
+    jrSave(arr); cashAdj(name, -h * l * 100 * (1 + fb)); pfPre = null; pfClose(); renderJournal();
   });
 }
 function pfHistory(box) {
@@ -4769,6 +4807,8 @@ function pfExport() {
 $("pf-pin-ok").addEventListener("click", pfTry);
 $("pf-pin").addEventListener("keydown", e => { if (e.key === "Enter") pfTry(); });
 document.querySelectorAll("#pf-right [data-pt]").forEach(b => b.addEventListener("click", () => { pfTab = b.dataset.pt; pfPanel(); }));
+$("pf-om-x").addEventListener("click", pfClose);
+$("pf-om").addEventListener("click", e => { if (e.target === $("pf-om")) pfClose(); });
 
 /* ---------- riwayat harian ---------- */
 const HIST_KEY = "idxs:histn";
@@ -5234,7 +5274,7 @@ document.querySelectorAll("thead th[data-key]").forEach(th => th.addEventListene
 }));
 $("tbody").addEventListener("click", e => {
   if (e.target.closest("tr.grp-top")) { ls.set("idxs:topopen", !ls.get("idxs:topopen", true)); render(); return; }
-  const st = e.target.closest("[data-star]"); if (st) { e.stopPropagation(); toggleWatch(st.dataset.star); return; }
+  const st = e.target.closest("[data-star]"); if (st) { e.stopPropagation(); wlPick(st, st.dataset.star); return; }
   if (e.target.closest(".spark-cell")) return;                       // klik chart mini = popup chart, bukan panel detail
   const tr = e.target.closest("tr[data-t]"); if (tr) openDrawer(tr.dataset.t);
 });
@@ -5244,7 +5284,9 @@ document.addEventListener("keydown", e => {
   const inField = e.target && e.target.closest && e.target.closest("input, textarea, select");
   if (e.key === "Escape" && !$("rf-pop").hidden) { $("rf-pop").hidden = true; return; }
   if (e.key === "Escape" && !$("sy-pop").hidden) { $("sy-pop").hidden = true; return; }
+  if (e.key === "Escape" && $("wl-pick") && !$("wl-pick").hidden) { $("wl-pick").hidden = true; return; }
   if (e.key === "Escape" && $("pf-detail") && !$("pf-detail").hidden) { $("pf-detail").hidden = true; return; }
+  if (e.key === "Escape" && $("pf-om") && !$("pf-om").hidden) { pfClose(); return; }
   if (e.key === "Escape" && !$("cpop").hidden) { cpopHide(); return; }
   if (e.key === "Escape" && $("cmpv").classList.contains("open")) { closeCompare(); return; }
   if (drawTool === "ew" && curChartR && !inField) {
@@ -5560,7 +5602,7 @@ function showView(v) {
   document.querySelectorAll(".tab-btn").forEach(b => { b.classList.toggle("on", b.dataset.view === v); b.setAttribute("aria-current", b.dataset.view === v ? "page" : "false"); });
   $("cmp-bar").style.visibility = v === "screener" ? "" : "hidden";
   if (v === "jurnal") pfLockUI();
-  else { try { sessionStorage.removeItem("idxs:pfok"); } catch (e) {} const dm = $("pf-detail"); if (dm) dm.hidden = true; }   // keluar dari Portofolio = terkunci lagi
+  else { try { sessionStorage.removeItem("idxs:pfok"); } catch (e) {} const dm = $("pf-detail"); if (dm) dm.hidden = true; pfClose(); }   // keluar dari Portofolio = terkunci lagi
 }
 document.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => {
   const v = b.dataset.view, h = v === "screener" ? location.pathname + location.search : "#" + v;
