@@ -1,16 +1,4 @@
 {
- "2026-10-01": [
-  "CSMI",
-  "SAPX",
-  "MBTO",
-  "RSCH",
-  "BDMN",
-  "MSJA",
-  "MPIX",
-  "MEJA",
-  "SMLE",
-  "KETR"
- ],
  "2026-10-02": [
   "CSMI",
   "AUTO",
@@ -118,5 +106,17 @@
   "SGER",
   "AUTO",
   "NEST"
+ ],
+ "2026-10-15": [
+  "BIKE",
+  "SQMI",
+  "NAYZ",
+  "MBSS",
+  "ERAA",
+  "MMIX",
+  "CLEO",
+  "MPXL",
+  "PCAR",
+  "SGER"
  ]
 }
