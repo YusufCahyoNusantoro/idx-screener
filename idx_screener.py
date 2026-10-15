@@ -746,10 +746,55 @@ def data_makro(ihsg):
     return out
 
 
+def _emas_rupiah(g, k):
+    """Gabungkan candle emas (USD/oz) dengan kurs USD/IDR terakhir yang tersedia di waktu itu -> Rp/gram."""
+    def utc(x):
+        x = x.copy(); idx = pd.DatetimeIndex(x.index)
+        x.index = idx.tz_localize("UTC") if idx.tz is None else idx.tz_convert("UTC")
+        return x.sort_index()
+    g, k = utc(g).dropna(subset=["Close"]), utc(k).dropna(subset=["Close"])
+    j = pd.merge_asof(g, k[["Close"]].rename(columns={"Close": "K"}), left_index=True, right_index=True,
+                      direction="backward", tolerance=pd.Timedelta("3D")).dropna(subset=["K"])
+    if len(j) < 20:
+        return None
+    f = j["K"] / 31.1035
+    df = pd.DataFrame({c: j[c] * f for c in ("Open", "High", "Low", "Close")}, index=j.index.tz_convert(WIB))
+    df["Volume"] = j["Volume"].fillna(0).to_numpy() * 100
+    return df
+
+
+def _gabung_waktu(df, aturan):
+    """Gabungkan candle menurut jam di hari itu (emas diperdagangkan hampir 24 jam), mis. '4h' atau '45min'."""
+    a = df.resample(aturan, origin="start_day").agg({"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"})
+    return a.dropna(subset=["Close"])
+
+
+def emas_intraday():
+    """Data 15m/45m/1H/4H untuk Emas (Rp/gram)."""
+    out = {}
+    for interval, period in (("60m", "6mo"), ("15m", "60d")):
+        try:
+            got = unduh(["GC=F", "IDR=X"], period, interval, mentah=True)
+            g, k = got.get("GC=F"), got.get("IDR=X")
+            if g is None or k is None:
+                continue
+            df = _emas_rupiah(g, k)
+            if df is None:
+                continue
+            pairs = (("1h", df), ("4h", _gabung_waktu(df, "4h"))) if interval == "60m" else (("15m", df), ("45m", _gabung_waktu(df, "45min")))
+            for kk, fr in pairs:
+                pk = pak_ohlcv(fr, 430)
+                if pk:
+                    out[kk] = pk
+        except Exception as e:
+            print(f"  ! emas {interval}: {e}")
+    return out
+
+
 def analisa_emas():
     """Emas dunia dalam Rp/gram sebagai 'aset' lengkap: OHLC = emas USD/oz x kurs USD/IDR / 31,1035,
     volume = volume kontrak emas dunia. Dipakai halaman analisa emas (SMC, Fibo, volume profile, rencana)."""
-    got = unduh(["GC=F", "IDR=X"], "2y", "1d", mentah=True)
+    got = unduh(["GC=F", "IDR=X"], "10y", "1d", mentah=True)      # 10 tahun: cukup untuk chart mingguan & bulanan
     g, k = got.get("GC=F"), got.get("IDR=X")
     if g is None or k is None:
         return None, None
@@ -776,7 +821,8 @@ def analisa_emas():
     r["plans"] = {kk: v for kk, v in plans.items() if v}
     best = next((kk for kk in ("K", "S", "A") if plans[kk]), None)
     r["plan"] = dict(plans[best], src=best) if best else None
-    tfd = {kk: v for kk, v in (("1d", pak_ohlcv(df, 430)), ("1w", pak_ohlcv(resample(df, "W-FRI"), 280))) if v}
+    tfd = {kk: v for kk, v in (("1d", pak_ohlcv(df, 430)), ("1w", pak_ohlcv(resample(df, "W-FRI"), 280)), ("1mo", pak_ohlcv(bulanan(df), 220))) if v}
+    tfd.update(emas_intraday())
     r["tfx"] = sorted(tfd)
     for kk in ("_atr", "_ma20"):
         r.pop(kk, None)
@@ -2471,11 +2517,11 @@ TEMPLATE = r'''<!DOCTYPE html>
         <p><b>Di tablet/HP (layar sentuh)</b>: geser satu jari untuk menggeser chart (kiri/kanan, dan atas/bawah kalau geraknya jelas vertikal), cubit dua jari untuk zoom, ketuk sekali untuk crosshair dan info candle. Alat gambar dipakai dengan mengetuk titik-titiknya; Elliott Wave diakhiri dengan ketuk dua kali. Ketuk gambar untuk memilihnya, lalu geser bulatan pegangannya dengan jari; ketuk dua kali gambar untuk mengubah catatan.</p>
         <p><b>Geser &amp; zoom skala harga</b>: klik-tahan lalu geser chart ke atas/bawah untuk melihat harga yang lebih tinggi atau rendah; tarik angka di skala harga (kanan) ke atas/bawah atau putar roda mouse di sana (atau Shift + roda mouse) untuk merenggangkan/merapatkan; atau pakai tombol <b>Harga ▲ ▼ ⇕+ ⇕−</b>. <b>Auto</b> (atau ⟲) mengembalikan skala harga otomatis mengikuti candle.</p>
         <p><b>Area prediksi</b>: di kanan candle terakhir ada ruang kosong (awalnya 8 candle, bisa sampai 60). Klik <b>⇥ Area prediksi</b>, tombol ▶, atau geser chart ke kiri untuk memperluasnya, lalu gambar perkiraan arah harga dengan garis, catatan, atau Elliott Wave. Tanggal di area ini adalah perkiraan (hari kerja berikutnya; intraday mengikuti jam bursa). Gambar ditambatkan ke tanggal dan harga, jadi saat candle baru muncul kamu bisa membandingkan prediksi dengan harga sebenarnya.</p>
-        <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), <b>Fibonacci</b> (klik titik awal lalu titik akhir, misalnya swing low lalu swing high; menampilkan level 0 sampai 1 beserta harganya, zona 0,618–0,786, dan target 1,272 serta 1,618), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Gelombang digambar tanpa label; kalau perlu, label bisa ditambahkan sendiri lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya: tarik bulatan pegangan untuk menggeser satu titik, tarik garisnya untuk memindahkan seluruh gambar, atau klik dua kali untuk mengubah catatan. Untuk menghapus, pilih gambarnya lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
+        <p><b>Alat gambar</b> (baris kedua di atas chart): <b>Garis</b> (klik 2 titik), <b>Horizontal</b> (1 klik, harganya ditampilkan), <b>Catatan</b> (1 klik), <b>Fibonacci</b> (klik titik awal lalu titik akhir, misalnya swing low lalu swing high; menampilkan level 0 sampai 1 beserta harganya, zona 0,618–0,786, dan target 1,272 serta 1,618), dan <b>↕ Rentang harga</b> (2 klik: selisih harga dan persentasenya), <b>↔ Rentang tanggal</b> (2 klik: jumlah candle, lama waktu, dan total volume), dan <b>Elliott Wave</b> (klik titik sebanyak yang dibutuhkan, mulai dari titik awal; akhiri dengan klik dua kali, Enter, atau tombol Selesai; Backspace membatalkan titik terakhir). Gelombang digambar tanpa label; kalau perlu, label bisa ditambahkan sendiri lewat "✎ Label". Setelah selesai, kamu bisa mengisi catatan. Pilih warna dan ketebalan sebelum menggambar, atau klik gambar yang sudah ada lalu ganti warnanya. <b>Magnet</b> membuat titik menempel ke harga tertinggi/terendah candle. Klik gambar untuk memilihnya: tarik bulatan pegangan untuk menggeser satu titik, tarik garisnya untuk memindahkan seluruh gambar, atau klik dua kali untuk mengubah catatan. Untuk menghapus, pilih gambarnya lalu tekan <b>Hapus</b> atau tombol Delete; Esc membatalkan gambar yang sedang dibuat. Untuk Elliott, aplikasi mengecek 3 aturan dasar impuls pada 5 gelombang pertama, pola A–B–C pada 3 gelombang berikutnya, dan menampilkan rasio setiap gelombang terhadap gelombang sebelumnya di bawah chart. Gambar tersimpan di browser per saham dan per timeframe, ditambatkan ke tanggal dan harga, jadi tetap di tempatnya saat chart di-zoom atau datanya diperbarui.</p>
         <p><b>Zoom &amp; geser chart</b>: putar roda mouse di atas chart untuk zoom in/out (berpusat di posisi kursor), klik-tahan lalu geser untuk melihat candle sebelumnya, atau pakai tombol − + ◀ ▶ ⟲ di atas chart. Di HP, cubit dua jari untuk zoom. Skala harga, volume, RSI, dan MACD menyesuaikan dengan candle yang terlihat. Timeframe selain Daily menyimpan sampai 220 candle, jadi bisa di-zoom out lebih jauh.</p>
         <p><b>Volume profile rentang</b> (tombol di atas chart): klik tombolnya, lalu klik-geser di chart dari candle awal ke candle akhir. Histogram volume khusus rentang itu muncul beserta <b>POC</b> (harga paling ramai), <b>VAH</b> dan <b>VAL</b> (batas atas dan bawah value area, tempat 70% volume terjadi). "Pakai rentang dorongan" langsung memilih dorongan naik terakhir yang dipakai konfluensi. Berfungsi di semua timeframe; di HP cukup sentuh lalu geser.</p>
         <p><b>RSI 14</b> (panel di bawah volume): kekuatan kenaikan 0–100. Di atas 70 = sudah panas, di bawah 30 = jenuh jual. <b>MACD 12,26,9</b>: garis biru (MACD) memotong ke atas garis oranye (sinyal) sering dianggap tanda momentum naik; batang hijau/merah adalah selisih keduanya. Nilai keduanya ikut tampil saat kursor di chart.</p>
-        <p><b>Analisa emas dalam rupiah</b>: di tab Kalender, klik kartu "Emas (Rp/gram)" lalu "Analisa lengkap". Isinya sama seperti analisa saham (chart candle Daily/Mingguan, SMC, Fibo &amp; konfluensi, volume profile rentang, MA, RSI, MACD) dengan rencana entry/SL/TP dalam Rp/gram. Isi harga beli emas batangan hari ini dari Antam/Pegadaian untuk menerjemahkan angka-angka itu ke harga batangan. Volume memakai jumlah kontrak emas dunia.</p>
+        <p><b>Analisa emas dalam rupiah</b>: di tab Kalender, klik kartu "Emas (Rp/gram)" lalu "Analisa lengkap". Isinya sama seperti analisa saham (chart candle 15m, 45m, 1H, 4H, Daily, Mingguan, dan Bulanan; emas diperdagangkan hampir 24 jam, jadi candle 4H dibagi per jam 00.00, 04.00, 08.00 WIB dan seterusnya, SMC, Fibo &amp; konfluensi, volume profile rentang, MA, RSI, MACD) dengan rencana entry/SL/TP dalam Rp/gram. Isi harga beli emas batangan hari ini dari Antam/Pegadaian untuk menerjemahkan angka-angka itu ke harga batangan. Volume memakai jumlah kontrak emas dunia.</p>
         <p><b>Pasar global &amp; makro</b> (di tab Kalender): kurs USD/IDR, indeks dolar, yield obligasi AS 10 tahun, emas, minyak, batubara, tembaga, S&amp;P 500, dan Hang Seng selama 1 tahun, lengkap dengan perubahan 1 hari (1H), 1 bulan (1B), 1 tahun (1T), dan seberapa erat hubungannya dengan IHSG. Klik kartu untuk grafik besar.</p>
       </div>
     </details>
@@ -3519,8 +3565,8 @@ function renderMakro() {
 
 /* ---------- alat gambar: garis, horizontal, catatan, Elliott Wave ---------- */
 const DRAW_KEY = "idxs:draw", DRAW_COLORS = ["#F59E0B", "#3B82F6", "#10B981", "#EF4444", "#A855F7", "#EC4899", "#14B8A6", "#E5E7EB"];
-const TOOL_PTS = { line: 2, hline: 1, text: 1, fib: 2, ew: Infinity };
-const TOOL_NAME = { fib: "Fibonacci", line: "Garis tren", hline: "Garis horizontal", text: "Catatan", ew: "Elliott Wave", ew5: "Elliott 1–5", ew3: "Elliott A–B–C" };
+const TOOL_PTS = { line: 2, hline: 1, text: 1, fib: 2, ew: Infinity, prange: 2, drange: 2 };
+const TOOL_NAME = { prange: "Rentang harga", drange: "Rentang tanggal", fib: "Fibonacci", line: "Garis tren", hline: "Garis horizontal", text: "Catatan", ew: "Elliott Wave", ew5: "Elliott 1–5", ew3: "Elliott A–B–C" };
 const EW_SEQ = ["1", "2", "3", "4", "5", "A", "B", "C"];
 function ewLabels(d) {             // label tiap titik; titik pertama (awal) tanpa label
   if (d.type === "ew5") return ["", "1", "2", "3", "4", "5"];
@@ -3529,7 +3575,13 @@ function ewLabels(d) {             // label tiap titik; titik pertama (awal) tan
 }
 const EW_STEP = { ew5: ["titik awal", "ujung gelombang 1", "ujung gelombang 2", "ujung gelombang 3", "ujung gelombang 4", "ujung gelombang 5"], ew3: ["titik awal", "ujung gelombang A", "ujung gelombang B", "ujung gelombang C"],
   line: ["titik pertama", "titik kedua"], hline: ["level harga"], text: ["posisi catatan"],
-  fib: ["titik awal (mis. swing low)", "titik akhir (mis. swing high)"] };
+  fib: ["titik awal (mis. swing low)", "titik akhir (mis. swing high)"],
+  prange: ["harga awal", "harga akhir"], drange: ["tanggal awal", "tanggal akhir"] };
+function durTxt(ms, daily) {                     // lama waktu yang mudah dibaca
+  const m = Math.round(Math.abs(ms) / 60000), d = Math.round(Math.abs(ms) / 86400000);
+  if (daily || m >= 2880) return d >= 60 ? `${d} hari (±${fmtDec(d / 30.44, 1)} bulan)` : `${d} hari`;
+  const h = Math.floor(m / 60), mm = m % 60; return h ? `${h} jam${mm ? " " + mm + " menit" : ""}` : `${mm} menit`;
+}
 const FIB_LV = [[0, "0"], [0.236, "0,236"], [0.382, "0,382"], [0.5, "0,5"], [0.618, "0,618"], [0.705, "0,705"], [0.786, "0,786"], [1, "1"], [-0.272, "1,272"], [-0.618, "1,618"]];
 function ewStep(n) { return n === 0 ? "titik awal" : `titik ke-${n + 1}`; }
 let drawTool = null, drawPending = [], drawSel = null, curChartR = null, dwDrag = null, dwRaf = null, dwLastClick = null;
@@ -3649,6 +3701,31 @@ function drawLayer(r, S, x, y, L, iw, fp) {
       const [a, b] = pts, path = `M${a[0]},${a[1]} L${b[0]},${b[1]}`;
       s += `<path d="${path}" stroke="${col}" stroke-width="${sw}" fill="none"${dash}/>` + hit(path);
       if (d.note) s += lab(b[0] + 6, b[1] - 6, d.note, col);
+    } else if (d.type === "prange" || d.type === "drange") {
+      const [a, b] = pts, x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]);
+      const up = b[2] >= a[2], cc = d.type === "prange" ? (up ? "#10B981" : "#EF4444") : col;
+      const box = `M${x1},${y1} L${x2},${y1} L${x2},${y2} L${x1},${y2} Z`;
+      s += `<path d="${box}" fill="${cc}" fill-opacity="0.12" stroke="${cc}" stroke-width="1" stroke-opacity="0.6"${dash}/>` + hit(box);
+      const lines = [];
+      if (d.type === "prange") {
+        const xm = (x1 + x2) / 2, dp = b[2] - a[2], pct = a[2] ? dp / a[2] * 100 : 0;
+        s += `<line x1="${xm.toFixed(1)}" x2="${xm.toFixed(1)}" y1="${a[1].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${cc}" stroke-width="1.6"/>`;
+        s += `<path d="M${xm - 5},${b[1] + (up ? 7 : -7)} L${xm},${b[1]} L${xm + 5},${b[1] + (up ? 7 : -7)}" fill="none" stroke="${cc}" stroke-width="1.6"/>`;
+        lines.push(`${dp >= 0 ? "+" : "−"}${fp(Math.abs(dp))} (${dp >= 0 ? "+" : "−"}${fmtDec(Math.abs(pct), 2)}%)`, `${fp(a[2])} → ${fp(b[2])}`);
+      } else {
+        const ym = (y1 + y2) / 2, i1 = idxOfTime(S, d.pts[0].t), i2 = idxOfTime(S, d.pts[1].t), ib = b[0] >= a[0];
+        s += `<line x1="${a[0].toFixed(1)}" x2="${b[0].toFixed(1)}" y1="${ym.toFixed(1)}" y2="${ym.toFixed(1)}" stroke="${cc}" stroke-width="1.6"/>`;
+        s += `<path d="M${b[0] + (ib ? -7 : 7)},${ym - 5} L${b[0]},${ym} L${b[0] + (ib ? -7 : 7)},${ym + 5}" fill="none" stroke="${cc}" stroke-width="1.6"/>`;
+        const lo = Math.max(0, Math.min(i1, i2)), hi = Math.min(S.b.length - 1, Math.max(i1, i2));
+        let vol = 0; if (S.v) for (let k = lo; k <= hi; k++) vol += S.v[k] || 0;
+        lines.push(`${Math.abs(i2 - i1)} candle · ${durTxt(d.pts[1].t - d.pts[0].t, isDailyLike(S) && !(S.tf && S.tf !== "1d"))}`);
+        if (S.v && hi >= lo) lines.push(`Vol ${fmtNum(vol)} ${r.vu || "lot"}`);
+      }
+      const bw = Math.max(...lines.map(t => t.length)) * 6.6 + 16, bh = lines.length * 15 + 8;
+      const bx = (x1 + x2) / 2 - bw / 2, byy = d.type === "prange" ? (up ? y1 - bh - 6 : y2 + 6) : y2 + 6;
+      s += `<rect x="${bx.toFixed(1)}" y="${byy.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh}" rx="5" fill="${cc}" pointer-events="none"/>`;
+      lines.forEach((t, k) => s += `<text x="${(bx + bw / 2).toFixed(1)}" y="${(byy + 15 + k * 15).toFixed(1)}" font-size="11" font-weight="800" fill="#fff" text-anchor="middle" pointer-events="none">${esc(t)}</text>`);
+      if (d.note) s += lab(x2 + 6, y1 + 12, d.note, cc);
     } else if (d.type === "fib") {
       const [a, b] = pts, rg = b[2] - a[2], xs = Math.min(a[0], b[0]), xe = L + iw;
       const lv = FIB_LV.map(([f, nm]) => ({ f, nm, p: b[2] - f * rg })).map(o => ({ ...o, y: y(o.p) }));
@@ -3696,7 +3773,7 @@ function finishDrawing(r) {
   drawPending = []; drawTool = null;
   let note = "";
   if (type === "text") { note = (prompt("Tulis catatan:", "") || "").trim(); if (!note) { drawSmc(r); return; } }
-  else note = (prompt(`Catatan untuk ${TOOL_NAME[type]} (boleh dikosongkan):`, "") || "").trim();
+  else if (type !== "prange" && type !== "drange") note = (prompt(`Catatan untuk ${TOOL_NAME[type]} (boleh dikosongkan):`, "") || "").trim();
   const d = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), type, pts, color: drawStyle.color, w: drawStyle.w, note };
   drawSave(r, drawList(r).concat([d])); drawSel = d.id; drawSmc(r);
 }
@@ -3706,7 +3783,7 @@ function drawControls(r) {
   const list = drawList(r), sel = list.find(d => d.id === drawSel);
   const need = drawTool ? TOOL_PTS[drawTool] : 0, step = drawTool === "ew" ? ewStep(drawPending.length) : drawTool ? EW_STEP[drawTool][drawPending.length] : "";
   box.innerHTML = `<div class="dw-row">
-      <span class="dw-tools" role="group" aria-label="Alat gambar">${Object.keys(TOOL_PTS).map(k => `<button type="button" data-tool="${k}" class="${drawTool === k ? "on" : ""}">${{ line: "╱ Garis", hline: "― Horizontal", text: "T Catatan", fib: "𝐅 Fibonacci", ew: "〰 Elliott Wave" }[k]}</button>`).join("")}</span>
+      <span class="dw-tools" role="group" aria-label="Alat gambar">${Object.keys(TOOL_PTS).map(k => `<button type="button" data-tool="${k}" class="${drawTool === k ? "on" : ""}">${{ line: "╱ Garis", hline: "― Horizontal", text: "T Catatan", fib: "𝐅 Fibonacci", ew: "〰 Elliott Wave", prange: "↕ Rentang harga", drange: "↔ Rentang tanggal" }[k]}</button>`).join("")}</span>
       <span class="dw-colors">${DRAW_COLORS.map(c => `<button type="button" class="sw${(sel ? sel.color : drawStyle.color) === c ? " on" : ""}" data-col="${c}" style="background:${c}" aria-label="Warna ${c}"></button>`).join("")}<input type="color" id="dw-color" value="${sel ? sel.color : drawStyle.color}" title="Warna lain"></span>
       <button type="button" class="icon-btn dw-small" id="dw-w" title="Ketebalan garis">${(sel ? sel.w : drawStyle.w) >= 3 ? "Tebal" : "Tipis"}</button>
       <button type="button" class="icon-btn dw-small${drawStyle.magnet ? " on" : ""}" id="dw-mag" title="Titik menempel ke harga tertinggi/terendah candle">Magnet ${drawStyle.magnet ? "ON" : "OFF"}</button>
