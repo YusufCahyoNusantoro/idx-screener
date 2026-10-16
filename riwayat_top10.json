@@ -1,16 +1,4 @@
 {
- "2026-10-02": [
-  "CSMI",
-  "AUTO",
-  "PTBA",
-  "MSJA",
-  "RSCH",
-  "SMLE",
-  "SOCI",
-  "BSSR",
-  "SEMA",
-  "AYAM"
- ],
  "2026-10-05": [
   "AUTO",
   "PTBA",
@@ -118,5 +106,14 @@
   "CLEO",
   "PTBA",
   "MMIX"
+ ],
+ "2026-10-16": [
+  "PKPK",
+  "MMIX",
+  "BIKE",
+  "PCAR",
+  "MPIX",
+  "DKHH",
+  "MPXL"
  ]
 }
