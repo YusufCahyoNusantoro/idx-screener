@@ -39,6 +39,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Jalankan screener
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}   # opsional: kunci API FRED gratis untuk menu Makro
         run: python idx_screener.py --output site/index.html --no-arsip
 
       - name: Simpan riwayat kecil ke repo
