@@ -2471,6 +2471,16 @@ TEMPLATE = r'''<!DOCTYPE html>
   .pf-sell { background:var(--down) !important; color:#fff !important; }
   .pf-hstat { grid-template-columns:repeat(2, minmax(0,1fr)); margin-bottom:10px; }
   @media (max-width:980px) { .pf-grid { grid-template-columns:1fr; } .pf-sum { grid-template-columns:repeat(2, minmax(0,1fr)); } .pf-sum > div { border-bottom:1px solid var(--line); } }
+  .vd { display:inline-flex; align-items:stretch; border-radius:8px; overflow:hidden; font-size:0.78rem; font-weight:800; white-space:nowrap; cursor:help; border:1px solid var(--line); }
+  .vd b, .vd i { padding:3px 8px; font-style:normal; }
+  .vd.big { font-size:0.92rem; } .vd.big b, .vd.big i { padding:4px 10px; }
+  .va-bullish { background:color-mix(in srgb, var(--up) 22%, transparent); color:var(--up); }
+  .va-bearish { background:color-mix(in srgb, var(--down) 22%, transparent); color:var(--down); }
+  .va-netral { background:var(--panel2); color:var(--ink2); }
+  .vw-siap { background:var(--up); color:#fff; } .vw-tunggu { background:transparent; color:var(--ink); } .vw-hindari { background:var(--down); color:#fff; }
+  :root[data-theme="dark"] .vw-siap { color:#0B1A14; }
+  .m-verdict { margin-top:8px; font-size:0.84rem; display:flex; align-items:center; gap:8px; }
+  .d-verdict { margin-bottom:10px; display:grid; gap:4px; }
   .mk-hero-top { display:flex; justify-content:space-between; gap:12px 20px; flex-wrap:wrap; align-items:flex-start; }
   .mk-eyebrow { font-size:0.74rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:800; }
   .mk-chips { display:flex; flex-wrap:wrap; gap:6px; max-width:620px; }
@@ -2707,6 +2717,7 @@ TEMPLATE = r'''<!DOCTYPE html>
           <th class="num" data-key="chg">Chg%</th>
           <th data-key="score" class="active">Skor</th>
           <th data-key="ck" title="Berapa syarat checklist yang terpenuhi">Checklist</th>
+          <th data-key="vdo" title="Arah · Waktu. Arahkan kursor ke label untuk alasannya">Kesimpulan</th>
           <th data-key="kdo" title="Label kondisi; klik baris untuk alasannya">Kondisi</th>
           <th data-key="msk" title="Arah struktur SMC Mingguan (W), Harian (D), dan 4 jam (4H)">Struktur</th>
           <th class="nosort" title="Contoh rencana berbasis ATR, bukan rekomendasi">Rencana (contoh)</th>
@@ -2930,6 +2941,15 @@ TEMPLATE = r'''<!DOCTYPE html>
       <div class="guide-body">
         <p>Tab <b>Portofolio</b> dikunci password (bisa diganti di Portofolio → Pengaturan). Password ini kunci layar di browser, bukan enkripsi. Setiap kali kamu pindah ke tab lain (Screener, Kalender, Panduan), portofolio otomatis terkunci lagi; tombol <b>🔒 Kunci</b> mengunci saat itu juga. Klik baris saham untuk membuka <b>Detail</b>: balance lot, average price, market value, potential P&amp;L, alokasi, SL/TP (bisa diubah), catatan (bisa diubah), dan riwayat transaksinya.</p>
         <p>Di atas: <b>Saldo kas</b>, <b>Invested</b>, jumlah posisi <b>Open</b>, <b>P&amp;L</b> (belum dan sudah terealisasi), dan <b>Total equity</b>. Kamu bisa punya beberapa portofolio (pilihan hijau di kiri atas tabel). Catat pembelian lewat tombol <b>＋ Order</b> (pop-up Order → Beli) atau tombol "Catat ke portofolio" di detail saham; membeli saham yang sudah dipegang otomatis menjadi average up/down. Penjualan dicatat lewat <b>Order → Jual</b> (bisa sebagian). Tombol <b>⋮</b> di tiap posisi: beli lagi, jual, ubah SL/TP, lihat chart, hapus. <b>Riwayat</b> berisi semua transaksi, P&amp;L terealisasi, win rate, dan rata-rata R, plus unduh CSV. Biaya broker (default 0,15% beli, 0,25% jual) bisa diubah di Pengaturan. Harga terakhir mengikuti data aplikasi, jadi bisa sedikit berbeda dari aplikasi sekuritasmu yang real-time.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Kesimpulan dua kata (Arah · Waktu)</summary>
+      <div class="guide-body">
+        <p><b>Arah</b> (Bullish / Netral / Bearish) menggambarkan kondisi trennya; <b>Waktu</b> (Siap / Tunggu / Hindari) menggambarkan apa yang sebaiknya dilakukan sekarang. Arahkan kursor (atau buka detail) untuk melihat alasannya.</p>
+        <p><b>IHSG:</b> Arah dari struktur SMC harian &amp; mingguan, posisi terhadap MA50, dan napas pasar. Waktu: Bullish dan rezim makro tidak menekan = Siap; Bearish dan rezim makro tidak mendukung = Hindari; selain itu Tunggu.</p>
+        <p><b>Saham:</b> Arah dari struktur mingguan &amp; harian (keduanya naik = Bullish, keduanya turun = Bearish). Waktu dari label Kondisi: Di zona entry / Kandidat kuat = Siap; Tunggu… / Pantau… = Tunggu; Hindari dulu / Tidak ada transaksi = Hindari. Tanda <b>⚠</b> berarti setup "Siap" tetapi IHSG sedang Bearish (melawan arus pasar).</p>
+        <p>Ini ringkasan hitungan otomatis, bukan perintah beli/jual: tidak memperhitungkan berita, laporan keuangan, atau arus broker.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -3263,7 +3283,8 @@ function renderMarket() {
     const say = isDown(m.d) ? "Pasar sedang lemah. Kurangi ukuran posisi atau tunggu dulu."
       : isUp(m.d) ? "Pasar mendukung. Tetap pasang stop loss." : "Pasar belum punya arah jelas. Pilih saham dengan checklist tinggi saja.";
     a += `<div class="m-row"><span class="m-big">${fmtDec(m.p, 2)}</span><span class="m-chg ${up ? "up" : "down"}">${up ? "+" : ""}${fmtDec(m.chg, 2)}%</span></div>
-      <div class="m-say">Harga ${trend}, ringkasan teknikal ${m.d}${m.rsi ? ", RSI " + fmtDec(m.rsi, 1) : ""}. ${say}</div>`;
+      <div class="m-say">Harga ${trend}, ringkasan teknikal ${m.d}${m.rsi ? ", RSI " + fmtDec(m.rsi, 1) : ""}. ${say}</div>
+      ${V_IHSG ? `<div class="m-verdict">Kesimpulan ${vBadge(V_IHSG)}</div>` : ""}`;
   } else a += '<div class="m-say">Data IHSG tidak tersedia di run ini.</div>';
   a += "</div>";
   let br = '<div><div class="m-label">Napas pasar</div>';
@@ -3407,7 +3428,7 @@ function filtered() {
   const pmin = num("price-min"), pmax = num("price-max"), rmin = num("rsi-min"), rmax = num("rsi-max"), vmin = num("val-min"), smin = num("streak-min");
   const RK = { "Strong Buy": 2, "Buy": 1, "Neutral": 0, "Sell": -1, "Strong Sell": -2 };
   const rk = (r, k) => r.tf && r.tf[k] ? RK[r.tf[k].summary] ?? null : null;
-  let rows = DATA.map(r => ({ ...r, score: score(r, w), tf_h1: rk(r, "h1"), tf_h2: rk(r, "h2"), tf_h4: rk(r, "h4"), tf_daily: rk(r, "daily"), tf_weekly: rk(r, "weekly"), tf_monthly: rk(r, "monthly") }));
+  let rows = DATA.map(r => ({ ...r, score: score(r, w), vdo: vRank(vSaham(r)), tf_h1: rk(r, "h1"), tf_h2: rk(r, "h2"), tf_h4: rk(r, "h4"), tf_daily: rk(r, "daily"), tf_weekly: rk(r, "weekly"), tf_monthly: rk(r, "monthly") }));
   const sig = $("sig-filter").value;
   if (q) {   // pencarian selalu menemukan saham yang dicari, filter lain diabaikan
     rows = rows.filter(r => r.t.includes(q) || (r.nm || "").toUpperCase().includes(q));
@@ -3457,6 +3478,7 @@ function rowHtml(r) {
       <td class="num ${r.chg >= 0 ? "pos" : "neg"}">${r.chg >= 0 ? "+" : ""}${fmtDec(r.chg, 2)}%</td>
       <td><span class="score"><b>${fmtDec(r.score, 0)}</b><span class="score-bar"><i style="width:${Math.min(100, r.score)}%"></i></span></span></td>
       <td>${ckCell(r)}</td>
+      <td>${vBadge(vSaham(r))}</td>
       <td>${r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : "-"}</td>
       <td>${msCell(r)}</td>
       <td>${planCell(r)}</td>
@@ -3557,12 +3579,12 @@ function render() {
   if (page > 0) pinned.length = 0;              // blok Top 10 hanya di halaman pertama
   if (!slice.length && !pinned.length) {
     $("tbody").innerHTML = $("search").value.trim()
-      ? `<tr><td colspan="23" class="empty">Kode atau nama "${esc($("search").value.trim())}" tidak ada di data run ini. Kalau saham itu baru IPO dan belum ada di daftar, tulis kodenya di file <b>saham_tambahan.txt</b> di repo GitHub (satu kode per baris), lalu jalankan update. Bisa juga karena sahamnya disuspensi lebih dari 60 hari atau datanya gagal diambil dari Yahoo.</td></tr>`
-      : watchOn ? `<tr><td colspan="23" class="empty">Watchlist masih kosong. Klik bintang ☆ di samping kode saham untuk menambahkannya.</td></tr>`
-      : `<tr><td colspan="23" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
+      ? `<tr><td colspan="24" class="empty">Kode atau nama "${esc($("search").value.trim())}" tidak ada di data run ini. Kalau saham itu baru IPO dan belum ada di daftar, tulis kodenya di file <b>saham_tambahan.txt</b> di repo GitHub (satu kode per baris), lalu jalankan update. Bisa juga karena sahamnya disuspensi lebih dari 60 hari atau datanya gagal diambil dari Yahoo.</td></tr>`
+      : watchOn ? `<tr><td colspan="24" class="empty">Watchlist masih kosong. Klik bintang ☆ di samping kode saham untuk menambahkannya.</td></tr>`
+      : `<tr><td colspan="24" class="empty">Tidak ada saham yang cocok dengan filter ini.<br><button class="icon-btn" type="button" id="empty-reset">Tampilkan semua saham</button></td></tr>`;
     const er = $("empty-reset"); if (er) er.addEventListener("click", e => { e.stopPropagation(); applyPreset("reset"); });
   } else {
-    const grp = (txt, cls = "") => `<tr class="grp ${cls}"><td colspan="23"><span>${txt}</span></td></tr>`;
+    const grp = (txt, cls = "") => `<tr class="grp ${cls}"><td colspan="24"><span>${txt}</span></td></tr>`;
     const topOpen = ls.get("idxs:topopen", true);
     $("tbody").innerHTML = (pinned.length ? grp(`<button type="button" class="grp-toggle" aria-expanded="${topOpen}">${topOpen ? "▾" : "▸"} Top 10 hari ini${pinned.length < 10 ? ` (${pinned.length} saham lolos syarat uptrend)` : ""}</button> <span class="muted">· ${topOpen ? "disematkan di atas, urut peringkat. Klik untuk menutup" : `${pinned.length} saham disembunyikan. Klik untuk membuka`}</span>`, "grp-top") + (topOpen ? pinned.map(rowHtml).join("") : "")
       + grp(`Hasil filter <span class="muted">· ${fmtNum(rows.length)} saham lain</span>`) : "") + slice.map(rowHtml).join("");
@@ -5427,6 +5449,7 @@ function renderCompare() {
     ["Harga", r => `<b>${fmtNum(r.p)}</b> <span class="${r.chg >= 0 ? "pos" : "neg"}">${r.chg >= 0 ? "+" : ""}${fmtDec(r.chg, 2)}%</span>`],
     [`Kinerja ${cmpPeriod} hari`, r => { const v = perf(r, cmpPeriod); return v == null ? "-" : `<b class="${v >= 0 ? "pos" : "neg"}">${v >= 0 ? "+" : ""}${fmtDec(v, 1)}%</b>`; }],
     ["Sektor", r => esc(r.sector || "-")],
+    ["Kesimpulan", r => vBadge(vSaham(r))],
     ["Kondisi", r => r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : "-"],
     ["Struktur W / D / 4H", r => msCell(r)],
     ["BOS/CHoCH terakhir (harian)", r => esc(lastEv(r))],
@@ -5535,7 +5558,7 @@ function detailParts(r, r0, w) {
     sub, up,
     price: `${fmtNum(r.p)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(r.chg, 2)}%</span>`,
     meta: `Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.${r.top ? ` <span class="top-badge">Top 10 #${r.top}</span>` : ""}`,
-    kond: `<div class="d-sec">${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}<div style="margin-top:6px">${badges(r)}</div></div>`,
+    kond: `<div class="d-sec">${(() => { const v = vSaham(r); return `<div class="d-verdict">Kesimpulan ${vBadge(v, true)}<div class="d-why">${esc(v.alasan.join("; "))}.</div></div>`; })()}${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}<div style="margin-top:6px">${badges(r)}</div></div>`,
     struktur: msBlock(r),
     chart: r.smc ? `<div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
       <div class="frvp-ctl" id="frvp-ctl"></div>
@@ -5717,7 +5740,7 @@ FIELDS.forEach(id => $(id).addEventListener(id === "kd-filter" || id === "sector
 $("prev-page").addEventListener("click", () => { page--; save(); render(); });
 $("next-page").addEventListener("click", () => { page++; save(); render(); });
 document.querySelectorAll("thead th[data-key]").forEach(th => th.addEventListener("click", () => {
-  const k = th.dataset.key; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = k === "t" || k === "sector" ? 1 : -1; }
+  const k = th.dataset.key; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = k === "t" || k === "sector" || k === "vdo" ? 1 : -1; }
   markPreset(); save(); render();
 }));
 $("tbody").addEventListener("click", e => {
@@ -5860,6 +5883,45 @@ $("sy-btn").addEventListener("click", () => { const p = $("sy-pop"); if (p.hidde
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && sync.token && Date.now() - syncLastPull > 20000) syncRun("pull"); });
 if (location.protocol === "file:") $("sy-btn").hidden = true;
 
+/* ---------- KESIMPULAN DUA KATA: Arah · Waktu ---------- */
+let V_IHSG = null;
+function vIhsg() {
+  const m = MARKET.ihsg; if (!m) return null;
+  const R = [], ms = m.ms || {}, b = MARKET.breadth; let sc = 0;
+  const dtr = (ms.d || {}).tr, wtr = (ms.w || {}).tr;
+  if (dtr === 1) { sc++; R.push("struktur harian naik"); } else if (dtr === -1) { sc--; R.push("struktur harian turun"); }
+  if (wtr === 1) { sc++; R.push("struktur mingguan naik"); } else if (wtr === -1) { sc--; R.push("struktur mingguan turun"); }
+  if (m.ma50) { if (m.p > m.ma50) { sc++; R.push("di atas MA50"); } else { sc--; R.push("di bawah MA50"); } }
+  if (b) { if (b.pct >= 55) { sc++; R.push(`napas pasar ${b.pct}%`); } else if (b.pct <= 40) { sc--; R.push(`napas pasar hanya ${b.pct}%`); } else R.push(`napas pasar ${b.pct}% (terbelah)`); }
+  const arah = sc >= 2 ? "Bullish" : sc <= -2 ? "Bearish" : "Netral";
+  let makro = "belum ada data";
+  try {
+    const B = mkBlocks(), n = B.length, nT = B.filter(x => x.efek === "menekan").length, nB = B.filter(x => x.efek === "membantu").length;
+    if (n) { makro = nT >= Math.ceil(n / 2) ? "menekan" : nB >= Math.ceil(n / 2) ? "mendukung" : "campuran"; R.push(`rezim makro ${makro} (${nT} dari ${n} blok menekan)`); }
+    const hit = mkGet().alarm.filter(a => { const st = mkAlarmState(a); return st && st.hit; }).length;
+    if (hit) R.push(`${hit} alarm makro tercapai`);
+  } catch (e) {}
+  const waktu = arah === "Bullish" && makro !== "menekan" ? "Siap" : arah === "Bearish" && makro !== "mendukung" ? "Hindari" : "Tunggu";
+  return { arah, waktu, lawan: false, alasan: R };
+}
+function vSaham(r) {
+  const ms = r.ms || {}, d = (ms.d || {}).tr, w = (ms.w || {}).tr, sym = t => t === 1 ? "▲" : t === -1 ? "▼" : "–";
+  const arah = d === 1 && w === 1 ? "Bullish" : d === -1 && w === -1 ? "Bearish" : "Netral";
+  const c = r.kd ? r.kd.c : "n";
+  let waktu = { zone: "Siap", ok: "Siap", bad: "Hindari", notx: "Hindari" }[c] || "Tunggu";
+  if (arah === "Bearish" && waktu === "Siap") waktu = "Tunggu";
+  const lawan = waktu === "Siap" && V_IHSG && V_IHSG.arah === "Bearish";
+  const R = [`struktur mingguan ${sym(w)}, harian ${sym(d)}`, r.kd ? `kondisi: ${r.kd.l}` : ""].filter(Boolean);
+  if (lawan) R.push("IHSG sedang Bearish: setup ini melawan arus pasar, perkecil posisi dan disiplin stop loss");
+  return { arah, waktu, lawan, alasan: R };
+}
+function vRank(v) { return ({ Siap: 0, Tunggu: 3, Hindari: 6 }[v.waktu]) + ({ Bullish: 0, Netral: 1, Bearish: 2 }[v.arah]) + (v.lawan ? 0.5 : 0); }
+function vBadge(v, big) {
+  if (!v) return "-";
+  const tip = (v.lawan ? "⚠ " : "") + v.alasan.join("; ");
+  return `<span class="vd${big ? " big" : ""}" title="${esc(tip)}"><b class="va-${v.arah.toLowerCase()}">${v.arah}</b><i class="vw-${v.waktu.toLowerCase()}">${v.waktu}${v.lawan ? " ⚠" : ""}</i></span>`;
+}
+
 /* ---------- MENU MAKRO ---------- */
 const MK_KEY = "idxs:makro";
 const MK_FAK = { "IDR=X": "USD/IDR", "DX-Y.NYB": "Dolar AS (DXY)", "^TNX": "Yield AS 10Y", "BZ=F": "Brent", "CL=F": "Minyak WTI", "MTF=F": "Batubara", "GC=F": "Emas", "HG=F": "Tembaga", "^GSPC": "S&P 500", "^HSI": "Hang Seng", "EMAS_IDR": "Emas (Rp/gram)" };
@@ -5876,15 +5938,21 @@ function renderMakroView() {
   if (!$("v-makro")) return;
   mkHero(); mkGli(); mkIndo(); mkIhsg(); mkSektor(); mkAlarm(); mkSken();
 }
-function mkHero() {
-  const box = $("mk-hero"), mx = MARKET.mx || {}, d = mkGet();
-  let B = (mx.rezim || []).map(b => ({ ...b }));
+function mkBlocks() {
+  const mx = MARKET.mx || {}, d = mkGet();
+  const B = (mx.rezim || []).map(b => ({ ...b }));
   const pmi = parseFloat(d.indo.pmi);
   if (isFinite(pmi)) { const c = B.find(b => b.k === "china"), nb = { k: "china", nama: "China", arah: pmi >= 50 ? "Ekspansi" : "Kontraksi", efek: pmi > 50 ? "membantu" : pmi < 50 ? "menekan" : "netral", bukti: `PMI manufaktur ${fmtDec(pmi, 1)} (diisi manual${d.indo.tgl ? ", " + d.indo.tgl : ""})`, sumber: "Manual" }; if (c) Object.assign(c, nb); else B.push(nb); }
+  return B;
+}
+function mkHero() {
+  const box = $("mk-hero"), d = mkGet();
+  const B = mkBlocks();
   const n = B.length, nT = B.filter(b => b.efek === "menekan").length, nB = B.filter(b => b.efek === "membantu").length;
   const sikap = !n ? ["Data belum tersedia", "muted"] : nT >= Math.ceil(n / 2) ? ["Menekan · hati-hati", "neg"] : nB >= Math.ceil(n / 2) ? ["Mendukung", "pos"] : ["Campuran", "mk-mix"];
   const al = d.alarm.map(a => ({ a, st: mkAlarmState(a) })).filter(x => x.st && x.st.hit);
-  box.innerHTML = `<div class="mk-hero-top"><div><div class="mk-eyebrow">Makro · dari dunia sampai sektor</div><h2 style="margin:4px 0 0">Rezim: <span class="${sikap[1]}">${sikap[0]}</span></h2>
+  const vi = vIhsg();
+  box.innerHTML = `<div class="mk-hero-top"><div><div class="mk-eyebrow">Makro · dari dunia sampai sektor</div><h2 style="margin:4px 0 0">Rezim: <span class="${sikap[1]}">${sikap[0]}</span>${vi ? ` <span style="font-size:0.95rem;font-weight:600" class="muted">· IHSG</span> ${vBadge(vi, true)}` : ""}</h2>
       <p class="muted" style="margin:4px 0 0">${n ? `<b>${nT} dari ${n}</b> blok menekan, <b>${nB}</b> membantu.` : "Data FRED belum berhasil diambil pada update terakhir; coba jalankan update lagi."}${al.length ? ` · <b class="neg">${al.length} alarm tercapai</b>` : ""}</p></div>
       <div class="mk-chips">${B.map(b => `<span class="mk-chip ${EFEK[b.efek][1]}" title="${esc(b.bukti)}">${esc(b.nama)}</span>`).join("")}</div></div>
     ${n ? `<div class="table-wrap" style="max-height:none;margin-top:12px"><table class="j-tbl mk-tbl"><thead><tr><th>Blok</th><th>Arah</th><th>Untuk pasar</th><th>Bukti terakhir</th><th>Sumber</th></tr></thead><tbody>
@@ -5937,7 +6005,7 @@ function mkIndo() {
     <p class="muted" style="font-size:0.74rem;margin:6px 0 0">Rupiah otomatis. Angka lain dirilis bulanan/kuartalan dan tidak tersedia gratis tepat waktu, jadi diisi manual (ikut ☁ Sinkron). PMI China dipakai untuk blok China di atas.</p>`;
   $("mk-indo-save").addEventListener("click", () => {
     const dd = mkGet(); box.querySelectorAll("[data-mk]").forEach(i => { dd.indo[i.dataset.mk] = i.value === "" ? "" : i.value; });
-    dd.indo.tgl = new Date(Date.now() + WIB_MS).toISOString().slice(0, 10); mkSet(dd); mkIndo(); mkHero(); $("mk-indo-msg").textContent = "✓ Tersimpan";
+    dd.indo.tgl = new Date(Date.now() + WIB_MS).toISOString().slice(0, 10); mkSet(dd); V_IHSG = vIhsg(); renderMarket(); render(); mkIndo(); mkHero(); $("mk-indo-msg").textContent = "✓ Tersimpan";
   });
 }
 function mkIhsg() {
@@ -5982,7 +6050,7 @@ function mkAlarm() {
         <input type="number" step="any" data-af="v" data-id="${a.id}" value="${a.v}">
         <span class="mk-al-st">${!st ? "-" : st.hit ? `<b class="neg">⚠ TERCAPAI</b> · ${fmtDec(st.v, st.v < 50 ? 2 : 0)}` : `sekarang ${fmtDec(st.v, st.v < 50 ? 2 : 0)} · jarak ${fmtDec(Math.abs(st.dist), 1)}%`}</span>
         <button type="button" class="icon-btn dw-small" data-adel="${a.id}" aria-label="Hapus">✕</button></div>`; }).join("")}</div>`;
-  const save = () => { const dd = mkGet(); dd.alarm = d.alarm; mkSet(dd); mkAlarm(); mkHero(); };
+  const save = () => { const dd = mkGet(); dd.alarm = d.alarm; mkSet(dd); V_IHSG = vIhsg(); renderMarket(); render(); mkAlarm(); mkHero(); };
   box.querySelectorAll("[data-af]").forEach(el => el.addEventListener("change", () => { const a = d.alarm.find(x => x.id === +el.dataset.id); a[el.dataset.af] = el.dataset.af === "v" ? +el.value : el.value; save(); }));
   box.querySelectorAll("[data-adel]").forEach(b => b.addEventListener("click", () => { d.alarm = d.alarm.filter(x => x.id !== +b.dataset.adel); save(); }));
   $("mk-al-add").addEventListener("click", () => { d.alarm.push({ id: Date.now(), sym: "IDR=X", op: ">", v: Math.round(mkLast("IDR=X") || 18000) }); save(); });
@@ -6220,6 +6288,7 @@ renderSigOptions(); $("sig-filter").value = ls.get("idxs:sig", "");
 $("sig-filter").addEventListener("change", () => { ls.set("idxs:sig", $("sig-filter").value); page = 0; render(); });
 renderPref();
 $("f-pin").addEventListener("change", () => { ls.set(PIN_KEY, $("f-pin").checked); page = 0; render(); });
+V_IHSG = vIhsg();
 renderMarket(); load(); render(); renderCal(); renderJournal(); renderMakro(); renderMovers();
 (() => { const d = $("movers-d"); d.open = ls.get("idxs:mvopen", true); d.addEventListener("toggle", () => ls.set("idxs:mvopen", d.open)); })();
 renderCmpBar();
