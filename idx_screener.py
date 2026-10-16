@@ -748,28 +748,47 @@ def data_makro(ihsg):
 
 
 # ======================= MENU MAKRO =======================
+FRED_ERR = []                                  # alasan kegagalan FRED (ditampilkan di menu Makro)
+
+
 def fred(sid, mulai="2018-01-01"):
-    """Ambil satu seri dari FRED (Federal Reserve Bank of St. Louis) tanpa kunci API. Gagal -> None."""
+    """Ambil satu seri FRED. Pakai API resmi kalau FRED_API_KEY tersedia (GitHub Secrets); kalau tidak, coba unduhan CSV."""
     import io
+    import os
+    import urllib.error
     import urllib.request
-    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}&cosd={mulai}"
-    for coba in range(2):
+    key = os.environ.get("FRED_API_KEY", "").strip()
+    hdr = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
+           "Accept": "application/json,text/csv,*/*"}
+    for coba in range(3):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (DibalikSaham screener)"})
-            with urllib.request.urlopen(req, timeout=40) as f:
-                txt = f.read().decode("utf-8", "replace")
-            df = pd.read_csv(io.StringIO(txt))
-            if df.shape[1] < 2:
-                return None
-            df.columns = ["d", "v"]
-            df["v"] = pd.to_numeric(df["v"], errors="coerce")
-            df = df.dropna()
-            s = pd.Series(df["v"].to_numpy(float), index=pd.to_datetime(df["d"]))
-            return s if len(s) else None
+            if key:
+                url = (f"https://api.stlouisfed.org/fred/series/observations?series_id={sid}&api_key={key}"
+                       f"&file_type=json&observation_start={mulai}")
+                with urllib.request.urlopen(urllib.request.Request(url, headers=hdr), timeout=40) as f:
+                    obs = json.loads(f.read().decode("utf-8"))["observations"]
+                s_ = pd.Series({pd.Timestamp(o["date"]): float(o["value"]) for o in obs if o.get("value") not in (".", "", None)})
+            else:
+                url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}&cosd={mulai}"
+                with urllib.request.urlopen(urllib.request.Request(url, headers=hdr), timeout=40) as f:
+                    txt = f.read().decode("utf-8", "replace")
+                if not txt.lstrip().lower().startswith(("date", "observation_date")):
+                    raise ValueError("balasan bukan data CSV (kemungkinan diblokir)")
+                df = pd.read_csv(io.StringIO(txt))
+                df.columns = ["d", "v"]
+                df["v"] = pd.to_numeric(df["v"], errors="coerce")
+                df = df.dropna()
+                s_ = pd.Series(df["v"].to_numpy(float), index=pd.to_datetime(df["d"]))
+            return s_.sort_index() if len(s_) else None
+        except urllib.error.HTTPError as e:
+            alasan = f"ditolak server FRED (HTTP {e.code})" + (" — periksa FRED_API_KEY" if key and e.code in (400, 403) else "")
         except Exception as e:
-            if coba:
-                print(f"  ! FRED {sid}: {e}")
-            time.sleep(2)
+            alasan = f"{type(e).__name__}: {e}"[:120]
+        time.sleep(2 + coba * 2)
+    msg = f"{sid}: {alasan} ({'API kunci' if key else 'CSV tanpa kunci'})"
+    print(f"  ! FRED {msg}")
+    if len(FRED_ERR) < 4:
+        FRED_ERR.append(msg)
     return None
 
 
@@ -856,6 +875,12 @@ def rezim_makro(makro, gli):
         a = float(ry.iloc[-1]); b = float(ry[ry.index <= ry.index[-1] - pd.Timedelta(days=30)].iloc[-1]); dbp = (a - b) * 100
         blok("real", "Bunga riil AS", "Naik" if dbp > 10 else "Turun" if dbp < -10 else "Stabil",
              "menekan" if dbp > 10 else "membantu" if dbp < -10 else "netral", f"Real yield 10Y {a:.2f}% ({dbp:+.0f} bp/30 hari)", "FRED DFII10")
+    if ry is None or len(ry) <= 40:                          # cadangan: yield nominal 10Y dari Yahoo
+        ny = _seri_makro(makro, "^TNX")
+        if ny is not None and len(ny) > 40:
+            a = float(ny.iloc[-1]); b = float(ny[ny.index <= ny.index[-1] - pd.Timedelta(days=30)].iloc[-1]); dbp = (a - b) * 100
+            blok("real", "Bunga AS (yield 10Y)", "Naik" if dbp > 15 else "Turun" if dbp < -15 else "Stabil",
+                 "menekan" if dbp > 15 else "membantu" if dbp < -15 else "netral", f"Yield nominal 10Y {a:.2f}% ({dbp:+.0f} bp/30 hari); real yield FRED tidak tersedia", "Yahoo ^TNX")
     dx = fred("DTWEXBGS", "2022-01-01")
     src = "FRED DTWEXBGS (dolar broad)"
     if dx is None or len(dx) < 40:
@@ -1021,6 +1046,9 @@ def makro_lengkap(harian, rows, ihsg10, makro):
             mx[nama] = fn()
         except Exception as e:
             print(f"  ! makro {nama}: {e}"); mx[nama] = None
+    import os
+    mx["fred_err"] = FRED_ERR[:3]
+    mx["fred_key"] = bool(os.environ.get("FRED_API_KEY", "").strip())
     for b in mx.get("rezim") or []:
         b["bukti"] = _koma(b["bukti"])
     for g in (mx.get("sektor") or {}).get("grup", []):
@@ -2908,6 +2936,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>Menu Makro</summary>
       <div class="guide-body">
         <p>Menu <b>Makro</b> merangkum kondisi dari dunia sampai sektor: <b>Rezim</b> (7 blok: inflasi AS, The Fed, bunga riil, dolar, minyak, China, likuiditas global; masing-masing Menekan/Membantu/Netral/Campuran, dari data FRED dan Yahoo), <b>Likuiditas global</b> (proksi neraca The Fed, ECB, dan Bank of Japan, dengan EMA20/EMA50, momentum YoY, dan offset terhadap IHSG), <b>Pasar global &amp; makro</b>, <b>Ekonomi Indonesia</b> (rupiah otomatis; PDB, inflasi, BI Rate, cadangan devisa, SBN, PMI China diisi manual), <b>Kondisi IHSG</b> dibanding bursa utama, <b>Siapa untung, siapa tertekan</b> (korelasi kelompok/sektor dengan faktor makro dan dampaknya sebulan terakhir, plus catatanmu), <b>Alarm makro</b> dengan ambang yang kamu atur, dan <b>Skenario saya</b>. Isian manual ikut ☁ Sinkron. Korelasi menunjukkan kecenderungan, bukan sebab-akibat.</p>
+        <p><b>Kunci API FRED (gratis, sekali saja):</b> buka fredaccount.stlouisfed.org, buat akun, lalu menu <b>API Keys → Request API Key</b>, salin kunci 32 karakter. Di GitHub repo: <b>Settings → Secrets and variables → Actions → New repository secret</b>, Name <code>FRED_API_KEY</code>, Secret = kuncinya. Pastikan screener.yml punya baris <code>FRED_API_KEY: ${{ secrets.FRED_API_KEY }}</code> di langkah "Jalankan screener", lalu jalankan update.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -5864,7 +5893,14 @@ function mkHero() {
 }
 function mkGli() {
   const box = $("mk-gli"), g = (MARKET.mx || {}).gli;
-  if (!g || !g.v) { box.innerHTML = `<p class="muted">Indeks likuiditas global belum tersedia: data FRED gagal diambil pada update terakhir.</p>`; return; }
+  if (!g || !g.v) {
+    const mx = MARKET.mx || {}, err = mx.fred_err || [];
+    box.innerHTML = `<p class="muted" style="margin:0 0 6px">Indeks likuiditas global belum tersedia: data FRED gagal diambil pada update terakhir.</p>
+      ${err.length ? `<p style="font-size:0.8rem;margin:0 0 6px">Alasan: <code>${esc(err[0])}</code></p>` : ""}
+      ${mx.fred_key ? `<p class="muted" style="font-size:0.8rem;margin:0">Kunci API FRED sudah terpasang tetapi tetap gagal: periksa apakah kuncinya benar (32 karakter) di GitHub Secrets.</p>`
+        : `<p class="muted" style="font-size:0.8rem;margin:0">Server FRED sering menolak permintaan dari GitHub tanpa kunci API. Pasang kunci API FRED gratis (lihat Panduan → "Menu Makro") supaya data ini terisi.</p>`}`;
+    return;
+  }
   const n = g.v.length, lagW = mkShift && g.lag ? Math.round(g.lag / 7) : 0, N = n + lagW, W = 1000, H = 330, L = 10, R = 62, T = 14, B1 = 240, mT = 256, mB = 316;
   const x = i => L + (i + 0.5) * (W - L - R) / N;
   const vs = [...g.v, ...g.e20, ...g.e50], vmin = Math.min(...vs), vmax = Math.max(...vs), y = v => T + (vmax - v) / ((vmax - vmin) || 1) * (B1 - T);
