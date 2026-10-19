@@ -1024,6 +1024,33 @@ def kondisi_ihsg(ihsg10):
     return out
 
 
+def arus_pasar(harian, ihsg10, n=120):
+    """Nilai transaksi harian seluruh saham + tekanan beli/jual PERKIRAAN (money flow: posisi close di rentang hari x nilai)."""
+    if ihsg10 is None or len(ihsg10) < 30:
+        return None
+    hari = ihsg10.index[-n:]
+    val = pd.Series(0.0, index=hari); mf = val.copy(); up = val.copy(); dn = val.copy(); cnt = val.copy()
+    for t, df in harian.items():
+        if df is None or len(df) < 3:
+            continue
+        d = df.iloc[-(n + 5):].copy()
+        v = d["Close"] * d["Volume"]
+        rng = (d["High"] - d["Low"]).replace(0, np.nan)
+        clv = (((d["Close"] - d["Low"]) - (d["High"] - d["Close"])) / rng).fillna(0)
+        chg = d["Close"].diff()
+        v, clv, chg = v.reindex(hari), clv.reindex(hari), chg.reindex(hari)
+        ok = v.notna() & (v > 0)
+        val[ok] += v[ok]; mf[ok] += (clv * v)[ok]; cnt[ok] += 1
+        up[ok & (chg > 0)] += v[ok & (chg > 0)]; dn[ok & (chg < 0)] += v[ok & (chg < 0)]
+    keep = cnt > max(20, cnt.max() * 0.3)                # buang hari yang datanya belum lengkap
+    if keep.sum() < 10:
+        return None
+    val, mf, up, dn, cnt = val[keep], mf[keep], up[keep], dn[keep], cnt[keep]
+    r = lambda x: [round(float(v) / 1e9, 2) for v in x]   # miliar rupiah
+    return {"d": [t.strftime("%Y-%m-%d") for t in val.index], "val": r(val), "mf": r(mf), "up": r(up), "dn": r(dn),
+            "n": [int(c) for c in cnt]}
+
+
 def _koma(t):
     """Angka desimal gaya Indonesia di dalam kalimat: 2.9% -> 2,9%."""
     import re
@@ -1041,7 +1068,7 @@ def makro_lengkap(harian, rows, ihsg10, makro):
         except Exception as e:
             print(f"  ! {nama}: {e}"); mx[nama] = None
     for nama, fn in (("rezim", lambda: rezim_makro(makro, mx.get("gli"))), ("sektor", lambda: peta_sektor(harian, rows, makro)),
-                     ("ihsg", lambda: kondisi_ihsg(ihsg10))):
+                     ("ihsg", lambda: kondisi_ihsg(ihsg10)), ("arus", lambda: arus_pasar(harian, ihsg10))):
         try:
             mx[nama] = fn()
         except Exception as e:
@@ -2755,6 +2782,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Data dari Yahoo Finance dan bisa tertunda. <b>Hubungan dengan IHSG</b> adalah korelasi perubahan harian 60 hari terakhir: mendekati +1 berarti biasanya bergerak searah dengan IHSG, mendekati −1 berlawanan arah, mendekati 0 hampir tidak berhubungan. BI Rate dan inflasi Indonesia tidak tersedia di Yahoo, jadi jadwal rilisnya ada di kalender di bawah.</p>
   </section>
   <div class="mk-two"><section class="card" id="mk-indo" aria-label="Ekonomi Indonesia"></section><section class="card" id="mk-ihsg" aria-label="Kondisi IHSG"></section></div>
+  <section class="card" id="mk-arus" aria-label="Transaksi dan tekanan pasar"></section>
   <section class="card" id="mk-sektor" aria-label="Dampak makro ke sektor"></section>
   <div class="mk-two"><section class="card" id="mk-alarm" aria-label="Alarm makro"></section><section class="card" id="mk-skenario" aria-label="Skenario"></section></div>
   </div>
@@ -2955,7 +2983,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <details class="guide-item">
       <summary>Menu Makro</summary>
       <div class="guide-body">
-        <p>Menu <b>Makro</b> merangkum kondisi dari dunia sampai sektor: <b>Rezim</b> (7 blok: inflasi AS, The Fed, bunga riil, dolar, minyak, China, likuiditas global; masing-masing Menekan/Membantu/Netral/Campuran, dari data FRED dan Yahoo), <b>Likuiditas global</b> (proksi neraca The Fed, ECB, dan Bank of Japan, dengan EMA20/EMA50, momentum YoY, dan offset terhadap IHSG), <b>Pasar global &amp; makro</b>, <b>Ekonomi Indonesia</b> (rupiah otomatis; PDB, inflasi, BI Rate, cadangan devisa, SBN, PMI China diisi manual), <b>Kondisi IHSG</b> dibanding bursa utama, <b>Siapa untung, siapa tertekan</b> (korelasi kelompok/sektor dengan faktor makro dan dampaknya sebulan terakhir, plus catatanmu), <b>Alarm makro</b> dengan ambang yang kamu atur, dan <b>Skenario saya</b>. Isian manual ikut ☁ Sinkron. Korelasi menunjukkan kecenderungan, bukan sebab-akibat.</p>
+        <p>Menu <b>Makro</b> merangkum kondisi dari dunia sampai sektor: <b>Rezim</b> (7 blok: inflasi AS, The Fed, bunga riil, dolar, minyak, China, likuiditas global; masing-masing Menekan/Membantu/Netral/Campuran, dari data FRED dan Yahoo), <b>Likuiditas global</b> (proksi neraca The Fed, ECB, dan Bank of Japan, dengan EMA20/EMA50, momentum YoY, dan offset terhadap IHSG), <b>Pasar global &amp; makro</b>, <b>Ekonomi Indonesia</b> (rupiah otomatis; PDB, inflasi, BI Rate, cadangan devisa, SBN, PMI China diisi manual), <b>Kondisi IHSG</b> dibanding bursa utama, <b>Transaksi &amp; tekanan pasar</b> (nilai transaksi harian seluruh saham dan tekanan beli/jual perkiraan, 60 hari), <b>Siapa untung, siapa tertekan</b> (korelasi kelompok/sektor dengan faktor makro dan dampaknya sebulan terakhir, plus catatanmu), <b>Alarm makro</b> dengan ambang yang kamu atur, dan <b>Skenario saya</b>. Isian manual ikut ☁ Sinkron. Korelasi menunjukkan kecenderungan, bukan sebab-akibat.</p>
         <p><b>Kunci API FRED (gratis, sekali saja):</b> buka fredaccount.stlouisfed.org, buat akun, lalu menu <b>API Keys → Request API Key</b>, salin kunci 32 karakter. Di GitHub repo: <b>Settings → Secrets and variables → Actions → New repository secret</b>, Name <code>FRED_API_KEY</code>, Secret = kuncinya. Pastikan screener.yml punya baris <code>FRED_API_KEY: ${{ secrets.FRED_API_KEY }}</code> di langkah "Jalankan screener", lalu jalankan update.</p>
       </div>
     </details>
@@ -5604,6 +5632,7 @@ function openDetail(t, mode, opt = {}) {
         <button class="icon-btn" id="d-close" type="button">← Kembali ke daftar</button>
         <div class="fh-id"><span class="fh-tk" id="d-title">${r.t}</span><span class="fh-name">${P.sub}</span></div>
         <span class="fh-price">${P.price}</span>
+        ${r.t !== "IHSG" && r.t !== "XAUIDR" ? vBadge(vSaham(r), true) : (r.t === "IHSG" && V_IHSG ? vBadge(V_IHSG, true) : "")}
         ${r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : ""}
         ${r.top ? `<span class="top-badge">Top 10 #${r.top}</span>` : ""}
         <span class="fh-right">${P.star}${P.cmpb}${navHtml(t)}</span>
@@ -5634,7 +5663,7 @@ function openDetail(t, mode, opt = {}) {
         <div><div class="d-tk" id="d-title">${r.t}</div><div class="d-name">${P.sub}</div></div>
         <div class="d-head-btns">${navHtml(t)}<button class="icon-btn" id="d-full" type="button" title="Buka layar penuh">⤢ Layar penuh</button><button class="icon-btn" id="d-close" type="button">Tutup</button></div>
       </div>
-      <div class="d-price">${P.price}</div>
+      <div class="d-price">${P.price} ${r.t !== "IHSG" && r.t !== "XAUIDR" ? vBadge(vSaham(r), true) : ""}</div>
       <div class="muted" style="font-size:0.8rem">${P.meta}</div>
       ${P.kond}${P.struktur}${P.chart}${P.plan}${P.checklist}${P.sim}${P.hist}${P.skor}${P.tf}${P.lain}
       <div class="d-actions">${P.star}${P.cmpb}</div>${P.foot}`;
@@ -5936,7 +5965,7 @@ function mkAlarmState(a) { const v = mkLast(a.sym); if (v == null) return null; 
 
 function renderMakroView() {
   if (!$("v-makro")) return;
-  mkHero(); mkGli(); mkIndo(); mkIhsg(); mkSektor(); mkAlarm(); mkSken();
+  mkHero(); mkGli(); mkIndo(); mkIhsg(); mkArus(); mkSektor(); mkAlarm(); mkSken();
 }
 function mkBlocks() {
   const mx = MARKET.mx || {}, d = mkGet();
@@ -6019,6 +6048,37 @@ function mkIhsg() {
       ${b ? `<div><small>Napas pasar</small><b>${b.pct}%</b><small>saham likuid di atas MA20</small></div>` : ""}</div>
     <div class="mk-bars">${k.banding.map(x => `<div class="${x[0] === "IHSG" ? "me" : ""}"><span>${esc(x[0])}</span><span class="bar"><i class="${x[1] >= 0 ? "p" : "n"}" style="width:${Math.abs(x[1]) / mx * 50}%;${x[1] >= 0 ? "left:50%" : "right:50%"}"></i></span><b class="${x[1] >= 0 ? "pos" : "neg"}">${x[1] >= 0 ? "+" : ""}${fmtDec(x[1], 1)}%</b></div>`).join("")}</div>
     <p class="muted" style="font-size:0.74rem;margin:6px 0 0">Perubahan sejak awal tahun, dibanding bursa utama. P/E, P/BV, dan arus asing tidak tersedia dari data gratis.</p>`;
+}
+function mkArus() {
+  const box = $("mk-arus"), A = (MARKET.mx || {}).arus;
+  if (!A || !A.d || !A.d.length) { box.innerHTML = `<h2>Transaksi &amp; tekanan pasar</h2><p class="muted">Data belum tersedia.</p>`; return; }
+  const n = A.d.length, k = n - 1, last20 = A.val.slice(-21, -1), avg20 = last20.reduce((a, b) => a + b, 0) / Math.max(1, last20.length);
+  const vs = avg20 ? (A.val[k] / avg20 - 1) * 100 : 0, mfp = A.val[k] ? A.mf[k] / A.val[k] * 100 : 0;
+  const mf5 = A.mf.slice(-5).reduce((a, b) => a + b, 0), v5 = A.val.slice(-5).reduce((a, b) => a + b, 0), mf5p = v5 ? mf5 / v5 * 100 : 0;
+  const T = v => v >= 1000 ? fmtDec(v / 1000, 2) + " T" : fmtDec(v, 0) + " M", lab = p => p >= 10 ? "tekanan beli" : p <= -10 ? "tekanan jual" : "seimbang";
+  const N = Math.min(60, n), o = n - N, W = 1000, H = 230, L = 8, R = 58, top = 10, mid = 120, bot = 222;
+  const vmax = Math.max(...A.val.slice(o)), mmax = Math.max(1, ...A.mf.slice(o).map(Math.abs)), bw = (W - L - R) / N;
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="mk-svg" role="img" aria-label="Nilai transaksi dan tekanan beli jual harian">`;
+  s += `<text x="${W - R + 6}" y="${top + 10}" font-size="11" fill="var(--muted)">${T(vmax)}</text><text x="${L}" y="${mid + 14}" font-size="11" fill="var(--muted)">Tekanan beli / jual (perkiraan)</text>`;
+  const m0 = (mid + 18 + bot) / 2;
+  s += `<line x1="${L}" x2="${W - R}" y1="${m0}" y2="${m0}" stroke="var(--line)"/>`;
+  for (let i = 0; i < N; i++) {
+    const j = o + i, x = L + i * bw + bw * 0.12, w = bw * 0.76, h = A.val[j] / vmax * (mid - top);
+    s += `<rect x="${x.toFixed(1)}" y="${(mid - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${j === k ? "var(--accent)" : "var(--ink2)"}" opacity="${j === k ? 1 : 0.45}"><title>${A.d[j]}: transaksi Rp ${T(A.val[j])}</title></rect>`;
+    const mh = Math.abs(A.mf[j]) / mmax * (bot - m0);
+    s += `<rect x="${x.toFixed(1)}" y="${(A.mf[j] >= 0 ? m0 - mh : m0).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, mh).toFixed(1)}" fill="${A.mf[j] >= 0 ? "var(--up)" : "var(--down)"}" opacity="0.85"><title>${A.d[j]}: ${A.mf[j] >= 0 ? "+" : "−"}Rp ${T(Math.abs(A.mf[j]))} (${lab(A.val[j] ? A.mf[j] / A.val[j] * 100 : 0)})</title></rect>`;
+  }
+  s += `<text x="${L}" y="${H - 1}" font-size="10" fill="var(--muted)">${A.d[o]}</text><text x="${W - R}" y="${H - 1}" font-size="10" text-anchor="end" fill="var(--muted)">${A.d[k]}</text></svg>`;
+  const upP = A.val[k] ? A.up[k] / A.val[k] * 100 : 0, dnP = A.val[k] ? A.dn[k] / A.val[k] * 100 : 0;
+  box.innerHTML = `<div class="cal-head"><h2>Transaksi &amp; tekanan pasar</h2><span class="muted" style="font-size:0.8rem">${esc(A.d[k])} · ${A.n[k]} saham</span></div>
+    <div class="mk-kpi">
+      <div><small>Nilai transaksi seluruh saham</small><b>Rp ${T(A.val[k])}</b><small class="${vs >= 0 ? "pos" : "neg"}">${vs >= 0 ? "+" : ""}${fmtDec(vs, 0)}% vs rata-rata 20 hari (Rp ${T(avg20)})</small></div>
+      <div><small>Tekanan hari ini (perkiraan)</small><b class="${mfp >= 0 ? "pos" : "neg"}">${mfp >= 0 ? "+" : ""}${fmtDec(mfp, 0)}%</b><small>${lab(mfp)} · ${A.mf[k] >= 0 ? "+" : "−"}Rp ${T(Math.abs(A.mf[k]))}</small></div>
+      <div><small>Tekanan 5 hari (perkiraan)</small><b class="${mf5p >= 0 ? "pos" : "neg"}">${mf5p >= 0 ? "+" : ""}${fmtDec(mf5p, 0)}%</b><small>${lab(mf5p)}</small></div>
+      <div><small>Transaksi di saham naik vs turun</small><b><span class="pos">${fmtDec(upP, 0)}%</span> / <span class="neg">${fmtDec(dnP, 0)}%</span></b><small>sisanya di saham yang harganya tetap</small></div>
+    </div>
+    <div class="table-wrap" style="max-height:none">${s}</div>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">Nilai transaksi = volume × harga penutupan, dijumlahkan dari semua saham di data aplikasi (bisa sedikit berbeda dari angka resmi BEI, termasuk karena transaksi pasar negosiasi). <b>Tekanan beli/jual adalah perkiraan</b>, bukan data beli/jual asli: tiap saham diberi nilai +1 kalau ditutup di harga tertinggi hari itu dan −1 kalau di harga terendah, dikalikan nilai transaksinya. Di bursa, total beli selalu sama dengan total jual; angka ini hanya menunjukkan sisi mana yang lebih agresif. Arus asing tidak termasuk.</p>`;
 }
 function mkSektor() {
   const box = $("mk-sektor"), S = (MARKET.mx || {}).sektor, d = mkGet();
