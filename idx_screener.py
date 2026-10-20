@@ -832,18 +832,19 @@ def hitung_gli(ihsg10):
     if ihsg10 is not None and len(ihsg10) > 300:
         ih = ihsg10["Close"].resample("W-FRI").last().reindex(gli.index).ffill()
         a, b = gli.pct_change(13), ih.pct_change(13)
-        best = (0, None)
+        best, rl = (0, None), []
         for lag in range(0, 27):
             j = pd.concat([a.shift(lag), b], axis=1).dropna().iloc[-156:]
-            if len(j) >= 60:
-                r = float(j.iloc[:, 0].corr(j.iloc[:, 1]))
-                if fin(r) and (best[1] is None or r > best[1]):
-                    best = (lag, r)
+            r = float(j.iloc[:, 0].corr(j.iloc[:, 1])) if len(j) >= 60 else float("nan")
+            rl.append(round(r, 2) if fin(r) else None)
+            if fin(r) and (best[1] is None or r > best[1]):
+                best = (lag, r)
+        out["rl"] = rl                                         # korelasi untuk offset 0..26 minggu
         if best[1] is not None:
             out["lag"], out["r"] = best[0] * 7, round(best[1], 2)
-        n = 104
+        n = 156
         out["ih"] = [round(float(x), 2) if fin(x) else None for x in ih.iloc[-n:]]
-    n = 104
+    n = 156
     out["d"] = [t.strftime("%Y-%m-%d") for t in gli.index[-n:]]
     out["v"] = [round(float(x), 3) for x in gli.iloc[-n:]]
     out["e20"] = [round(float(x), 3) for x in e20.iloc[-n:]]
@@ -2523,6 +2524,12 @@ TEMPLATE = r'''<!DOCTYPE html>
   .mk-legend { display:flex !important; flex-wrap:wrap; gap:6px 12px; font-size:0.78rem; color:var(--ink2); align-items:center; margin-left:auto; }
   .mk-legend i { display:inline-block; width:14px; height:3px; border-radius:2px; vertical-align:middle; margin-right:4px; }
   .mk-svg { width:100%; min-width:640px; height:auto; display:block; }
+  .mk-gli-wrap { position:relative; }
+  .mk-tip { position:absolute; z-index:5; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:0.8rem; line-height:1.5; box-shadow:0 8px 22px rgba(0,0,0,.3); pointer-events:none; white-space:nowrap; }
+  .mk-tip[hidden] { display:none; }
+  .mk-ctl { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; margin:4px 0 10px; }
+  .mk-off { display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:700; }
+  .mk-off input { width:180px; accent-color:var(--accent); }
   .mk-two { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; }
   .mk-two > .card { margin-bottom:14px; }
   .mk-kpi { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px; }
@@ -5988,6 +5995,9 @@ function mkHero() {
       ${B.map(b => `<tr><td><b>${esc(b.nama)}</b></td><td>${esc(b.arah)}</td><td><span class="mk-badge ${EFEK[b.efek][1]}">${EFEK[b.efek][0]}</span></td><td>${esc(b.bukti)}</td><td class="muted" style="font-size:0.76rem">${esc(b.sumber)}</td></tr>`).join("")}</tbody></table></div>` : ""}
     ${al.length ? `<div class="mk-alhit">${al.map(x => `<span>⚠ ${esc(MK_FAK[x.a.sym] || x.a.sym)} ${x.a.op} ${x.a.v < 50 ? fmtDec(x.a.v, 2) : fmtNum(x.a.v)} (sekarang ${fmtDec(x.st.v, x.st.v < 50 ? 2 : 0)})</span>`).join("")}</div>` : ""}`;
 }
+let mkLagW = null, mkRange = 104;
+const MK_BLN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+const mkTgl = d => { const [y, m, dd] = d.split("-"); return `${+dd} ${MK_BLN[+m - 1]} ${y}`; };
 function mkGli() {
   const box = $("mk-gli"), g = (MARKET.mx || {}).gli;
   if (!g || !g.v) {
@@ -5998,29 +6008,77 @@ function mkGli() {
         : `<p class="muted" style="font-size:0.8rem;margin:0">Server FRED sering menolak permintaan dari GitHub tanpa kunci API. Pasang kunci API FRED gratis (lihat Panduan → "Menu Makro") supaya data ini terisi.</p>`}`;
     return;
   }
-  const n = g.v.length, lagW = mkShift && g.lag ? Math.round(g.lag / 7) : 0, N = n + lagW, W = 1000, H = 330, L = 10, R = 62, T = 14, B1 = 240, mT = 256, mB = 316;
+  const best = g.lag != null ? Math.round(g.lag / 7) : 0;
+  if (mkLagW == null) mkLagW = best;
+  const nAll = g.v.length, n = Math.min(mkRange, nAll), o = nAll - n, lagW = mkLagW;
+  const sl = a => a ? a.slice(o) : [], V = sl(g.v), E20 = sl(g.e20), E50 = sl(g.e50), M = sl(g.mom), IH = sl(g.ih), D = sl(g.d);
+  const N = n + lagW, W = 1000, H = 372, L = 56, R = 60, T = 22, B1 = 236, XL = 252, mT = 272, mB = 352;
   const x = i => L + (i + 0.5) * (W - L - R) / N;
-  const vs = [...g.v, ...g.e20, ...g.e50], vmin = Math.min(...vs), vmax = Math.max(...vs), y = v => T + (vmax - v) / ((vmax - vmin) || 1) * (B1 - T);
-  const ih = (g.ih || []).filter(v => v != null), imin = Math.min(...ih), imax = Math.max(...ih), yi = v => T + (imax - v) / ((imax - imin) || 1) * (B1 - T);
+  const vs = [...V, ...E20, ...E50], vmin = Math.min(...vs), vmax = Math.max(...vs), y = v => T + (vmax - v) / ((vmax - vmin) || 1) * (B1 - T);
+  const ih = IH.filter(v => v != null), imin = Math.min(...ih), imax = Math.max(...ih), yi = v => T + (imax - v) / ((imax - imin) || 1) * (B1 - T);
   const path = (arr, fy, off) => arr.map((v, i) => v == null ? "" : `${i && arr[i - 1] != null ? "L" : "M"}${x(i + off).toFixed(1)},${fy(v).toFixed(1)}`).join("");
-  const mm = g.mom.filter(v => v != null), mx = Math.max(1, ...mm.map(Math.abs)), my = v => mB - Math.max(0, v) / mx * (mB - mT);
-  let s = `<svg viewBox="0 0 ${W} ${H}" class="mk-svg" role="img" aria-label="Indeks likuiditas global dan IHSG">`;
-  for (let k = 0; k <= 4; k++) { const v = vmin + (vmax - vmin) * k / 4; s += `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)"/><text x="${W - R + 6}" y="${(y(v) + 4).toFixed(1)}" font-size="11" fill="var(--muted)">${fmtDec(v, 1)}T</text>`; }
-  if (ih.length) s += `<path d="${path(g.ih, yi, 0)}" fill="none" stroke="var(--ink2)" stroke-width="1.6" opacity="0.75"/>`;
-  s += `<path d="${path(g.e50, y, lagW)}" fill="none" stroke="#E5E7EB" stroke-width="1.8"/><path d="${path(g.e20, y, lagW)}" fill="none" stroke="#60A5FA" stroke-width="2"/><path d="${path(g.v, y, lagW)}" fill="none" stroke="#93C5FD" stroke-width="1.2" opacity="0.7"/>`;
-  s += `<line x1="${x(n - 1).toFixed(1)}" x2="${x(n - 1).toFixed(1)}" y1="${T}" y2="${mB}" stroke="var(--muted)" stroke-dasharray="3 4"/><text x="${(x(n - 1) + 4).toFixed(1)}" y="${T + 10}" font-size="11" fill="var(--muted)">hari ini</text>`;
-  g.mom.forEach((v, i) => { if (v == null) return; const xx = x(i + lagW), w = Math.max(2, (W - L - R) / N * 0.8); s += `<rect x="${(xx - w / 2).toFixed(1)}" y="${(v >= 0 ? my(v) : mB).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, Math.abs(v) / mx * (mB - mT)).toFixed(1)}" fill="${v >= 0 ? "#60A5FA" : "#F87171"}" opacity="0.8"/>`; });
-  s += `<text x="${L}" y="${mT - 4}" font-size="11" fill="var(--muted)">Momentum (YoY)</text><text x="${L}" y="${H - 2}" font-size="10" fill="var(--muted)">${esc(g.d[0])}</text><text x="${x(n - 1)}" y="${H - 2}" font-size="10" text-anchor="middle" fill="var(--muted)">${esc(g.d[n - 1])}</text></svg>`;
-  const lemah = g.r == null || g.r < 0.3;
+  const mm = M.filter(v => v != null), mx = Math.max(1, ...mm.map(Math.abs)), m0 = (mT + mB) / 2, my = v => m0 - v / mx * (mB - mT) / 2;
+  const C = { liq: "#FACC15", ih: "#B91C1C", e20: "#60A5FA", e50: "#E5E7EB" };
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="mk-svg" id="mk-gli-svg" role="img" aria-label="Indeks likuiditas global dan IHSG">`;
+  for (let k = 0; k <= 4; k++) {
+    const v = vmin + (vmax - vmin) * k / 4, yy = y(v).toFixed(1);
+    s += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${W - R + 6}" y="${(+yy + 4).toFixed(1)}" font-size="11" fill="var(--muted)">${fmtDec(v, 1)}T</text>`;
+    if (ih.length) { const iv = imin + (imax - imin) * k / 4; s += `<text x="${L - 6}" y="${(yi(iv) + 4).toFixed(1)}" font-size="11" text-anchor="end" fill="${C.ih}" font-weight="700">${fmtNum(Math.round(iv))}</text>`; }
+  }
+  // label bulan
+  let lastM = -1, lastX = -99;
+  for (let i = 0; i < N; i++) {
+    const dIdx = i < n ? i : null; if (dIdx == null) break;
+    const [yy, mmn] = D[dIdx].split("-").map(Number), key = yy * 12 + mmn;
+    if (key !== lastM) { const xx = x(i); if (xx - lastX > 52) { s += `<line x1="${xx.toFixed(1)}" x2="${xx.toFixed(1)}" y1="${T}" y2="${B1}" stroke="var(--line)" stroke-dasharray="2 5" opacity="0.6"/><text x="${xx.toFixed(1)}" y="${XL}" font-size="11" text-anchor="middle" fill="var(--muted)">${MK_BLN[mmn - 1]} ${String(yy).slice(2)}</text>`; lastX = xx; } lastM = key; }
+  }
+  if (ih.length) s += `<path d="${path(IH, yi, 0)}" fill="none" stroke="${C.ih}" stroke-width="2.2"/>`;
+  s += `<path d="${path(E50, y, lagW)}" fill="none" stroke="${C.e50}" stroke-width="1.6"/><path d="${path(E20, y, lagW)}" fill="none" stroke="${C.e20}" stroke-width="1.8"/><path d="${path(V, y, lagW)}" fill="none" stroke="${C.liq}" stroke-width="2"/>`;
+  const xt = x(n - 1);
+  s += `<line x1="${xt.toFixed(1)}" x2="${xt.toFixed(1)}" y1="${T}" y2="${mB}" stroke="var(--muted)" stroke-dasharray="3 4"/><text x="${(xt - 5).toFixed(1)}" y="${T - 6}" font-size="11" text-anchor="end" fill="var(--muted)">hari ini</text>`;
+  s += `<line x1="${L}" x2="${W - R}" y1="${m0}" y2="${m0}" stroke="var(--line)"/><text x="${L}" y="${mT - 6}" font-size="11" fill="var(--muted)">Momentum likuiditas (YoY)</text>`;
+  M.forEach((v, i) => { if (v == null) return; const xx = x(i + lagW), w = Math.max(2, (W - L - R) / N * 0.8), h = Math.abs(v) / mx * (mB - mT) / 2; s += `<rect x="${(xx - w / 2).toFixed(1)}" y="${(v >= 0 ? m0 - h : m0).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, h).toFixed(1)}" fill="${v >= 0 ? "#60A5FA" : "#F87171"}" opacity="0.85"/>`; });
+  s += `<line id="mk-gli-x" x1="0" x2="0" y1="${T}" y2="${mB}" stroke="var(--ink)" stroke-width="1" opacity="0" pointer-events="none"/>`;
+  s += `<rect id="mk-gli-hit" x="${L}" y="${T}" width="${W - L - R}" height="${mB - T}" fill="transparent"/></svg>`;
+  const rNow = g.rl ? g.rl[lagW] : (lagW === best ? g.r : null), lemah = rNow == null || Math.abs(rNow) < 0.3;
   box.innerHTML = `<div class="mk-stats"><div><small>Indeks likuiditas global</small><b>$${fmtDec(g.last, 2)} T</b><small>13 minggu ${g.chg13 >= 0 ? "+" : ""}${fmtDec(g.chg13, 1)}%</small></div>
-      <div><small>Momentum global</small><b class="${(g.yoy || 0) >= 0 ? "pos" : "neg"}">${g.yoy == null ? "-" : (g.yoy >= 0 ? "+" : "") + fmtDec(g.yoy, 1) + "%"}</b><small>YoY per ${esc(g.tgl)}</small></div>
-      <div><small>Offset terhadap IHSG</small><b>${g.lag == null ? "-" : g.lag + " hari"}</b><small>${g.r == null ? "data IHSG kurang" : `korelasi ${fmtDec(g.r, 2)}${lemah ? " · lemah" : ""}`}</small></div>
-      <div class="mk-legend"><span><i style="background:#60A5FA"></i>EMA20</span><span><i style="background:#E5E7EB"></i>EMA50</span><span><i style="background:#93C5FD"></i>Likuiditas</span><span><i style="background:var(--ink2)"></i>IHSG</span>
-        <label style="margin-left:8px"><input type="checkbox" id="mk-shift" ${mkShift ? "checked" : ""}> Geser sesuai offset</label></div></div>
-    <div class="table-wrap" style="max-height:none">${s}</div>
-    <p class="muted" style="font-size:0.76rem;margin:6px 0 0">Proksi: ${esc(g.komp.join(", "))} (FRED), dalam triliun USD, mingguan. Angkanya berbeda dengan indeks likuiditas versi penyedia lain karena rumusnya berbeda; yang bermakna adalah arah dan momentumnya. Offset = pergeseran (0–182 hari) yang membuat perubahan 13 minggu likuiditas paling searah dengan IHSG dalam 3 tahun terakhir${lemah ? "; korelasinya lemah, jadi jangan dijadikan patokan utama" : ""}.</p>`;
-  $("mk-shift").addEventListener("change", e => { mkShift = e.target.checked; mkGli(); });
+      <div><small>Momentum global</small><b class="${(g.yoy || 0) >= 0 ? "pos" : "neg"}">${g.yoy == null ? "-" : (g.yoy >= 0 ? "+" : "") + fmtDec(g.yoy, 1) + "%"}</b><small>YoY per ${esc(mkTgl(g.tgl))}</small></div>
+      <div><small>Offset terhadap IHSG</small><b>${lagW * 7} hari</b><small>${rNow == null ? "data IHSG kurang" : `korelasi ${fmtDec(rNow, 2)}${lemah ? " · lemah" : ""}`}${lagW !== best && g.lag != null ? ` · terbaik ${g.lag} hari` : ""}</small></div>
+      <div class="mk-legend"><span><i style="background:${C.liq}"></i>Likuiditas</span><span><i style="background:${C.e20}"></i>EMA20</span><span><i style="background:${C.e50}"></i>EMA50</span><span><i style="background:${C.ih}"></i>IHSG</span></div></div>
+    <div class="mk-ctl"><div class="seg">${[[52, "1 tahun"], [104, "2 tahun"], [156, "3 tahun"]].map(([w, l]) => `<button type="button" data-rg="${w}" class="${mkRange === w ? "on" : ""}" ${w > nAll ? "disabled" : ""}>${l}</button>`).join("")}</div>
+      <label class="mk-off">Offset <input type="range" id="mk-off" min="0" max="26" step="1" value="${lagW}"> <b id="mk-off-v">${lagW * 7} hari</b></label>
+      ${g.lag != null ? `<button type="button" class="icon-btn dw-small" id="mk-off-best">Pakai offset terbaik (${g.lag} hari)</button>` : ""}<button type="button" class="icon-btn dw-small" id="mk-off-0">Tanpa offset</button></div>
+    <div class="mk-gli-wrap"><div class="table-wrap" style="max-height:none">${s}</div><div class="mk-tip" id="mk-gli-tip" hidden></div></div>
+    <p class="muted" style="font-size:0.76rem;margin:6px 0 0">Arahkan kursor atau sentuh grafik untuk melihat tanggal dan nilainya. Proksi: ${esc(g.komp.join(", "))} (FRED), dalam triliun USD, mingguan; angkanya berbeda dengan indeks likuiditas versi penyedia lain karena rumusnya berbeda, yang bermakna adalah arah dan momentumnya. Offset menggeser garis likuiditas ke kanan: kalau likuiditas memang mendahului IHSG, garisnya akan searah dengan IHSG setelah digeser. Korelasi di bawah 0,3 berarti hubungannya lemah, jadi jangan dijadikan patokan utama.</p>`;
+  box.querySelectorAll("[data-rg]").forEach(b => b.addEventListener("click", () => { mkRange = +b.dataset.rg; mkGli(); }));
+  $("mk-off").addEventListener("input", e => { $("mk-off-v").textContent = (+e.target.value * 7) + " hari"; });
+  $("mk-off").addEventListener("change", e => { mkLagW = +e.target.value; mkGli(); });
+  const bb = $("mk-off-best"); if (bb) bb.addEventListener("click", () => { mkLagW = best; mkGli(); });
+  $("mk-off-0").addEventListener("click", () => { mkLagW = 0; mkGli(); });
+  // kotak info saat kursor/jari di grafik
+  const svg = $("mk-gli-svg"), tip = $("mk-gli-tip"), ln = $("mk-gli-x"), hit = $("mk-gli-hit");
+  const show = (cx, cy) => {
+    const rc = svg.getBoundingClientRect(), sx = (cx - rc.left) / rc.width * W;
+    const i = Math.max(0, Math.min(N - 1, Math.round((sx - L) / ((W - L - R) / N) - 0.5)));
+    const gi = i - lagW, rows = [];
+    if (i < n) rows.push(`<b>${mkTgl(D[i])}</b>`, `<span style="color:${C.ih}">■</span> IHSG ${IH[i] != null ? fmtNum(Math.round(IH[i])) : "-"}`);
+    else rows.push(`<b>Setelah hari ini (+${(i - n + 1) * 7} hari)</b>`);
+    if (gi >= 0 && gi < n) {
+      rows.push(`<span style="color:${C.liq}">■</span> Likuiditas $${fmtDec(V[gi], 2)} T${lagW ? ` <span class="muted">(data ${mkTgl(D[gi])})</span>` : ""}`,
+        `<span style="color:${C.e20}">■</span> EMA20 ${fmtDec(E20[gi], 2)} · <span style="color:${C.e50}">■</span> EMA50 ${fmtDec(E50[gi], 2)}`,
+        `Momentum ${M[gi] == null ? "-" : (M[gi] >= 0 ? "+" : "") + fmtDec(M[gi], 1) + "%"}`);
+    }
+    tip.innerHTML = rows.join("<br>"); tip.hidden = false;
+    const xx = x(i); ln.setAttribute("x1", xx); ln.setAttribute("x2", xx); ln.setAttribute("opacity", 0.5);
+    const wrap = tip.parentElement.getBoundingClientRect(), px = cx - wrap.left, tw = tip.offsetWidth;
+    tip.style.left = (px + 14 + tw > wrap.width ? px - tw - 14 : px + 14) + "px"; tip.style.top = Math.max(0, cy - wrap.top - 20) + "px";
+  };
+  const hide = () => { tip.hidden = true; ln.setAttribute("opacity", 0); };
+  hit.addEventListener("mousemove", e => show(e.clientX, e.clientY)); hit.addEventListener("mouseleave", hide);
+  hit.addEventListener("touchstart", e => { const t = e.touches[0]; show(t.clientX, t.clientY); }, { passive: true });
+  hit.addEventListener("touchmove", e => { const t = e.touches[0]; show(t.clientX, t.clientY); }, { passive: true });
 }
+
 function mkIndo() {
   const box = $("mk-indo"), d = mkGet(), I = d.indo, idr = mkLast("IDR=X"), c30 = mkChg("IDR=X", 30), tnx = mkLast("^TNX");
   const F = [["pdb", "Pertumbuhan PDB (% YoY)"], ["inf", "Inflasi (% YoY)"], ["bi", "BI Rate (%)"], ["dev", "Cadangan devisa (miliar USD)"], ["sbn", "Yield SBN 10 tahun (%)"], ["pmi", "PMI manufaktur China"]];
