@@ -1,16 +1,4 @@
 {
- "2026-10-07": [
-  "SMIL",
-  "RSCH",
-  "MEJA",
-  "SQMI",
-  "VICI",
-  "AUTO",
-  "BDMN",
-  "MBSS",
-  "BSSR",
-  "ERAA"
- ],
  "2026-10-08": [
   "SMLE",
   "VICI",
@@ -106,5 +94,13 @@
   "RSCH",
   "BSSR",
   "PCAR"
+ ],
+ "2026-10-21": [
+  "DMAS",
+  "AALI",
+  "MPXL",
+  "DKHH",
+  "POLA",
+  "RSCH"
  ]
 }
