@@ -1,4 +1,24 @@
 {
- "dicoba": "2026-10-21",
- "status": "gagal: HTTP 403"
+ "dicoba": "2026-10-22",
+ "status": "ok",
+ "diperbarui": "2026-10-22",
+ "sumber": "ListedCompany/GetCompanyProfiles",
+ "jumlah": 962,
+ "baru": [],
+ "hilang": [
+  "CNTX",
+  "FORZ",
+  "FREN",
+  "HDTX",
+  "JKSW",
+  "KPAL",
+  "KPAS",
+  "KRAH",
+  "MAMI",
+  "MASA",
+  "MFIN",
+  "MYRX",
+  "NIPS",
+  "PRAS"
+ ]
 }

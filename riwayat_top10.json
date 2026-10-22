@@ -1,16 +1,4 @@
 {
- "2026-10-08": [
-  "SMLE",
-  "VICI",
-  "UVCR",
-  "BSML",
-  "NEST",
-  "SMIL",
-  "ULTJ",
-  "ASGR",
-  "MMIX",
-  "PTSN"
- ],
  "2026-10-09": [
   "MBSS",
   "SMIL",
@@ -106,5 +94,17 @@
   "BDMN",
   "ULTJ",
   "MPXL"
+ ],
+ "2026-10-22": [
+  "AALI",
+  "DMAS",
+  "MARK",
+  "DKHH",
+  "PCAR",
+  "SGER",
+  "MBSS",
+  "MPXL",
+  "PKPK",
+  "RSCH"
  ]
 }
