@@ -1,16 +1,4 @@
 {
- "2026-10-12": [
-  "PKPK",
-  "TEBE",
-  "AUTO",
-  "SMIL",
-  "RSCH",
-  "BDKR",
-  "BSML",
-  "MBSS",
-  "VICI",
-  "ERAA"
- ],
  "2026-10-13": [
   "BSML",
   "SGER",
@@ -106,5 +94,17 @@
   "MARK",
   "DKHH",
   "MPXL"
+ ],
+ "2026-10-26": [
+  "SEMA",
+  "DKHH",
+  "SGER",
+  "PCAR",
+  "MBSS",
+  "AALI",
+  "BDMN",
+  "PKPK",
+  "BSSR",
+  "DMAS"
  ]
 }
