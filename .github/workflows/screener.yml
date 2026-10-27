@@ -47,7 +47,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          for f in riwayat_top10.json cache_sektor.json daftar_saham.csv daftar_saham_info.json; do
+          for f in riwayat_top10.json cache_sektor.json cache_saham.json daftar_saham.csv daftar_saham_info.json; do
             if [ -f "$f" ]; then git add "$f"; fi
           done
           git diff --cached --quiet || git commit -m "Riwayat screener $(TZ=Asia/Jakarta date '+%Y-%m-%d %H:%M') WIB"
