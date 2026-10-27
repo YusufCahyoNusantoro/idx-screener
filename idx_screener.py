@@ -48,6 +48,8 @@ OUT_HTML = BASE / "hasil_screener.html"
 OUT_CSV = BASE / "hasil_screener.csv"
 ARSIP = BASE / "arsip"
 CACHE_SEKTOR = BASE / "cache_sektor.json"
+CACHE_SAHAM = BASE / "cache_saham.json"        # jumlah saham beredar per emiten (untuk bobot penggerak IHSG)
+ASING_FILE = BASE / "data_bei" / "asing.json"  # opsional: data asing dari laptop rumah / API (kalau ada)
 RIWAYAT = BASE / "riwayat_top10.json"
 DAFTAR = BASE / "daftar_saham.csv"          # semua emiten BEI: kode, nama, sektor
 TAMBAHAN_FILES = [BASE / "saham_tambahan.txt", BASE / "tambahan_tickers.txt"]   # kode saham tambahan (mis. baru IPO), satu per baris
@@ -369,6 +371,36 @@ def perbarui_daftar(paksa=False, hari=7):
     print(f"  Daftar emiten diperbarui dari BEI: {len(rows)} emiten"
           + (f", {len(tambah)} baru ({', '.join(tambah[:8])}{'...' if len(tambah) > 8 else ''})" if tambah else "")
           + (f", {len(hilang)} tidak ada lagi" if hilang else "") + ".")
+
+
+def ambil_saham_beredar(tickers, maks=120, umur_hari=30):
+    """Jumlah saham beredar dari Yahoo, disimpan di cache; tiap run memperbarui maks 120 yang belum ada/terlama."""
+    cache = {}
+    if CACHE_SAHAM.exists():
+        try:
+            cache = json.loads(CACHE_SAHAM.read_text(encoding="utf-8"))
+        except Exception:
+            cache = {}
+    hari = datetime.now(WIB).date()
+    def umur(t):
+        try:
+            return (hari - datetime.strptime(cache[t][1], "%Y-%m-%d").date()).days
+        except Exception:
+            return 10 ** 6
+    perlu = sorted([t for t in tickers if umur(t) > umur_hari], key=lambda t: -umur(t))[:maks]
+    for t in perlu:
+        try:
+            info = yf.Ticker(t + ".JK").info or {}
+            so = info.get("sharesOutstanding") or info.get("impliedSharesOutstanding")
+            if so and so > 0:
+                cache[t] = [float(so), hari.strftime("%Y-%m-%d")]
+        except Exception:
+            pass
+    try:
+        CACHE_SAHAM.write_text(json.dumps(cache), encoding="utf-8")
+    except Exception:
+        pass
+    return {t: v[0] for t, v in cache.items()}
 
 
 def ambil_sektor(tickers, sektor_daftar, maks_baru=30):
@@ -1142,6 +1174,60 @@ def pemulihan_ihsg(batas=20.0):
                      "dd": round((last / pk_v - 1) * 100, 1), "perlu": round((pk_v / last - 1) * 100, 1),
                      "dasar": round(kini["dv"], 2) if kini else None, "dasar_tgl": kini["dasar"].strftime("%Y-%m-%d") if kini else None,
                      "bln_sejak_puncak": bln(pk_t, c.index[-1]), "ath": round(pk_all, 2)}}
+
+
+def ringkasan_hari(rows, saham, makro):
+    """Ringkasan 'Hari ini': penggerak IHSG (perkiraan), sektor, komoditas bulanan FRED, proksi asing EIDO, data asing (kalau ada)."""
+    out = {}
+    ok = [r for r in rows if not r.get("notx") and r.get("chg") is not None and r.get("p") and fin(r["chg"]) and r["chg"] > -99]
+    cap = {}
+    for r in ok:
+        so = saham.get(r["t"])
+        if so:
+            cap[r["t"]] = so * r["p"] / (1 + r["chg"] / 100)          # kapitalisasi kemarin
+    tot = sum(cap.values())
+    if tot > 0:
+        kontr = sorted(((r["t"], cap[r["t"]] / tot * r["chg"]) for r in ok if r["t"] in cap), key=lambda x: -x[1])
+        out["gerak"] = {"naik": [[t, round(v, 3)] for t, v in kontr[:10] if v > 0],
+                        "turun": [[t, round(v, 3)] for t, v in kontr[::-1][:10] if v < 0],
+                        "total": round(sum(v for _, v in kontr), 2), "n": len(cap), "dari": len(ok)}
+    sek = {}
+    for r in ok:
+        if r.get("sector") and r["sector"] != "-":
+            w = cap.get(r["t"], 0)
+            sek.setdefault(r["sector"], []).append((r["chg"], w))
+    out["sektor"] = sorted([[k, round(sum(c * w for c, w in v) / sum(w for _, w in v) if sum(w for _, w in v) > 0 else sum(c for c, _ in v) / len(v), 2), len(v)]
+                            for k, v in sek.items() if len(v) >= 3], key=lambda x: -x[1])
+    kom = []
+    for sid, nama, sat in (("PNICKUSDM", "Nikel", "US$/ton"), ("PPOILUSDM", "CPO (minyak sawit)", "US$/ton"), ("PCOALAUUSDM", "Batubara Australia", "US$/ton")):
+        try:
+            x = fred(sid, "2022-01-01")
+            if x is not None and len(x) >= 8:
+                x = x.iloc[-36:]
+                kom.append({"id": sid, "nama": nama, "sat": sat, "d": [t.strftime("%Y-%m-%d") for t in x.index], "v": [round(float(v), 2) for v in x],
+                            "last": round(float(x.iloc[-1]), 2), "tgl": x.index[-1].strftime("%Y-%m-%d"),
+                            "c6": round(float(x.iloc[-1] / x.iloc[-7] - 1) * 100, 1) if len(x) >= 7 else None})
+        except Exception as e:
+            print(f"  ! komoditas {sid}: {e}")
+    out["kom_bulanan"] = kom
+    try:
+        e = unduh(["EIDO"], "1y", "1d", mentah=True).get("EIDO")
+        if e is not None and len(e) > 60:
+            e = ke_tanggal(e).dropna(subset=["Close"])
+            c, v = e["Close"], e["Volume"]
+            ch = lambda n: round(float(c.iloc[-1] / c.iloc[-1 - n] - 1) * 100, 2)
+            out["eido"] = {"p": round(float(c.iloc[-1]), 2), "tgl": c.index[-1].strftime("%Y-%m-%d"), "c1": ch(1), "c5": ch(5), "c21": ch(21),
+                           "vr": round(float(v.iloc[-1] / v.iloc[-21:-1].mean()), 2) if v.iloc[-21:-1].mean() > 0 else None,
+                           "v5r": round(float(v.iloc[-5:].mean() / v.iloc[-65:-5].mean()), 2) if v.iloc[-65:-5].mean() > 0 else None,
+                           "c": [round(float(x), 2) for x in c.iloc[-120:]]}
+    except Exception as ex:
+        print(f"  ! EIDO: {ex}")
+    if ASING_FILE.exists():
+        try:
+            out["asing"] = json.loads(ASING_FILE.read_text(encoding="utf-8"))
+        except Exception as ex:
+            print(f"  ! data asing: {ex}")
+    return out
 
 
 def _koma(t):
@@ -2024,6 +2110,11 @@ def main():
         pasar["mx"] = makro_lengkap(harian, rows, ke_tanggal(ihsg10) if ihsg10 is not None else None, pasar.get("makro"))
     except Exception as e:
         print(f"  ! menu Makro: {e}")
+    try:
+        print("  Menyusun ringkasan Hari ini (saham beredar, penggerak IHSG, komoditas)...")
+        pasar["hari"] = ringkasan_hari(rows, ambil_saham_beredar([r["t"] for r in rows]), pasar.get("makro"))
+    except Exception as e:
+        print(f"  ! Hari ini: {e}")
     tulis_html(rows, now, status, len(gagal), not args.no_intraday, out_html, not args.no_arsip, pasar)
 
     top = sorted(rows, key=skor, reverse=True)[:5]
@@ -2602,6 +2693,22 @@ TEMPLATE = r'''<!DOCTYPE html>
   :root[data-theme="dark"] .vw-siap { color:#0B1A14; }
   .m-verdict { margin-top:8px; font-size:0.84rem; display:flex; align-items:center; gap:8px; }
   .d-verdict { margin-bottom:10px; display:grid; gap:4px; }
+  .hr-head { display:flex; align-items:baseline; gap:12px; margin:4px 0 12px; } .hr-head h2 { margin:0; font-size:1.6rem; }
+  .hr-grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-bottom:14px; } .hr-grid3 > .card { margin:0; }
+  .hr-lab { font-size:0.8rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink2); }
+  .hr-big { font-size:1.9rem; font-weight:800; margin:4px 0 2px; } .hr-big b { font-size:1.1rem; }
+  .hr-kv { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; } .hr-kv > div { display:grid; gap:2px; } .hr-kv small { color:var(--muted); font-size:0.76rem; } .hr-kv b { font-size:1.05rem; }
+  .hr-sek { display:grid; gap:5px; margin-top:6px; } .hr-sek > div { display:grid; grid-template-columns:minmax(90px, 140px) 1fr 62px; gap:8px; align-items:center; font-size:0.84rem; }
+  .hr-sek span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .hr-sek b { text-align:right; }
+  .hr-split { height:8px; border-radius:9px; background:var(--down); overflow:hidden; margin:6px 0; } .hr-split i { display:block; height:100%; background:var(--up); }
+  .hr-two { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px; }
+  .hr-li { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; padding:3px 0; font-size:0.86rem; }
+  .hr-gbar { height:9px; background:var(--panel2); border-radius:9px; overflow:hidden; } .hr-gbar i { display:block; height:100%; border-radius:9px; } .hr-gbar i.p { background:var(--up); } .hr-gbar i.n { background:var(--down); }
+  .hr-mv .hr-nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.78rem; }
+  .hr-kgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; }
+  .hr-kc { background:var(--panel2); border-radius:12px; padding:10px 12px; display:grid; gap:2px; } .hr-kc[data-mkgo] { cursor:pointer; } .hr-kc[data-mkgo]:hover { outline:1px solid var(--accent); }
+  .hr-kv1 { font-size:1.3rem; } .hr-spark { width:100%; height:38px; margin-top:4px; }
+  @media (max-width:1100px) { .hr-grid3 { grid-template-columns:1fr; } }
   .mk-hero-top { display:flex; justify-content:space-between; gap:12px 20px; flex-wrap:wrap; align-items:flex-start; }
   .mk-eyebrow { font-size:0.74rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:800; }
   .mk-chips { display:flex; flex-wrap:wrap; gap:6px; max-width:620px; }
@@ -2740,6 +2847,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     </div>
     <div class="top-actions">
       <nav class="tabs" aria-label="Halaman">
+        <button class="tab-btn" type="button" data-view="hari">Hari ini</button>
         <button class="tab-btn" type="button" data-view="screener">Screener</button>
         <button class="tab-btn" type="button" data-view="makro">Makro</button>
         <button class="tab-btn" type="button" data-view="kalender">Kalender</button>
@@ -2880,6 +2988,13 @@ TEMPLATE = r'''<!DOCTYPE html>
     <button id="next-page" type="button">Berikutnya</button>
   </div>
 
+  </div>
+
+  <div class="view" id="v-hari" hidden>
+  <div class="hr-head"><h2>Hari ini</h2><span class="muted" id="hr-sub"></span></div>
+  <div class="hr-grid3"><section class="card" id="hr-ihsg"></section><section class="card" id="hr-asing"></section><section class="card" id="hr-gerak"></section></div>
+  <section class="card" id="hr-kom" aria-label="Komoditas"></section>
+  <div class="hr-grid3"><section class="card" id="hr-up"></section><section class="card" id="hr-dn"></section><section class="card" id="hr-val"></section></div>
   </div>
 
   <div class="view" id="v-makro" hidden>
@@ -3081,6 +3196,12 @@ TEMPLATE = r'''<!DOCTYPE html>
       <div class="guide-body">
         <p>Tab <b>Portofolio</b> dikunci password (bisa diganti di Portofolio → Pengaturan). Password ini kunci layar di browser, bukan enkripsi. Setiap kali kamu pindah ke tab lain (Screener, Kalender, Panduan), portofolio otomatis terkunci lagi; tombol <b>🔒 Kunci</b> mengunci saat itu juga. Klik baris saham untuk membuka <b>Detail</b>: balance lot, average price, market value, potential P&amp;L, alokasi, SL/TP (bisa diubah), catatan (bisa diubah), dan riwayat transaksinya.</p>
         <p>Di atas: <b>Saldo kas</b>, <b>Invested</b>, jumlah posisi <b>Open</b>, <b>P&amp;L</b> (belum dan sudah terealisasi), dan <b>Total equity</b>. Kamu bisa punya beberapa portofolio (pilihan hijau di kiri atas tabel). Catat pembelian lewat tombol <b>＋ Order</b> (pop-up Order → Beli) atau tombol "Catat ke portofolio" di detail saham; membeli saham yang sudah dipegang otomatis menjadi average up/down. Penjualan dicatat lewat <b>Order → Jual</b> (bisa sebagian). Tombol <b>⋮</b> di tiap posisi: beli lagi, jual, ubah SL/TP, lihat chart, hapus. <b>Riwayat</b> berisi semua transaksi, P&amp;L terealisasi, win rate, dan rata-rata R, plus unduh CSV. Biaya broker (default 0,15% beli, 0,25% jual) bisa diubah di Pengaturan. Harga terakhir mengikuti data aplikasi, jadi bisa sedikit berbeda dari aplikasi sekuritasmu yang real-time.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Tab Hari ini</summary>
+      <div class="guide-body">
+        <p>Halaman pertama aplikasi: <b>IHSG</b> (harga, kesimpulan, nilai transaksi perkiraan, napas pasar, sektor hari ini berbobot kapitalisasi pasar), <b>Asing</b> (data net buy/sell asli kalau tersedia dari laptop rumah atau API; kalau belum, <b>proksi sentimen asing</b> dari ETF EIDO di bursa AS), <b>Penggerak IHSG</b> (Top 10 pendorong & penekan: bobot kapitalisasi × perubahan harga, perkiraan; data saham beredar dari Yahoo dilengkapi bertahap), <b>Komoditas &amp; kurs</b> (harian dari Yahoo; nikel, CPO, batubara Australia bulanan dari FRED/IMF), serta <b>Naik tertinggi, Turun terdalam, Transaksi terbesar</b>. Klik kode saham untuk membuka detailnya.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -6024,6 +6145,76 @@ $("sy-btn").addEventListener("click", () => { const p = $("sy-pop"); if (p.hidde
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && sync.token && Date.now() - syncLastPull > 20000) syncRun("pull"); });
 if (location.protocol === "file:") $("sy-btn").hidden = true;
 
+/* ---------- HARI INI ---------- */
+function hrSpark(arr, col, w = 130, h = 38) {
+  const a = (arr || []).filter(v => v != null); if (a.length < 2) return "";
+  const mn = Math.min(...a), mx = Math.max(...a), y = v => h - 3 - (v - mn) / ((mx - mn) || 1) * (h - 6);
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" class="hr-spark"><polyline points="${a.map((v, i) => `${(i / (a.length - 1) * w).toFixed(1)},${y(v).toFixed(1)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="1.8"/></svg>`;
+}
+const hrPct = (v, d = 2) => v == null ? "-" : `<b class="${v >= 0 ? "pos" : "neg"}">${v >= 0 ? "+" : ""}${fmtDec(v, d)}%</b>`;
+function renderHari() {
+  if (!$("v-hari")) return;
+  const H = MARKET.hari || {}, m = MARKET.ihsg, A = (MARKET.mx || {}).arus, b = MARKET.breadth;
+  $("hr-sub").textContent = `ringkasan ${GEN ? "data " + GEN : ""}`;
+  // IHSG + sektor
+  const T = v => v >= 1000 ? fmtDec(v / 1000, 2) + " T" : fmtDec(v, 0) + " M";
+  let val = "-", vs = "";
+  if (A && A.val && A.val.length) { const k = A.val.length - 1, a20 = A.val.slice(-21, -1), avg = a20.reduce((x, y) => x + y, 0) / Math.max(1, a20.length); val = "Rp " + T(A.val[k]); vs = avg ? `${A.val[k] >= avg ? "+" : ""}${fmtDec((A.val[k] / avg - 1) * 100, 0)}% vs rata-rata 20 hari` : ""; }
+  const S = H.sektor || [], smx = Math.max(0.5, ...S.map(x => Math.abs(x[1])));
+  $("hr-ihsg").innerHTML = m ? `<div class="hr-lab">IHSG</div>
+    <div class="hr-big">${fmtDec(m.p, 2)} ${hrPct(m.chg)}</div>
+    ${V_IHSG ? `<div style="margin:4px 0 10px">${vBadge(V_IHSG)}</div>` : ""}
+    <div class="hr-kv"><div><small>Nilai transaksi (perkiraan)</small><b>${val}</b><small>${vs}</small></div><div><small>Napas pasar</small><b>${b ? b.pct + "%" : "-"}</b><small>saham likuid di atas MA20</small></div></div>
+    <div class="hr-lab" style="margin-top:12px">Sektor hari ini</div>
+    <div class="hr-sek">${S.map(x => `<div><span title="${esc(x[0])}">${esc(x[0])}</span><span class="rt-bar"><i class="${x[1] >= 0 ? "p" : "n"}" style="width:${Math.abs(x[1]) / smx * 50}%;${x[1] >= 0 ? "left:50%" : "right:50%"}"></i></span>${hrPct(x[1], 1)}</div>`).join("") || '<span class="muted">-</span>'}</div>` : `<p class="muted">Data IHSG belum tersedia.</p>`;
+  // Asing (data asli) atau proksi EIDO
+  const AS = H.asing, E = H.eido;
+  if (AS && AS.net != null) {
+    const tb = AS.top_buy || [], ts = AS.top_sell || [], tot = (AS.buy || 0) + (AS.sell || 0);
+    $("hr-asing").innerHTML = `<div class="hr-lab">Asing <span class="muted" style="font-weight:600">${esc(AS.tgl || "")}</span></div>
+      <div class="hr-big"><span class="${AS.net >= 0 ? "pos" : "neg"}">Net ${AS.net >= 0 ? "Buy" : "Sell"} ${AS.net >= 0 ? "+" : "−"}Rp ${T(Math.abs(AS.net) / 1e9)}</span></div>
+      ${tot ? `<div class="hr-split"><i style="width:${(AS.buy / tot * 100).toFixed(1)}%"></i></div>` : ""}
+      <div class="hr-kv"><div><small>Beli asing</small><b>Rp ${T((AS.buy || 0) / 1e9)}</b></div><div><small>Jual asing</small><b>Rp ${T((AS.sell || 0) / 1e9)}</b></div></div>
+      <div class="hr-two"><div><div class="hr-lab neg">Top net sell</div>${ts.slice(0, 10).map(x => `<div class="hr-li"><button type="button" class="mk-code" data-go="${x[0]}">${x[0]}</button><b class="neg">−Rp ${T(Math.abs(x[1]) / 1e9)}</b></div>`).join("")}</div>
+        <div><div class="hr-lab pos">Top net buy</div>${tb.slice(0, 10).map(x => `<div class="hr-li"><button type="button" class="mk-code" data-go="${x[0]}">${x[0]}</button><b class="pos">+Rp ${T(Math.abs(x[1]) / 1e9)}</b></div>`).join("")}</div></div>`;
+  } else if (E) {
+    const lab = E.c5 > 1.5 ? ["Positif", "pos"] : E.c5 < -1.5 ? ["Negatif", "neg"] : ["Netral", "muted"];
+    $("hr-asing").innerHTML = `<div class="hr-lab">Sentimen asing <span class="muted" style="font-weight:600">(proksi ETF EIDO)</span></div>
+      <div class="hr-big"><span class="${lab[1]}">${lab[0]}</span> <span style="font-size:1rem">· EIDO $${fmtDec(E.p, 2)}</span></div>
+      ${hrSpark(E.c, E.c21 >= 0 ? "var(--up)" : "var(--down)", 300, 60)}
+      <div class="hr-kv"><div><small>1 hari / 5 hari / 1 bulan</small><b>${hrPct(E.c1, 1)} · ${hrPct(E.c5, 1)} · ${hrPct(E.c21, 1)}</b><small>data ${esc(E.tgl)} (bursa AS)</small></div>
+        <div><small>Volume EIDO</small><b>${E.vr == null ? "-" : fmtDec(E.vr, 1) + "×"}</b><small>vs rata-rata 20 hari${E.v5r != null ? ` · 5 hari ${fmtDec(E.v5r, 1)}×` : ""}</small></div></div>
+      <p class="muted" style="font-size:0.74rem;margin:8px 0 0">EIDO adalah ETF saham Indonesia di bursa AS, dibeli/dijual terutama oleh investor asing, jadi pergerakannya menjadi petunjuk sikap asing. <b>Ini bukan data net buy/sell asing BEI</b>; data asli akan tampil di sini otomatis kalau sumbernya tersedia (laptop rumah atau API).</p>`;
+  } else $("hr-asing").innerHTML = `<div class="hr-lab">Asing</div><p class="muted">Data belum tersedia.</p>`;
+  // Penggerak IHSG
+  const G = H.gerak;
+  if (G) {
+    const mx = Math.max(0.01, ...[...G.naik, ...G.turun].map(x => Math.abs(x[1])));
+    const li = (x, c) => `<div class="hr-li"><button type="button" class="mk-code" data-go="${x[0]}">${x[0]}</button><span class="hr-gbar"><i class="${c}" style="width:${(Math.abs(x[1]) / mx * 100).toFixed(1)}%"></i></span><b class="${c === "p" ? "pos" : "neg"}">${x[1] >= 0 ? "+" : "−"}${fmtDec(Math.abs(x[1]), 2)}%</b></div>`;
+    $("hr-gerak").innerHTML = `<div class="hr-lab">Penggerak IHSG hari ini <span class="muted" style="font-weight:600">(sumbangan, perkiraan)</span></div>
+      <div class="hr-lab pos" style="margin-top:6px">Top 10 pendorong</div>${G.naik.map(x => li(x, "p")).join("") || '<span class="muted">-</span>'}
+      <div class="hr-lab neg" style="margin-top:10px">Top 10 penekan</div>${G.turun.map(x => li(x, "n")).join("") || '<span class="muted">-</span>'}
+      <p class="muted" style="font-size:0.74rem;margin:8px 0 0">Sumbangan = bobot kapitalisasi pasar × perubahan harga. Total perkiraan ${G.total >= 0 ? "+" : ""}${fmtDec(G.total, 2)}%${m ? ` vs IHSG ${m.chg >= 0 ? "+" : ""}${fmtDec(m.chg, 2)}%` : ""}; selisih wajar karena BEI memakai penyesuaian (mis. saham publik/free float). Mencakup ${G.n} dari ${G.dari} saham (data saham beredar Yahoo dilengkapi bertahap).</p>`;
+  } else $("hr-gerak").innerHTML = `<div class="hr-lab">Penggerak IHSG</div><p class="muted">Data jumlah saham beredar sedang dikumpulkan; akan tampil setelah beberapa kali update.</p>`;
+  // Komoditas
+  const dly = [["MTF=F", "Batubara", "US$/ton"], ["BZ=F", "Minyak Brent", "US$/barel"], ["HG=F", "Tembaga", "US$/lb"], ["EMAS_IDR", "Emas", "Rp/gram"], ["IDR=X", "USD/IDR", "Rp"]];
+  const cards = dly.map(([sym, nm, sat]) => { const mm = (MARKET.makro || []).find(x => x.sym === sym); if (!mm || mm.c.length < 3) return "";
+      const n = mm.c.length - 1, c1 = (mm.c[n] / mm.c[n - 1] - 1) * 100, c30 = mkChg(sym, 30);
+      return `<div class="hr-kc" data-mkgo="${sym}"><div class="hr-lab">${nm} <span class="muted" style="font-weight:600">harian</span></div><b class="hr-kv1">${fmtDec(mm.c[n], mm.c[n] < 50 ? 2 : 0)}</b><small class="muted">${sat}</small>
+        <div style="font-size:0.8rem">1H ${hrPct(c1, 1)} · 1B ${hrPct(c30, 1)}</div>${hrSpark(mm.c.slice(-120), (c30 || 0) >= 0 ? "var(--up)" : "var(--down)")}</div>`; }).join("")
+    + (H.kom_bulanan || []).map(k => `<div class="hr-kc"><div class="hr-lab">${esc(k.nama)} <span class="muted" style="font-weight:600">bulanan</span></div><b class="hr-kv1">${fmtNum(Math.round(k.last))}</b><small class="muted">${esc(k.sat)} · ${esc(k.tgl.slice(0, 7))}</small>
+        <div style="font-size:0.8rem">6 bulan ${hrPct(k.c6, 1)}</div>${hrSpark(k.v, (k.c6 || 0) >= 0 ? "var(--up)" : "var(--down)")}</div>`).join("");
+  $("hr-kom").innerHTML = `<div class="cal-head"><h2>Komoditas &amp; kurs</h2><span class="muted" style="font-size:0.8rem">harian dari Yahoo · bulanan (rata-rata IMF) dari FRED</span></div><div class="hr-kgrid">${cards}</div>`;
+  // Movers
+  const D = DATA.filter(r => !r.notx && r.chg != null && r.val >= 1e9);
+  const mv = (id, judul, arr, f) => { $(id).innerHTML = `<div class="hr-lab">${judul}</div>${arr.map(r => `<div class="hr-li hr-mv"><button type="button" class="mk-code" data-go="${r.t}">${r.t}</button><span class="muted hr-nm">${esc(r.nm)}</span>${f(r)}</div>`).join("") || '<span class="muted">-</span>'}`; };
+  mv("hr-up", "Naik tertinggi <span class='muted' style='font-weight:600'>(transaksi ≥ Rp 1 M)</span>", D.slice().sort((a, c) => c.chg - a.chg).slice(0, 8), r => hrPct(r.chg));
+  mv("hr-dn", "Turun terdalam", D.slice().sort((a, c) => a.chg - c.chg).slice(0, 8), r => hrPct(r.chg));
+  mv("hr-val", "Transaksi terbesar", D.slice().sort((a, c) => (c.vday || c.val) - (a.vday || a.val)).slice(0, 8), r => `<span style="text-align:right">${fmtValue(r.vday || r.val)} ${hrPct(r.chg)}</span>`);
+  $("v-hari").querySelectorAll("[data-go]").forEach(x => x.addEventListener("click", () => openDrawer(x.dataset.go)));
+  $("v-hari").querySelectorAll("[data-mkgo]").forEach(x => x.addEventListener("click", () => { showView("makro"); history.replaceState(null, "", "#makro"); }));
+}
+
 /* ---------- KESIMPULAN DUA KATA: Arah · Waktu ---------- */
 let V_IHSG = null;
 function vIhsg() {
@@ -6539,13 +6730,14 @@ function renderMovers() {
 }
 
 /* ---------- halaman (tab): screener, kalender, jurnal, panduan ---------- */
-const VIEWS = ["screener", "makro", "kalender", "jurnal", "panduan"];
-function viewFromHash() { const h = location.hash.replace("#", ""); return VIEWS.includes(h) ? h : "screener"; }
+const VIEWS = ["hari", "screener", "makro", "kalender", "jurnal", "panduan"];
+function viewFromHash() { const h = location.hash.replace("#", ""); return VIEWS.includes(h) ? h : "hari"; }
 function showView(v) {
   VIEWS.forEach(k => { $("v-" + k).hidden = k !== v; });
   document.querySelectorAll(".tab-btn").forEach(b => { b.classList.toggle("on", b.dataset.view === v); b.setAttribute("aria-current", b.dataset.view === v ? "page" : "false"); });
   $("cmp-bar").style.visibility = v === "screener" ? "" : "hidden";
   if (v === "makro") renderMakroView();
+  if (v === "hari") renderHari();
   if (v === "jurnal") pfLockUI();
   else { try { sessionStorage.removeItem("idxs:pfok"); } catch (e) {} const dm = $("pf-detail"); if (dm) dm.hidden = true; pfClose(); }   // keluar dari Portofolio = terkunci lagi
 }
@@ -6577,7 +6769,8 @@ $("sig-filter").addEventListener("change", () => { ls.set("idxs:sig", $("sig-fil
 renderPref();
 $("f-pin").addEventListener("change", () => { ls.set(PIN_KEY, $("f-pin").checked); page = 0; render(); });
 V_IHSG = vIhsg();
-renderMarket(); load(); render(); renderCal(); renderJournal(); renderMakro(); renderMovers();
+renderMarket(); load(); render();
+if ($("v-hari") && !$("v-hari").hidden) renderHari();     // halaman awal digambar sebelum kesimpulan IHSG dihitung renderCal(); renderJournal(); renderMakro(); renderMovers();
 (() => { const d = $("movers-d"); d.open = ls.get("idxs:mvopen", true); d.addEventListener("toggle", () => ls.set("idxs:mvopen", d.open)); })();
 renderCmpBar();
 (() => { const f = $("filt"); f.open = !!ls.get("idxs:filt", false); f.addEventListener("toggle", () => ls.set("idxs:filt", f.open)); })();
