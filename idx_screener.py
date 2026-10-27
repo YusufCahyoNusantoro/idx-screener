@@ -1052,6 +1052,98 @@ def arus_pasar(harian, ihsg10, n=120):
             "n": [int(c) for c in cnt]}
 
 
+def rotasi_pasar(harian, rows, ihsg10):
+    """Rotasi: kinerja kelompok/sektor/saham dikurangi IHSG, kuadran tren-vs-momentum, dan napas relatif."""
+    if ihsg10 is None or len(ihsg10) < 130:
+        return None
+    ih = ihsg10["Close"].dropna()
+    hari = ih.index[-130:]
+    ihp = lambda n, end=0: float(ih.iloc[-1 - end] / ih.iloc[-1 - end - n] - 1) * 100
+    def idx_grup(kode):
+        kode = [t for t in kode if t in harian and len(harian[t]) >= 140]
+        if len(kode) < 2:
+            return None, kode
+        rets = pd.concat({t: harian[t]["Close"].pct_change() for t in kode}, axis=1).reindex(hari)
+        g = rets.mean(axis=1, skipna=True).fillna(0)
+        return (1 + g).cumprod(), kode
+    def rel(idx, n, end=0):
+        if idx is None or len(idx) <= n + end:
+            return None
+        a = float(idx.iloc[-1 - end] / idx.iloc[-1 - end - n] - 1) * 100
+        return round(a - ihp(n, end), 2)
+    sek = {}
+    for r in rows:
+        if r.get("sector") and r["sector"] != "-" and r["val"] >= 1e9 and r["t"] in harian and not r.get("notx"):
+            sek.setdefault(r["sector"], []).append(r["t"])
+    grup = []
+    for jenis, src in (("tema", KELOMPOK), ("sektor", dict(sorted(sek.items())))):
+        for nama, kode in src.items():
+            idx, kode = idx_grup(kode)
+            if idx is None:
+                continue
+            ekor = [[rel(idx, 63, e), rel(idx, 10, e)] for e in (15, 10, 5, 0)]     # posisi 3,2,1 minggu lalu & sekarang
+            grup.append({"nama": nama, "jenis": jenis, "n": len(kode), "w1": rel(idx, 5), "m1": rel(idx, 21),
+                         "x": ekor[-1][0], "y": ekor[-1][1], "ekor": ekor})
+    # saham: 50 paling likuid, dan napas relatif dari 100 paling likuid
+    likuid = sorted([r for r in rows if r["t"] in harian and not r.get("notx") and len(harian[r["t"]]) >= 70],
+                    key=lambda r: -r["val"])
+    def perf(t, n):
+        c = harian[t]["Close"].dropna()
+        return float(c.iloc[-1] / c.iloc[-1 - n] - 1) * 100 if len(c) > n else None
+    saham = []
+    for r in likuid[:50]:
+        w, m = perf(r["t"], 5), perf(r["t"], 21)
+        if w is None or m is None:
+            continue
+        saham.append({"t": r["t"], "w1": round(w - ihp(5), 2), "m1": round(m - ihp(21), 2)})
+    napas = {}
+    for lab, n in (("7h", 5), ("30h", 21), ("90h", 63)):
+        ps = [perf(r["t"], n) for r in likuid[:100]]
+        ps = [p for p in ps if p is not None]
+        if ps:
+            napas[lab] = round(sum(1 for p in ps if p > ihp(n)) / len(ps) * 100)
+    return {"grup": grup, "saham": saham, "napas": napas, "n100": min(100, len(likuid)),
+            "ihsg": {"w1": round(ihp(5), 2), "m1": round(ihp(21), 2), "m3": round(ihp(63), 2)}}
+
+
+def pemulihan_ihsg(batas=20.0):
+    """Episode koreksi besar IHSG sepanjang sejarah Yahoo: puncak -> dasar -> pulih ke puncak."""
+    got = unduh(["^JKSE"], "max", "1d", mentah=True)
+    df = got.get("^JKSE")
+    if df is None or len(df) < 500:
+        return None
+    c = ke_tanggal(df)["Close"].dropna()
+    c = c[c > 0]
+    eps, pk_t, pk_v, low_t, low_v = [], c.index[0], float(c.iloc[0]), None, None
+    for t, v in c.items():
+        v = float(v)
+        if v >= pk_v:
+            if low_v is not None and (low_v / pk_v - 1) * 100 <= -batas:
+                eps.append({"puncak": pk_t, "pv": pk_v, "dasar": low_t, "dv": low_v, "pulih": t})
+            pk_t, pk_v, low_t, low_v = t, v, None, None
+        elif low_v is None or v < low_v:
+            low_t, low_v = t, v
+    kini = None
+    if low_v is not None:
+        kini = {"puncak": pk_t, "pv": pk_v, "dasar": low_t, "dv": low_v, "pulih": None}
+        if (low_v / pk_v - 1) * 100 <= -batas:
+            eps.append(kini)
+    bln = lambda a, b: round((b - a).days / 30.44, 1)
+    out = []
+    for e in eps:
+        out.append({"puncak": e["puncak"].strftime("%Y-%m-%d"), "pv": round(e["pv"], 2), "dasar": e["dasar"].strftime("%Y-%m-%d"),
+                    "dv": round(e["dv"], 2), "dd": round((e["dv"] / e["pv"] - 1) * 100, 1), "ke_dasar": bln(e["puncak"], e["dasar"]),
+                    "pulih": e["pulih"].strftime("%Y-%m-%d") if e["pulih"] is not None else None,
+                    "lama_pulih": bln(e["puncak"], e["pulih"]) if e["pulih"] is not None else None,
+                    "dasar_ke_pulih": bln(e["dasar"], e["pulih"]) if e["pulih"] is not None else None})
+    last = float(c.iloc[-1]); pk_all = float(c.max())
+    return {"ep": out, "mulai": c.index[0].strftime("%Y-%m-%d"), "batas": batas,
+            "kini": {"p": round(last, 2), "puncak": round(pk_v, 2), "puncak_tgl": pk_t.strftime("%Y-%m-%d"),
+                     "dd": round((last / pk_v - 1) * 100, 1), "perlu": round((pk_v / last - 1) * 100, 1),
+                     "dasar": round(kini["dv"], 2) if kini else None, "dasar_tgl": kini["dasar"].strftime("%Y-%m-%d") if kini else None,
+                     "bln_sejak_puncak": bln(pk_t, c.index[-1]), "ath": round(pk_all, 2)}}
+
+
 def _koma(t):
     """Angka desimal gaya Indonesia di dalam kalimat: 2.9% -> 2,9%."""
     import re
@@ -1069,7 +1161,8 @@ def makro_lengkap(harian, rows, ihsg10, makro):
         except Exception as e:
             print(f"  ! {nama}: {e}"); mx[nama] = None
     for nama, fn in (("rezim", lambda: rezim_makro(makro, mx.get("gli"))), ("sektor", lambda: peta_sektor(harian, rows, makro)),
-                     ("ihsg", lambda: kondisi_ihsg(ihsg10)), ("arus", lambda: arus_pasar(harian, ihsg10))):
+                     ("ihsg", lambda: kondisi_ihsg(ihsg10)), ("arus", lambda: arus_pasar(harian, ihsg10)),
+                     ("rotasi", lambda: rotasi_pasar(harian, rows, ihsg10)), ("pulih", lambda: pemulihan_ihsg())):
         try:
             mx[nama] = fn()
         except Exception as e:
@@ -2541,6 +2634,16 @@ TEMPLATE = r'''<!DOCTYPE html>
   .mk-bars .bar i { position:absolute; top:0; height:100%; border-radius:9px; } .mk-bars .bar i.p { background:var(--up); } .mk-bars .bar i.n { background:var(--down); }
   .mk-bars b { text-align:right; }
   .mk-note { margin-top:4px; font-size:0.76rem; color:var(--ink2); }
+  .rt-bars { display:grid; gap:4px; max-height:520px; overflow:auto; padding-right:4px; }
+  .rt-row { display:grid; grid-template-columns:minmax(120px, 190px) 1fr 70px; gap:10px; align-items:center; font-size:0.86rem; }
+  .rt-row b { text-align:right; } .rt-row .mk-code { justify-self:start; }
+  .rt-bar { position:relative; height:12px; background:var(--panel2); border-radius:9px; }
+  .rt-bar::after { content:""; position:absolute; left:50%; top:-2px; bottom:-2px; width:1px; background:var(--muted); opacity:.5; }
+  .rt-bar i { position:absolute; top:0; height:100%; border-radius:9px; } .rt-bar i.p { background:var(--up); } .rt-bar i.n { background:var(--down); }
+  .rt-q { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; margin-top:8px; font-size:0.82rem; }
+  .rt-q > div { background:var(--panel2); border-radius:9px; padding:8px 10px; display:grid; gap:2px; }
+  .rt-now td { background:color-mix(in srgb, var(--down) 8%, transparent); }
+  @media (max-width:760px) { .rt-q { grid-template-columns:1fr 1fr; } .rt-row { grid-template-columns:110px 1fr 60px; } }
   .mk-codes { white-space:normal !important; min-width:150px; max-width:220px; font-size:0.76rem; }
   .mk-tbl td { white-space:normal; }
   .mk-code { border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:6px; padding:1px 6px; font-size:0.72rem; font-weight:700; cursor:pointer; margin:1px; }
@@ -2789,7 +2892,9 @@ TEMPLATE = r'''<!DOCTYPE html>
     <p class="muted" style="font-size:0.78rem;margin:10px 0 0">Data dari Yahoo Finance dan bisa tertunda. <b>Hubungan dengan IHSG</b> adalah korelasi perubahan harian 60 hari terakhir: mendekati +1 berarti biasanya bergerak searah dengan IHSG, mendekati −1 berlawanan arah, mendekati 0 hampir tidak berhubungan. BI Rate dan inflasi Indonesia tidak tersedia di Yahoo, jadi jadwal rilisnya ada di kalender di bawah.</p>
   </section>
   <div class="mk-two"><section class="card" id="mk-indo" aria-label="Ekonomi Indonesia"></section><section class="card" id="mk-ihsg" aria-label="Kondisi IHSG"></section></div>
+  <section class="card" id="mk-pulih" aria-label="Pemulihan setelah koreksi besar"></section>
   <section class="card" id="mk-arus" aria-label="Transaksi dan tekanan pasar"></section>
+  <section class="card" id="mk-rotasi" aria-label="Rotasi sektor dan saham"></section>
   <section class="card" id="mk-sektor" aria-label="Dampak makro ke sektor"></section>
   <div class="mk-two"><section class="card" id="mk-alarm" aria-label="Alarm makro"></section><section class="card" id="mk-skenario" aria-label="Skenario"></section></div>
   </div>
@@ -2990,7 +3095,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     <details class="guide-item">
       <summary>Menu Makro</summary>
       <div class="guide-body">
-        <p>Menu <b>Makro</b> merangkum kondisi dari dunia sampai sektor: <b>Rezim</b> (7 blok: inflasi AS, The Fed, bunga riil, dolar, minyak, China, likuiditas global; masing-masing Menekan/Membantu/Netral/Campuran, dari data FRED dan Yahoo), <b>Likuiditas global</b> (proksi neraca The Fed, ECB, dan Bank of Japan, dengan EMA20/EMA50, momentum YoY, dan offset terhadap IHSG), <b>Pasar global &amp; makro</b>, <b>Ekonomi Indonesia</b> (rupiah otomatis; PDB, inflasi, BI Rate, cadangan devisa, SBN, PMI China diisi manual), <b>Kondisi IHSG</b> dibanding bursa utama, <b>Transaksi &amp; tekanan pasar</b> (nilai transaksi harian seluruh saham dan tekanan beli/jual perkiraan, 60 hari), <b>Siapa untung, siapa tertekan</b> (korelasi kelompok/sektor dengan faktor makro dan dampaknya sebulan terakhir, plus catatanmu), <b>Alarm makro</b> dengan ambang yang kamu atur, dan <b>Skenario saya</b>. Isian manual ikut ☁ Sinkron. Korelasi menunjukkan kecenderungan, bukan sebab-akibat.</p>
+        <p>Menu <b>Makro</b> merangkum kondisi dari dunia sampai sektor: <b>Rezim</b> (7 blok: inflasi AS, The Fed, bunga riil, dolar, minyak, China, likuiditas global; masing-masing Menekan/Membantu/Netral/Campuran, dari data FRED dan Yahoo), <b>Likuiditas global</b> (proksi neraca The Fed, ECB, dan Bank of Japan, dengan EMA20/EMA50, momentum YoY, dan offset terhadap IHSG), <b>Pasar global &amp; makro</b>, <b>Ekonomi Indonesia</b> (rupiah otomatis; PDB, inflasi, BI Rate, cadangan devisa, SBN, PMI China diisi manual), <b>Kondisi IHSG</b> dibanding bursa utama, <b>Pemulihan setelah koreksi besar</b> (riwayat koreksi ≥20% IHSG: kedalaman, lama ke dasar, lama pulih), <b>Transaksi &amp; tekanan pasar</b> (nilai transaksi harian seluruh saham dan tekanan beli/jual perkiraan, 60 hari), <b>Rotasi</b> (kinerja kelompok/sektor/50 saham likuid dikurangi IHSG, kuadran Memimpin/Melemah/Tertinggal/Membaik, dan napas relatif), <b>Siapa untung, siapa tertekan</b> (korelasi kelompok/sektor dengan faktor makro dan dampaknya sebulan terakhir, plus catatanmu), <b>Alarm makro</b> dengan ambang yang kamu atur, dan <b>Skenario saya</b>. Isian manual ikut ☁ Sinkron. Korelasi menunjukkan kecenderungan, bukan sebab-akibat.</p>
         <p><b>Kunci API FRED (gratis, sekali saja):</b> buka fredaccount.stlouisfed.org, buat akun, lalu menu <b>API Keys → Request API Key</b>, salin kunci 32 karakter. Di GitHub repo: <b>Settings → Secrets and variables → Actions → New repository secret</b>, Name <code>FRED_API_KEY</code>, Secret = kuncinya. Pastikan screener.yml punya baris <code>FRED_API_KEY: ${{ secrets.FRED_API_KEY }}</code> di langkah "Jalankan screener", lalu jalankan update.</p>
       </div>
     </details>
@@ -5972,7 +6077,7 @@ function mkAlarmState(a) { const v = mkLast(a.sym); if (v == null) return null; 
 
 function renderMakroView() {
   if (!$("v-makro")) return;
-  mkHero(); mkGli(); mkIndo(); mkIhsg(); mkArus(); mkSektor(); mkAlarm(); mkSken();
+  mkHero(); mkGli(); mkIndo(); mkIhsg(); mkPulih(); mkArus(); mkRotasi(); mkSektor(); mkAlarm(); mkSken();
 }
 function mkBlocks() {
   const mx = MARKET.mx || {}, d = mkGet();
@@ -6102,7 +6207,7 @@ function mkIhsg() {
   box.innerHTML = `<div class="cal-head"><h2>Kondisi IHSG</h2><span class="muted" style="font-size:0.8rem">${fmtDec(k.p, 2)}</span></div>
     <div class="mk-kpi"><div><small>Sejak awal tahun</small><b class="${k.ytd >= 0 ? "pos" : "neg"}">${k.ytd == null ? "-" : (k.ytd >= 0 ? "+" : "") + fmtDec(k.ytd, 1) + "%"}</b><small>${k.terburuk_sejak ? "terburuk sejak " + k.terburuk_sejak : ""}</small></div>
       <div><small>Dari puncak 52 minggu</small><b class="neg">${fmtDec(k.dd52, 1)}%</b><small>terendah tahun ini ${fmtDec(k.low_ytd, 0)}</small></div>
-      <div><small>Dari puncak tertinggi (10 th)</small><b class="neg">${fmtDec(k.ddall, 1)}%</b><small>${fmtDec(k.hall, 0)} · ${esc(k.hall_tgl)}</small></div>
+      <div><small>Dari puncak tertinggi (10 th)</small><b class="neg">${fmtDec(k.ddall, 1)}%</b><small>${fmtDec(k.hall, 0)} · ${esc(k.hall_tgl)}${k.ddall < 0 ? ` · perlu <b class="pos">+${fmtDec((1 / (1 + k.ddall / 100) - 1) * 100, 1)}%</b> untuk kembali` : ""}</small></div>
       ${b ? `<div><small>Napas pasar</small><b>${b.pct}%</b><small>saham likuid di atas MA20</small></div>` : ""}</div>
     <div class="mk-bars">${k.banding.map(x => `<div class="${x[0] === "IHSG" ? "me" : ""}"><span>${esc(x[0])}</span><span class="bar"><i class="${x[1] >= 0 ? "p" : "n"}" style="width:${Math.abs(x[1]) / mx * 50}%;${x[1] >= 0 ? "left:50%" : "right:50%"}"></i></span><b class="${x[1] >= 0 ? "pos" : "neg"}">${x[1] >= 0 ? "+" : ""}${fmtDec(x[1], 1)}%</b></div>`).join("")}</div>
     <p class="muted" style="font-size:0.74rem;margin:6px 0 0">Perubahan sejak awal tahun, dibanding bursa utama. P/E, P/BV, dan arus asing tidak tersedia dari data gratis.</p>`;
@@ -6137,6 +6242,71 @@ function mkArus() {
     </div>
     <div class="table-wrap" style="max-height:none">${s}</div>
     <p class="muted" style="font-size:0.74rem;margin:6px 0 0">Nilai transaksi = volume × harga penutupan, dijumlahkan dari semua saham di data aplikasi (bisa sedikit berbeda dari angka resmi BEI, termasuk karena transaksi pasar negosiasi). <b>Tekanan beli/jual adalah perkiraan</b>, bukan data beli/jual asli: tiap saham diberi nilai +1 kalau ditutup di harga tertinggi hari itu dan −1 kalau di harga terendah, dikalikan nilai transaksinya. Di bursa, total beli selalu sama dengan total jual; angka ini hanya menunjukkan sisi mana yang lebih agresif. Arus asing tidak termasuk.</p>`;
+}
+let rtJenis = "tema", rtPer = "m1", rtView = "bar";
+function mkRotasi() {
+  const box = $("mk-rotasi"), R = (MARKET.mx || {}).rotasi;
+  if (!R) { box.innerHTML = `<h2>Rotasi</h2><p class="muted">Data belum tersedia.</p>`; return; }
+  const np = R.napas || {}, lab = v => v >= 60 ? ["luas", "pos"] : v <= 35 ? ["sempit", "neg"] : ["sedang", "muted"];
+  const seg = (k, opts, cur) => `<div class="seg">${opts.map(([v, l]) => `<button type="button" data-${k}="${v}" class="${cur === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+  const isGrp = rtJenis !== "saham", view = isGrp ? rtView : "bar";
+  let body = "";
+  if (view === "bar") {
+    const items = isGrp ? R.grup.filter(g => g.jenis === rtJenis).map(g => ({ k: g.nama, v: g[rtPer], n: g.n })) : R.saham.map(x => ({ k: x.t, v: x[rtPer], go: x.t }));
+    const L = items.filter(x => x.v != null).sort((a, b) => b.v - a.v), mx = Math.max(1, ...L.map(x => Math.abs(x.v)));
+    body = `<div class="rt-bars">${L.map(x => `<div class="rt-row">${x.go ? `<button type="button" class="mk-code" data-go="${x.go}">${esc(x.k)}</button>` : `<span>${esc(x.k)}${x.n ? ` <small class="muted">${x.n}</small>` : ""}</span>`}
+      <span class="rt-bar"><i class="${x.v >= 0 ? "p" : "n"}" style="width:${Math.abs(x.v) / mx * 50}%;${x.v >= 0 ? "left:50%" : "right:50%"}"></i></span><b class="${x.v >= 0 ? "pos" : "neg"}">${x.v >= 0 ? "+" : ""}${fmtDec(x.v, 1)}%</b></div>`).join("")}</div>`;
+  } else {
+    const G = R.grup.filter(g => g.jenis === rtJenis && g.x != null && g.y != null), pts = G.flatMap(g => g.ekor.filter(e => e[0] != null && e[1] != null));
+    const mxX = Math.max(2, ...pts.map(e => Math.abs(e[0]))) * 1.1, mxY = Math.max(2, ...pts.map(e => Math.abs(e[1]))) * 1.1;
+    const W = 1000, H = 560, P = 40, cx = v => W / 2 + v / mxX * (W / 2 - P), cy = v => H / 2 - v / mxY * (H / 2 - P);
+    const Q = (x, y) => x >= 0 && y >= 0 ? ["Memimpin", "#10B981"] : x >= 0 ? ["Melemah", "#F59E0B"] : y < 0 ? ["Tertinggal", "#EF4444"] : ["Membaik", "#60A5FA"];
+    let sv = `<svg viewBox="0 0 ${W} ${H}" class="mk-svg" role="img" aria-label="Kuadran rotasi">`;
+    [[W / 2, P, "#10B981", "Memimpin", "end"], [W / 2, H / 2, "#F59E0B", "Melemah", "end"], [P, H / 2, "#EF4444", "Tertinggal", "start"], [P, P, "#60A5FA", "Membaik", "start"]].forEach(([x, y, c, t, a]) => {
+      sv += `<rect x="${x}" y="${y}" width="${W / 2 - P}" height="${H / 2 - P}" fill="${c}" opacity="0.07"/><text x="${a === "end" ? x + W / 2 - P - 10 : x + 10}" y="${y + (y === P ? 20 : H / 2 - P - 10)}" text-anchor="${a}" font-size="14" font-weight="800" fill="${c}" opacity="0.55">${t}</text>`; });
+    sv += `<line x1="${P}" x2="${W - P}" y1="${H / 2}" y2="${H / 2}" stroke="var(--line)"/><line x1="${W / 2}" x2="${W / 2}" y1="${P}" y2="${H - P}" stroke="var(--line)"/>`;
+    sv += `<text x="${W - P}" y="${H / 2 - 6}" font-size="11" text-anchor="end" fill="var(--muted)">tren 3 bulan vs IHSG →</text><text x="${W / 2 + 6}" y="${P + 12}" font-size="11" fill="var(--muted)">↑ momentum 2 minggu</text>`;
+    G.forEach(g => { const tl = g.ekor.filter(e => e[0] != null && e[1] != null), [nm, c] = Q(g.x, g.y);
+      if (tl.length > 1) sv += `<polyline points="${tl.map(e => `${cx(e[0]).toFixed(1)},${cy(e[1]).toFixed(1)}`).join(" ")}" fill="none" stroke="${c}" stroke-width="1.6" opacity="0.55"/>`;
+      tl.slice(0, -1).forEach(e => sv += `<circle cx="${cx(e[0]).toFixed(1)}" cy="${cy(e[1]).toFixed(1)}" r="2.5" fill="${c}" opacity="0.5"/>`);
+      sv += `<circle cx="${cx(g.x).toFixed(1)}" cy="${cy(g.y).toFixed(1)}" r="7" fill="${c}"><title>${esc(g.nama)}: ${nm} · tren ${g.x >= 0 ? "+" : ""}${fmtDec(g.x, 1)}% · momentum ${g.y >= 0 ? "+" : ""}${fmtDec(g.y, 1)}%</title></circle>
+        <text x="${(cx(g.x) + (cx(g.x) > W - 200 ? -10 : 10)).toFixed(1)}" y="${(cy(g.y) + 4).toFixed(1)}" text-anchor="${cx(g.x) > W - 200 ? "end" : "start"}" font-size="12" font-weight="700" fill="var(--ink)" paint-order="stroke" stroke="var(--panel)" stroke-width="3">${esc(g.nama)}</text>`; });
+    sv += `</svg>`;
+    const grp = { Memimpin: [], Membaik: [], Melemah: [], Tertinggal: [] }; G.forEach(g => grp[Q(g.x, g.y)[0]].push(g.nama));
+    body = `<div class="table-wrap" style="max-height:none">${sv}</div>
+      <div class="rt-q">${Object.entries(grp).map(([k, v]) => `<div><b>${k}</b><span class="muted">${v.length ? esc(v.join(", ")) : "-"}</span></div>`).join("")}</div>`;
+  }
+  box.innerHTML = `<div class="cal-head"><h2>Rotasi: siapa mengalahkan IHSG</h2><span class="muted" style="font-size:0.8rem">IHSG 1 minggu ${R.ihsg.w1 >= 0 ? "+" : ""}${fmtDec(R.ihsg.w1, 1)}% · 1 bulan ${R.ihsg.m1 >= 0 ? "+" : ""}${fmtDec(R.ihsg.m1, 1)}%</span></div>
+    <div class="mk-kpi">${[["7h", "7 hari"], ["30h", "30 hari"], ["90h", "90 hari"]].map(([k, l]) => np[k] == null ? "" : `<div><small>Saham likuid yang mengalahkan IHSG · ${l}</small><b class="${lab(np[k])[1]}">${np[k]}%</b><small>dari ${R.n100} saham paling likuid · ${lab(np[k])[0]}</small></div>`).join("")}</div>
+    <div class="mk-ctl">${seg("rj", [["tema", "Kelompok tematik"], ["sektor", "Sektor resmi"], ["saham", "50 saham likuid"]], rtJenis)}
+      ${view === "bar" || !isGrp ? seg("rp", [["w1", "1 minggu"], ["m1", "1 bulan"]], rtPer) : ""}
+      ${isGrp ? seg("rv", [["bar", "Batang"], ["kuadran", "Kuadran"]], rtView) : ""}</div>
+    ${body}
+    <p class="muted" style="font-size:0.74rem;margin:8px 0 0">${view === "bar" ? "Angka = kinerja dikurangi kinerja IHSG pada periode yang sama: hijau mengalahkan IHSG, merah tertinggal." : "Kuadran: sumbu mendatar = kinerja 3 bulan dikurangi IHSG (tren), sumbu tegak = kinerja 2 minggu dikurangi IHSG (momentum). Ekor menunjukkan posisi 1–3 minggu lalu. Biasanya sektor berputar searah jarum jam: Membaik → Memimpin → Melemah → Tertinggal."} Kelompok memakai rata-rata sederhana saham anggotanya. Napas relatif: luas (≥60%) berarti kenaikan merata; sempit (≤35%) berarti IHSG hanya ditopang sedikit saham.</p>`;
+  box.querySelectorAll("[data-rj]").forEach(b => b.addEventListener("click", () => { rtJenis = b.dataset.rj; mkRotasi(); }));
+  box.querySelectorAll("[data-rp]").forEach(b => b.addEventListener("click", () => { rtPer = b.dataset.rp; mkRotasi(); }));
+  box.querySelectorAll("[data-rv]").forEach(b => b.addEventListener("click", () => { rtView = b.dataset.rv; mkRotasi(); }));
+  box.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => openDrawer(b.dataset.go)));
+}
+function mkPulih() {
+  const box = $("mk-pulih"), P = (MARKET.mx || {}).pulih;
+  if (!P || !P.kini) { box.innerHTML = `<h2>Pemulihan setelah koreksi besar</h2><p class="muted">Data riwayat IHSG belum tersedia.</p>`; return; }
+  const K = P.kini, E = P.ep.slice().reverse(), done = P.ep.filter(e => e.pulih), med = a => { const x = a.filter(v => v != null).sort((p, q) => p - q); return x.length ? x[Math.floor((x.length - 1) / 2)] : null; };
+  const mDasar = med(P.ep.map(e => e.ke_dasar)), mPulih = med(done.map(e => e.lama_pulih)), mDd = med(P.ep.map(e => e.dd));
+  const sedang = K.dd <= -P.batas, mirip = done.filter(e => e.dd <= K.dd + 5);
+  const bln = v => v == null ? "-" : v >= 24 ? `${fmtDec(v / 12, 1)} th` : `${fmtDec(v, 0)} bln`;
+  box.innerHTML = `<div class="cal-head"><h2>Pemulihan setelah koreksi besar</h2><span class="muted" style="font-size:0.8rem">riwayat IHSG sejak ${esc(P.mulai.slice(0, 4))} · koreksi ≥ ${P.batas}%</span></div>
+    <div class="mk-kpi">
+      <div><small>Posisi sekarang</small><b class="${K.dd < 0 ? "neg" : "pos"}">${fmtDec(K.dd, 1)}%</b><small>dari puncak ${fmtNum(Math.round(K.puncak))} (${esc(K.puncak_tgl)})</small></div>
+      <div><small>Perlu naik untuk kembali ke puncak</small><b class="pos">+${fmtDec(K.perlu, 1)}%</b><small>sudah ${bln(K.bln_sejak_puncak)} sejak puncak</small></div>
+      <div><small>Koreksi ≥ ${P.batas}% sepanjang sejarah</small><b>${P.ep.length}×</b><small>median kedalaman ${mDd == null ? "-" : fmtDec(mDd, 0) + "%"}</small></div>
+      <div><small>Median waktu (puncak → dasar / puncak → pulih)</small><b>${bln(mDasar)} / ${bln(mPulih)}</b><small>dari ${done.length} koreksi yang sudah pulih</small></div>
+    </div>
+    ${sedang ? `<p style="margin:0 0 10px;font-size:0.88rem">Koreksi sekarang <b>${fmtDec(K.dd, 1)}%</b>. ${mirip.length ? `Dari koreksi sedalam ini atau lebih (${mirip.length} kali), pemulihan ke puncak memakan <b>${bln(Math.min(...mirip.map(e => e.lama_pulih)))}</b> sampai <b>${bln(Math.max(...mirip.map(e => e.lama_pulih)))}</b> sejak puncak.` : "Belum pernah ada koreksi sedalam ini yang sudah pulih dalam riwayat data."}</p>` : ""}
+    <div class="table-wrap" style="max-height:340px"><table class="j-tbl mk-tbl"><thead><tr><th>Puncak</th><th>Dasar</th><th class="num">Kedalaman</th><th class="num">Puncak → dasar</th><th>Kembali ke puncak</th><th class="num">Puncak → pulih</th><th class="num">Dasar → pulih</th></tr></thead><tbody>
+      ${E.map(e => `<tr class="${e.pulih ? "" : "rt-now"}"><td>${esc(e.puncak)}<div class="muted" style="font-size:0.72rem">${fmtNum(Math.round(e.pv))}</div></td><td>${esc(e.dasar)}<div class="muted" style="font-size:0.72rem">${fmtNum(Math.round(e.dv))}</div></td>
+        <td class="num neg"><b>${fmtDec(e.dd, 1)}%</b></td><td class="num">${bln(e.ke_dasar)}</td><td>${e.pulih ? esc(e.pulih) : "<b>belum pulih</b>"}</td><td class="num">${bln(e.lama_pulih)}</td><td class="num">${bln(e.dasar_ke_pulih)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">Dasar untuk koreksi yang masih berlangsung adalah titik terendah sejauh ini, belum tentu dasar akhirnya. Setiap koreksi punya penyebab berbeda (krisis 1998, 2008, pandemi 2020, dan seterusnya), jadi lama pemulihannya bisa jauh berbeda; tabel ini memberi gambaran rentang, bukan ramalan. Data IHSG dari Yahoo (sejak ${esc(P.mulai)}).</p>`;
 }
 function mkSektor() {
   const box = $("mk-sektor"), S = (MARKET.mx || {}).sektor, d = mkGet();
