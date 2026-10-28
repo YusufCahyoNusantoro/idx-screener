@@ -1,6 +1,6 @@
 {
- "dicoba": "2026-10-22",
- "status": "ok",
+ "dicoba": "2026-10-29",
+ "status": "gagal: HTTP 403",
  "diperbarui": "2026-10-22",
  "sumber": "ListedCompany/GetCompanyProfiles",
  "jumlah": 962,
