@@ -1,16 +1,4 @@
 {
- "2026-10-14": [
-  "AALI",
-  "CLEO",
-  "BSSR",
-  "BDMN",
-  "MPXL",
-  "BDKR",
-  "MMIX",
-  "SGER",
-  "AUTO",
-  "NEST"
- ],
  "2026-10-15": [
   "SQMI",
   "PCAR",
@@ -106,5 +94,17 @@
   "DKHH",
   "MBSS",
   "PCAR"
+ ],
+ "2026-10-28": [
+  "DMAS",
+  "AALI",
+  "IDEA",
+  "PRDA",
+  "SEMA",
+  "SGER",
+  "DKHH",
+  "MBSS",
+  "PCAR",
+  "ULTJ"
  ]
 }
