@@ -1,16 +1,4 @@
 {
- "2026-10-15": [
-  "SQMI",
-  "PCAR",
-  "BIKE",
-  "MPIX",
-  "NEST",
-  "AALI",
-  "AKRA",
-  "CLEO",
-  "PTBA",
-  "MMIX"
- ],
  "2026-10-16": [
   "PKPK",
   "SMIL",
@@ -106,5 +94,17 @@
   "PKPK",
   "ULTJ",
   "BSSR"
+ ],
+ "2026-10-29": [
+  "AALI",
+  "SGER",
+  "PRDA",
+  "SEMA",
+  "VICI",
+  "BDMN",
+  "PKPK",
+  "DMAS",
+  "DKHH",
+  "IDEA"
  ]
 }
