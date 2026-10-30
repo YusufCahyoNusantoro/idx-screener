@@ -1,12 +1,4 @@
 {
- "2026-10-16": [
-  "PKPK",
-  "SMIL",
-  "BIKE",
-  "MPXL",
-  "DKHH",
-  "PCAR"
- ],
  "2026-10-19": [
   "BIKE",
   "MPXL",
@@ -105,5 +97,16 @@
   "SGER",
   "BDMN",
   "ULTJ"
+ ],
+ "2026-10-30": [
+  "SGER",
+  "AALI",
+  "IDEA",
+  "MARK",
+  "BDMN",
+  "ULTJ",
+  "DKHH",
+  "PRDA",
+  "SEMA"
  ]
 }
