@@ -2984,13 +2984,36 @@ TEMPLATE = r'''<!DOCTYPE html>
   .d-fund-g { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:8px 14px; margin:6px 0 10px; font-size:0.86rem; }
   .d-fund-g > div { display:grid; gap:1px; } .d-fund-g small { color:var(--muted); font-size:0.74rem; } .d-fund-g b { font-size:1.05rem; }
   .d-fund-row { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:14px; }
-  .fsk-list { list-style:none; padding:0; margin:4px 0 0; font-size:0.8rem; display:grid; gap:2px; }
+  .fsk-list { list-style:none; padding:0; margin:4px 0 0; font-size:0.8rem; display:grid; gap:5px; }
+  .fsk-b { font-size:0.74rem; color:var(--ink2); font-weight:500; margin-left:14px; }
+  .fsk-src { font-size:0.7rem; color:var(--muted); margin-top:6px; }
   .fd-bars { display:flex; align-items:flex-end; gap:6px; height:66px; margin-top:4px; }
   .fd-bars > div { display:flex; flex-direction:column; align-items:center; gap:2px; flex:1; max-width:34px; justify-content:flex-end; height:100%; }
   .fd-bars i { display:block; width:100%; border-radius:4px 4px 0 0; } .fd-bars i.p { background:var(--up); } .fd-bars i.n { background:var(--down); }
   .fd-bars small { font-size:0.68rem; color:var(--muted); }
   .fd-cov { grid-column:1 / -1; }
   @media (max-width:760px) { .d-fund-row { grid-template-columns:1fr; } }
+  .pf-ins { margin-bottom:14px; }
+  .pfi-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:6px 0 10px; }
+  .pfi-bar { display:flex; height:14px; border-radius:8px; overflow:hidden; background:var(--panel2); margin-top:6px; } .pfi-bar i { display:block; height:100%; }
+  .pfi-leg { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:0.78rem; margin-top:6px; } .pfi-leg i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; vertical-align:middle; }
+  .pfi-list { list-style:none; padding:0; margin:0; display:grid; gap:6px; font-size:0.88rem; }
+  .pfi-list li { display:grid; grid-template-columns:18px 1fr; gap:6px; } .pfi-warn > span:first-child { color:var(--down); } .pfi-good > span:first-child { color:var(--up); }
+  @media (max-width:760px) { .pfi-grid { grid-template-columns:1fr; } }
+  .rk-top { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px 20px; align-items:flex-start; }
+  .rk-v { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:6px; } .rk-k { font-size:0.95rem; }
+  .rk-pil { display:flex; flex-wrap:wrap; gap:8px; }
+  .rk-p { display:grid; gap:1px; border:1px solid currentColor; border-radius:10px; padding:5px 10px; font-weight:800; font-size:0.84rem; min-width:110px; }
+  .rk-p small { font-weight:600; color:var(--ink2); font-size:0.74rem; }
+  .rk-grid { display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:16px; margin-top:12px; }
+  .rk-grid ul { list-style:none; padding:0; margin:4px 0 0; display:grid; gap:4px; font-size:0.88rem; }
+  .rk-plan { font-size:0.95rem; margin:4px 0 6px; } .rk-t { font-size:0.86rem; margin-top:4px; }
+  .fh-ring { flex-basis:100%; font-size:0.84rem; color:var(--ink2); padding-top:4px; }
+  .d-grp { margin:0 0 8px; font-size:0.86rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink2); }
+  .peer-tbl td, .peer-tbl th { white-space:nowrap; } .peer-me td { background:color-mix(in srgb, var(--accent) 10%, transparent); }
+  .lay-wrap { position:relative; display:inline-block; margin-top:6px; }
+  .lay-pop { position:absolute; left:0; top:calc(100% + 6px); z-index:35; width:min(560px, 90vw); background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.3); padding:10px; display:flex; flex-wrap:wrap; gap:6px; }
+  @media (max-width:900px) { .rk-grid { grid-template-columns:1fr; } }
   .hr-head { display:flex; align-items:baseline; gap:12px; margin:4px 0 12px; } .hr-head h2 { margin:0; font-size:1.6rem; }
   .hr-grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-bottom:14px; } .hr-grid3 > .card { margin:0; }
   .hr-lab { font-size:0.8rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink2); }
@@ -3215,6 +3238,7 @@ TEMPLATE = r'''<!DOCTYPE html>
           <option value="bad">Hindari dulu</option>
         </select></div>
       <div class="f"><label for="sector-filter">Sektor</label><select id="sector-filter"><option value="">Semua sektor</option></select></div>
+      <div class="f"><label for="ind-filter">Industri <span class="muted" style="font-weight:600">(Yahoo)</span></label><select id="ind-filter"><option value="">Semua industri</option></select></div>
       <div class="f"><label>Harga (Rp)</label><div class="pair"><input type="number" id="price-min" placeholder="Min" min="0"><input type="number" id="price-max" placeholder="Maks" min="0"></div></div>
       <div class="f"><label>RSI</label><div class="pair"><input type="number" id="rsi-min" placeholder="0" min="0" max="100"><input type="number" id="rsi-max" placeholder="100" min="0" max="100"></div></div>
       <div class="f"><label for="val-min">Min. nilai transaksi (Rp miliar/hari)</label><input type="number" id="val-min" placeholder="mis. 5" min="0" step="0.5"></div>
@@ -3371,6 +3395,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   </section>
   <div id="pf-main" hidden>
     <section class="card pf-sum" id="pf-sum" aria-label="Ringkasan portofolio"></section>
+    <section class="card pf-ins" id="pf-ins" aria-label="Insight portofolio"></section>
     <div class="pf-grid">
       <section class="card" id="pf-left" aria-label="Posisi"><div class="pf-bar" id="pf-bar"></div><div id="pf-pos"></div>
         <p class="muted" style="font-size:0.76rem;margin:10px 0 0">Harga terakhir mengikuti data aplikasi (tertunda ±10–15 menit, diperbarui saat update berjalan). P&amp;L sudah memperhitungkan biaya broker. Data tersimpan di browser ini dan ikut ☁ Sinkron kalau terhubung.</p></section>
@@ -3522,13 +3547,14 @@ TEMPLATE = r'''<!DOCTYPE html>
       <summary>Fundamental (PER, PBV, ROE, yield, skor)</summary>
       <div class="guide-body">
         <p>Data fundamental diambil dari Yahoo Finance dan disimpan, diperbarui sebulan sekali per saham (dicicil sekitar 80 saham per update, jadi butuh beberapa kali update sampai lengkap). PER dan PBV dihitung ulang setiap update dengan harga terbaru; emiten yang melaporkan keuangan dalam USD dikonversi dengan kurs USD/IDR. Kolom <b>PER, PBV, ROE, Yield, Mkt cap, Skor F</b> bisa dinyalakan lewat <b>⚙ Kolom</b>; filter PER maksimal, PBV maksimal, yield minimal, dan skor minimal ada di Filter pencarian. Angka PER/PBV berwarna hijau kalau di bawah median sektornya.</p>
+        <p>Di detail saham, tombol <b>⚖ Bandingkan dengan pesaing</b> membuka perbandingan dengan 3 pesaing terdekat (industri yang sama, atau sektor yang sama kalau data industri kurang), diurutkan dari transaksi terbesar; tabel perbandingan juga memuat PER, PBV, ROE, yield, skor fundamental, dan industri. Filter <b>Industri</b> (kategori Yahoo, lebih rinci dari sektor) ada di Filter pencarian. Di tab Portofolio, kartu <b>Insight portofolio</b> menunjukkan porsi per saham dan per sektor, valuasi & skor rata-rata tertimbang, emiten rugi, posisi berkesimpulan Bearish/Hindari, posisi dekat/di bawah stop loss, dan porsi kas.</p>
         <p><b>Skor fundamental 0–5</b>: 1 poin masing-masing untuk laba positif 3 tahun berturut-turut, laba tahun terakhir lebih tinggi dari 2 tahun sebelumnya, ROE di atas 10%, PER di bawah median sektor, dan yield dividen ≥ 3%. Detail saham menampilkan alasannya, laba bersih 4 tahun, dividen 5 tahun, dan <b>harga wajar Graham</b> (perkiraan kasar). Data Yahoo bisa terlambat atau tidak lengkap.</p>
       </div>
     </details>
     <details class="guide-item">
       <summary>Screener: Strategi &amp; Kolom</summary>
       <div class="guide-body">
-        <p><b>Strategi</b> menggabungkan empat kelompok dalam satu pilihan: <b>Gaya screening</b> (Tampilkan semua, Struktur searah naik, Tren naik rapi, dan seterusnya), <b>Fundamental</b> (Jangka panjang, Trading + fundamental, Profit+, Growth+, Undervalued, harga wajar Graham, Asset Growth), <b>Dividen</b> (rutin 3/5 tahun, yield tinggi di atas BI Rate), dan <b>Sinyal teknikal</b> (Conversion break, MACD, EMA, MACD Golden Cross harian, Stochastic RSI, Bollinger Bands). Angka dalam kurung = jumlah saham yang lolos. Saat memakai screener fundamental/dividen/teknikal, filter lain diabaikan dan penjelasan syaratnya tampil di bawah pilihan. Syarat tambahan (harga, RSI, sektor, skor, kondisi) ada di <b>Filter pencarian</b> dan berlaku di atas Strategi yang dipilih. Tombol <b>⚙ Kolom</b> di atas tabel memilih kolom yang tampil (tersimpan di browser): bawaannya ringkas (Chart, Harga, Chg%, Kesimpulan, Rencana, Transaksi, Asing 5H); label Kondisi tampil kecil di bawah Kesimpulan. Ringkasan IHSG satu baris di atas Screener; ringkasan lengkap ada di tab Hari ini.</p>
+        <p><b>Strategi</b> menggabungkan empat kelompok dalam satu pilihan: <b>Gaya screening</b> (Tampilkan semua, Struktur searah naik, Tren naik rapi, dan seterusnya), <b>Fundamental</b> (Jangka panjang, Trading + fundamental, Profit+, Growth+, Undervalued, harga wajar Graham, Asset Growth), <b>Dividen</b> (rutin 3/5 tahun, yield tinggi di atas BI Rate), dan <b>Sinyal teknikal</b> (Conversion break, MACD, EMA, MACD Golden Cross harian, Stochastic RSI, Bollinger Bands). Angka dalam kurung = jumlah saham yang lolos. Saat memakai screener fundamental/dividen/teknikal, filter lain diabaikan dan penjelasan syaratnya tampil di bawah pilihan. Syarat tambahan (harga, RSI, sektor, skor, kondisi) ada di <b>Filter pencarian</b> dan berlaku di atas Strategi yang dipilih. Tombol <b>⚙ Kolom</b> di atas tabel memilih kolom yang tampil (tersimpan di browser): bawaannya ringkas (Chart, Harga, Chg%, Kesimpulan, Rencana, Transaksi, Asing 5H, Skor F); label Kondisi tampil kecil di bawah Kesimpulan. Ringkasan IHSG satu baris di atas Screener; ringkasan lengkap ada di tab Hari ini.</p>
         <p><b>Chart:</b> alat gambar ada di bilah vertikal di kiri chart (garis, horizontal, catatan, Fibonacci, Elliott Wave, rentang harga/tanggal, magnet 🧲, hapus semua 🗑); pilihan warna dan ketebalan muncul di atas chart saat sedang menggambar atau saat sebuah gambar dipilih. Lapisan Fase bulan kini mati secara bawaan (bisa dinyalakan di daftar lapisan). Tombol Sinkron, Perbarui, dan Tema ada di menu ⚙ di kanan atas (titik hijau = tersinkron, merah = gagal). Di HP, tab utama ada di bilah bawah.</p>
       </div>
     </details>
@@ -3972,7 +3998,7 @@ function planCell(r) {
 }
 
 /* ---------- state ---------- */
-const FIELDS = ["search", "kd-filter", "sector-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min", "per-max", "pbv-max", "dy-min", "fs-min"];
+const FIELDS = ["search", "kd-filter", "sector-filter", "ind-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min", "per-max", "pbv-max", "dy-min", "fs-min"];
 const CHECKS = ["f-watch", "f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen", "f-ms", "f-top"];
 const W = ["w-trend", "w-brk", "w-pa", "w-mom", "w-st"];
 function save() {
@@ -4060,6 +4086,8 @@ function filtered() {
   if (q) rows = rows.filter(r => r.t.includes(q) || (r.nm || "").toUpperCase().includes(q));
   const sec = $("sector-filter").value;
   if (sec) rows = rows.filter(r => (r.sector || "-") === sec);
+  const indf = $("ind-filter").value;
+  if (indf) rows = rows.filter(r => r.fd && r.fd.ind === indf);
   if (kd === "nobad") rows = rows.filter(r => !r.kd || r.kd.c !== "bad");
   else if (kd) rows = rows.filter(r => r.kd && r.kd.c === kd);
   }
@@ -5694,6 +5722,7 @@ function renderJournal() {
   if (!$("pf-main") || $("pf-main").hidden) return;
   const name = pf.active, st = pfStats(name), cash = pf.list[name].cash, rp = v => (v < 0 ? "−Rp " : "Rp ") + fmtNum(Math.abs(Math.round(v)));
   const uplPct = st.inv ? st.upl / (st.inv * (1 + feeB())) * 100 : 0;
+  try { pfInsight(st, cash); } catch (e) { console.error(e); }
   $("pf-sum").innerHTML = `
     <div><small>Saldo kas</small><b>${cash == null ? `<button type="button" class="link-btn" id="pf-cash0">Atur saldo</button>` : rp(cash)}</b></div>
     <div><small>Invested</small><b>${rp(st.inv)}</b></div>
@@ -5787,6 +5816,44 @@ function pfDetail(id) {
   $("pfd-buy").addEventListener("click", () => { close(); pfTab = "order"; pfSide = "beli"; pfPre = j.t; pfOpen(); });
   $("pfd-sell").addEventListener("click", () => { close(); pfTab = "order"; pfSide = "jual"; pfPre = j.id; pfOpen(); });
   $("pfd-chart").addEventListener("click", () => { close(); openDrawer(j.t); });
+}
+function pfInsight(st, cash) {
+  const box = $("pf-ins"); if (!box) return;
+  const P = st.open.map(j => { const d = DATA.find(x => x.t === j.t) || {}, lot = remLot(j), px = d.p || j.entry;
+    return { t: j.t, j, d, mv: px * lot * 100, sec: d.sector && d.sector !== "-" ? d.sector : "Lainnya", px }; });
+  const tot = P.reduce((a, x) => a + x.mv, 0);
+  if (!P.length || !tot) { box.hidden = true; return; }
+  box.hidden = false;
+  P.forEach(x => x.w = x.mv / tot * 100); P.sort((a, b) => b.w - a.w);
+  const sec = {}; P.forEach(x => sec[x.sec] = (sec[x.sec] || 0) + x.w);
+  const S = Object.entries(sec).sort((a, b) => b[1] - a[1]);
+  const I = [];                                         // [tingkat, teks]
+  const top = P[0];
+  if (P.length === 1) I.push(["warn", `Portofolio hanya berisi 1 saham (${top.t}). Risiko satu emiten sepenuhnya kamu tanggung.`]);
+  else if (top.w > 40) I.push(["warn", `<b>${top.t}</b> mengambil <b>${fmtDec(top.w, 0)}%</b> portofolio. Pertimbangkan diversifikasi agar risiko lebih tersebar.`]);
+  else if (top.w > 25) I.push(["info", `Porsi terbesar: <b>${top.t}</b> ${fmtDec(top.w, 0)}% portofolio.`]);
+  else I.push(["good", `Tidak ada saham yang mendominasi (terbesar ${top.t} ${fmtDec(top.w, 0)}%).`]);
+  if (S[0][1] > 60 && P.length > 1) I.push(["warn", `<b>${fmtDec(S[0][1], 0)}%</b> portofolio ada di sektor <b>${esc(S[0][0])}</b>. Kalau sektor ini tertekan, hampir semua posisi ikut terdampak.`]);
+  else I.push(["info", `Tersebar di ${S.length} sektor; terbesar ${esc(S[0][0])} ${fmtDec(S[0][1], 0)}%.`]);
+  const wp = P.filter(x => x.d.fd && x.d.fd.per != null && !x.d.fd.rugi), wpw = wp.reduce((a, x) => a + x.w, 0);
+  if (wpw > 0) { const per = wp.reduce((a, x) => a + x.d.fd.per * x.w, 0) / wpw; I.push([per > 25 ? "warn" : "info", `PER rata-rata tertimbang <b>${fmtDec(per, 1)}×</b> (dari ${wp.length} saham dengan laba positif).`]); }
+  const rugi = P.filter(x => x.d.fd && x.d.fd.rugi).map(x => x.t); if (rugi.length) I.push(["warn", `Emiten yang sedang merugi: <b>${rugi.join(", ")}</b>.`]);
+  const fw = P.filter(x => x.d.fd), fww = fw.reduce((a, x) => a + x.w, 0);
+  if (fww > 0) { const sk = fw.reduce((a, x) => a + x.d.fd.skor * x.w, 0) / fww; I.push([sk >= 3 ? "good" : sk < 2 ? "warn" : "info", `Skor fundamental rata-rata tertimbang <b>${fmtDec(sk, 1)}/5</b>.`]); }
+  const bear = P.filter(x => x.d.ms && (() => { const v = vSaham(x.d); return v.arah === "Bearish" || v.waktu === "Hindari"; })()).map(x => x.t);
+  if (bear.length) I.push(["warn", `Kesimpulan teknikal <b>Bearish/Hindari</b>: ${bear.join(", ")}. Tinjau ulang alasan memegangnya.`]);
+  const kena = P.filter(x => x.j.sl && x.px <= x.j.sl).map(x => x.t), dekat = P.filter(x => x.j.sl && x.px > x.j.sl && (x.px - x.j.sl) / x.px < 0.03).map(x => x.t);
+  if (kena.length) I.push(["warn", `Sudah di bawah stop loss: <b>${kena.join(", ")}</b>.`]);
+  if (dekat.length) I.push(["info", `Kurang dari 3% dari stop loss: ${dekat.join(", ")}.`]);
+  const noSL = P.filter(x => !x.j.sl).map(x => x.t); if (noSL.length) I.push(["info", `Belum ada stop loss: ${noSL.join(", ")}.`]);
+  if (cash != null && cash >= 0) { const c = cash / (cash + tot) * 100; I.push([c < 5 && V_IHSG && V_IHSG.arah === "Bearish" ? "warn" : "info", `Kas ${fmtDec(c, 0)}% dari total equity${c < 5 && V_IHSG && V_IHSG.arah === "Bearish" ? " saat IHSG Bearish: ruang untuk membeli di harga lebih rendah sangat kecil" : ""}.`]); }
+  const COL = ["#6366F1", "#F59E0B", "#10B981", "#EF4444", "#06B6D4", "#A855F7", "#84CC16", "#EC4899"];
+  const bar = (arr, lab) => `<div class="pfi-bar">${arr.map((x, i) => `<i style="width:${x[1].toFixed(2)}%;background:${COL[i % COL.length]}" title="${esc(x[0])} ${fmtDec(x[1], 1)}%"></i>`).join("")}</div>
+    <div class="pfi-leg">${arr.slice(0, 8).map((x, i) => `<span><i style="background:${COL[i % COL.length]}"></i>${esc(x[0])} ${fmtDec(x[1], 0)}%</span>`).join("")}${arr.length > 8 ? `<span class="muted">+${arr.length - 8} lainnya</span>` : ""}</div>`;
+  box.innerHTML = `<div class="cal-head"><h2>Insight portofolio</h2><span class="muted" style="font-size:0.8rem">${P.length} posisi · berdasarkan nilai pasar</span></div>
+    <div class="pfi-grid"><div><div class="hr-lab">Per saham</div>${bar(P.map(x => [x.t, x.w]))}</div><div><div class="hr-lab">Per sektor</div>${bar(S)}</div></div>
+    <ul class="pfi-list">${I.map(([k, t]) => `<li class="pfi-${k}"><span>${k === "warn" ? "⚠" : k === "good" ? "✓" : "•"}</span><span>${t}</span></li>`).join("")}</ul>
+    <p class="muted" style="font-size:0.72rem;margin:6px 0 0">Dihitung otomatis dari posisi, harga terakhir, data fundamental, dan kesimpulan teknikal. Bukan saran beli/jual.</p>`;
 }
 function pfSetCash() {
   const cur = pf.list[pf.active].cash, v = prompt("Saldo kas portofolio ini (Rp). Kosongkan untuk tidak memakai saldo kas:", cur == null ? "" : cur);
@@ -5974,6 +6041,13 @@ function seriesOf(o) {                       // {tgl: [...], c: [...]} dari data
   return { tgl: S.do.map(x => new Date(base + x * 86400000).toISOString().slice(0, 10)), c: S.b.map(b => b[3]) };
 }
 function perf(r, n) { const s = seriesOf(r); if (!s || s.c.length < 2) return null; const k = Math.max(0, s.c.length - 1 - n); return (s.c[s.c.length - 1] / s.c[k] - 1) * 100; }
+function peersOf(r) {                          // 3 pesaing: industri sama (data fundamental) atau sektor sama, transaksi terbesar
+  if (!r) return [];
+  const ind = r.fd && r.fd.ind, pool = DATA.filter(x => x.t !== r.t && !x.notx && x.val > 0);
+  let L = ind ? pool.filter(x => x.fd && x.fd.ind === ind) : [];
+  if (L.length < 2 && r.sector && r.sector !== "-") L = pool.filter(x => x.sector === r.sector);
+  return L.sort((a, b) => b.val - a.val).slice(0, CMP_MAX - 1).map(x => x.t);
+}
 function toggleCmp(t) {
   if (cmp.includes(t)) cmp = cmp.filter(x => x !== t);
   else { if (cmp.length >= CMP_MAX) { alert(`Maksimal ${CMP_MAX} saham dalam perbandingan. Hapus salah satu dulu.`); return false; } cmp.push(t); }
@@ -6091,6 +6165,12 @@ function renderCompare() {
     [`Kinerja ${cmpPeriod} hari`, r => { const v = perf(r, cmpPeriod); return v == null ? "-" : `<b class="${v >= 0 ? "pos" : "neg"}">${v >= 0 ? "+" : ""}${fmtDec(v, 1)}%</b>`; }],
     ["Sektor", r => esc(r.sector || "-")],
     ["Kesimpulan", r => vBadge(vSaham(r))],
+    ["PER", r => r.fd ? (r.fd.rugi ? '<span class="neg">rugi</span>' : r.fd.per != null ? fmtDec(r.fd.per, 1) + "×" : "-") : "-"],
+    ["PBV", r => r.fd && r.fd.pbv != null ? fmtDec(r.fd.pbv, 2) + "×" : "-"],
+    ["ROE", r => r.fd && r.fd.roe != null ? fmtDec(r.fd.roe, 1) + "%" : "-"],
+    ["Yield dividen", r => r.fd && r.fd.dy != null ? fmtDec(r.fd.dy, 1) + "%" : "-"],
+    ["Skor fundamental", r => r.fd ? `<span class="fsk fsk-${r.fd.skor}">${r.fd.skor}/5</span>` : "-"],
+    ["Industri", r => r.fd && r.fd.ind ? esc(r.fd.ind) : "-"],
     ["Kondisi", r => r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : "-"],
     ["Struktur W / D / 4H", r => msCell(r)],
     ["BOS/CHoCH terakhir (harian)", r => esc(lastEv(r))],
@@ -6153,7 +6233,7 @@ function openEmas() {
     <div class="full-grid full-grid2">
       <section class="card full-span"><div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
         <div class="frvp-ctl" id="frvp-ctl"></div><div class="draw-ctl" id="draw-ctl"></div><div id="smc-box"></div><div class="draw-sel" id="draw-sel"></div>
-        <div class="chips smc-toggles" id="smc-toggles"></div><ul class="smc-sum" id="smc-sum"></ul>
+        <div class="lay-wrap"><button type="button" class="icon-btn dw-small" id="lay-btn" aria-haspopup="true">☰ Lapisan chart ▾</button><div class="chips smc-toggles lay-pop" id="smc-toggles" hidden></div></div><ul class="smc-sum" id="smc-sum"></ul>
         <p class="muted" style="font-size:0.78rem;margin:6px 0 0">Harga = emas dunia (USD/oz) × kurs USD/IDR ÷ 31,1035. Volume = jumlah kontrak emas dunia, karena harga emas dalam rupiah tidak punya data volume sendiri.</p></div></section>
       <div class="full-col"><section class="card">${msBlock(r)}</section></div>
       <div class="full-col"><section class="card" id="emas-plan"></section></div>
@@ -6199,16 +6279,20 @@ function detailParts(r, r0, w) {
     sub, up,
     price: `${fmtNum(r.p)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(r.chg, 2)}%</span>`,
     meta: `Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.${r.top ? ` <span class="top-badge">Top 10 #${r.top}</span>` : ""}`,
-    kond: `<div class="d-sec">${fdDetail(r)}${r.fa ? (() => { const S = r.fa.s, mx = Math.max(0.01, ...S.map(Math.abs)), w = 220 / S.length;
+    fund: (fdDetail(r) || r.fa) ? `<div class="d-sec">${fdDetail(r)}${r.fa ? (() => { const S = r.fa.s, mx = Math.max(0.01, ...S.map(Math.abs)), w = 220 / S.length;
         return `<div class="d-asing"><div class="hr-lab">Asing (data BEI ${esc(r.fa.d)})</div><div class="d-asing-k"><span>1 hari <b class="${r.fa.n1 >= 0 ? "pos" : "neg"}">${fmtAsing(r.fa.n1)}</b></span><span>5 hari <b class="${r.fa.n5 >= 0 ? "pos" : "neg"}">${fmtAsing(r.fa.n5)}</b></span><span>20 hari <b class="${r.fa.n20 >= 0 ? "pos" : "neg"}">${fmtAsing(r.fa.n20)}</b></span></div>
-          <svg viewBox="0 0 220 40" width="220" height="40">${S.map((v, i) => { const h = Math.abs(v) / mx * 18; return `<rect x="${(i * w + w * 0.15).toFixed(1)}" y="${(v >= 0 ? 20 - h : 20).toFixed(1)}" width="${(w * 0.7).toFixed(1)}" height="${Math.max(1, h).toFixed(1)}" fill="${v >= 0 ? "var(--up)" : "var(--down)"}"/>`; }).join("")}<line x1="0" x2="220" y1="20" y2="20" stroke="var(--line)"/></svg></div>`; })() : ""}${(() => { const v = vSaham(r); return `<div class="d-verdict">Kesimpulan ${vBadge(v, true)}<div class="d-why">${esc(v.alasan.join("; "))}.</div></div>`; })()}${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}<div style="margin-top:6px">${badges(r)}</div></div>`,
+          <svg viewBox="0 0 220 40" width="220" height="40">${S.map((v, i) => { const h = Math.abs(v) / mx * 18; return `<rect x="${(i * w + w * 0.15).toFixed(1)}" y="${(v >= 0 ? 20 - h : 20).toFixed(1)}" width="${(w * 0.7).toFixed(1)}" height="${Math.max(1, h).toFixed(1)}" fill="${v >= 0 ? "var(--up)" : "var(--down)"}"/>`; }).join("")}<line x1="0" x2="220" y1="20" y2="20" stroke="var(--line)"/></svg></div>`; })() : ""}</div>` : "",
+    ring: r.t !== "IHSG" && r.t !== "XAUIDR" ? ringkasKeputusan(r) : "",
+    ringBar: r.t !== "IHSG" && r.t !== "XAUIDR" ? ringkasBar(r) : "",
+    peer: r.t !== "IHSG" && r.t !== "XAUIDR" ? peerTable(r) : "",
+    kond: `<div class="d-sec">${(() => { const v = vSaham(r); return `<div class="d-verdict">Kesimpulan ${vBadge(v, true)}<div class="d-why">${esc(v.alasan.join("; "))}.</div></div>`; })()}${r.kd ? `<span class="kd ${r.kd.c}">${esc(r.kd.l)}</span><div class="d-why">${esc(r.kd.why)}.</div>` : ""}<div style="margin-top:6px">${badges(r)}</div></div>`,
     struktur: msBlock(r),
     chart: r.smc ? `<div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
       <div class="frvp-ctl" id="frvp-ctl"></div>
       <div class="draw-ctl" id="draw-ctl"></div>
       <div id="smc-box"></div>
       <div class="draw-sel" id="draw-sel"></div>
-      <div class="chips smc-toggles" id="smc-toggles"></div>
+      <div class="lay-wrap"><button type="button" class="icon-btn dw-small" id="lay-btn" aria-haspopup="true">☰ Lapisan chart ▾</button><div class="chips smc-toggles lay-pop" id="smc-toggles" hidden></div></div>
       <ul class="smc-sum" id="smc-sum"></ul>
       <p class="muted" style="font-size:0.78rem;margin:6px 0 0">SMC di sini versi sederhana yang dihitung otomatis, jadi bisa berbeda dari indikator SMC di TradingView atau Stockbit. Garis putus-putus = CHoCH, garis penuh = BOS. Lingkaran kuning di bawah = purnama, lingkaran gelap = bulan baru (ditaruh di hari bursa terdekat).</p>
     </div>` : `<div class="d-sec"><h3>Chart 30 hari</h3>${bigChart(r)}
@@ -6223,7 +6307,7 @@ function detailParts(r, r0, w) {
     tf: `<div class="d-sec"><h3>Ringkasan per timeframe</h3><div class="tf-grid">${tfNames.map(([k, n]) => `<div class="tf-cell"><small>${n}</small>${tf[k] ? `<span class="v ${vClass(tf[k].summary)}">${esc(tf[k].summary)}</span><small>${esc(tf[k].ma_detail)}</small>` : '<span class="muted">-</span>'}</div>`).join("")}</div></div>`,
     lain: `<div class="d-sec"><h3>Data lain</h3><div class="muted" style="font-size:0.86rem">RSI ${fmtDec(r.rsi, 1)}. Volume ${fmtDec(r.vr, 2)}× rata-rata. Transaksi ${fmtValue(r.val)}/hari. Beta ${r.beta == null ? "-" : fmtDec(r.beta, 2)}. ${r.cst && r.cst.total ? `Masuk Top 10 ${r.cst.count} dari ${r.cst.total} hari terakhir.` : ""}</div></div>`,
     star: `<span class="wl-wrap"><button class="icon-btn" id="d-star" type="button" aria-haspopup="true">${wlOf(r.t).length ? `★ Watchlist (${wlOf(r.t).length})` : "☆ Tambah ke watchlist"}</button><div class="wl-menu" id="wl-menu" hidden></div></span>`,
-    cmpb: `<button class="icon-btn" id="d-cmp" type="button">${cmp.includes(r.t) ? "✓ Di perbandingan" : "+ Bandingkan"}</button>${cmp.includes(r.t) && cmp.length >= 2 ? `<button class="icon-btn" id="d-cmp-open" type="button">Buka perbandingan (${cmp.length})</button>` : ""}`,
+    cmpb: `${peersOf(r).length ? `<button class="icon-btn" id="d-peer" type="button" title="Bandingkan dengan ${esc(peersOf(r).join(", "))}">⚖ Bandingkan dengan pesaing</button>` : ""}<button class="icon-btn" id="d-cmp" type="button">${cmp.includes(r.t) ? "✓ Di perbandingan" : "+ Bandingkan"}</button>${cmp.includes(r.t) && cmp.length >= 2 ? `<button class="icon-btn" id="d-cmp-open" type="button">Buka perbandingan (${cmp.length})</button>` : ""}`,
     sim: '<div class="d-sec" id="sim-sec"></div>',
     foot: '<p class="d-foot">Semua angka dihitung otomatis dari data Yahoo Finance dan bisa tertunda. Cocokkan dengan chart di aplikasi trading-mu sebelum mengambil keputusan.</p>',
   };
@@ -6251,19 +6335,23 @@ function openDetail(t, mode, opt = {}) {
         ${r.kd ? `<span class="kd ${r.kd.c}" title="${esc(r.kd.why)}">${esc(r.kd.l)}</span>` : ""}
         ${r.top ? `<span class="top-badge">Top 10 #${r.top}</span>` : ""}
         <span class="fh-right">${P.star}${P.cmpb}${navHtml(t)}</span>
+        ${P.ringBar}
       </div></div>
       <div class="full-grid full-grid2">
+        ${P.ring ? `<section class="card full-span">${P.ring}</section>` : ""}
         <section class="card full-span">${P.chart}</section>
         <div class="full-col">
-          <section class="card"><div class="muted" style="font-size:0.82rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.</div>${P.kond}${P.struktur}</section>
-          <section class="card">${P.checklist}</section>
+          <section class="card"><h3 class="d-grp">Rencana</h3>${P.plan}</section>
+          <section class="card"><h3 class="d-grp">Multi-timeframe</h3>${P.struktur}${P.tf}</section>
         </div>
         <div class="full-col">
-          <section class="card">${P.plan}</section>
-          <section class="card">${P.skor}${P.tf}${P.lain}${P.foot}</section>
+          <section class="card"><h3 class="d-grp">Teknikal</h3><div class="muted" style="font-size:0.82rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.</div>${P.kond}${P.skor}${P.checklist}</section>
+          ${P.fund ? `<section class="card"><h3 class="d-grp">Fundamental &amp; arus dana</h3>${P.fund}</section>` : ""}
         </div>
+        ${P.peer ? `<section class="card full-span"><h3 class="d-grp">Dibanding pesaing</h3>${P.peer}</section>` : ""}
         <section class="card full-span">${P.sim}</section>
         <section class="card full-span">${P.hist}</section>
+        <section class="card full-span">${P.lain}${P.foot}</section>
       </div>`;
     $("full").classList.add("open"); document.body.classList.add("noscroll");
     if (!opt.fromPop) {
@@ -6280,7 +6368,7 @@ function openDetail(t, mode, opt = {}) {
       </div>
       <div class="d-price">${P.price} ${r.t !== "IHSG" && r.t !== "XAUIDR" ? vBadge(vSaham(r), true) : ""}</div>
       <div class="muted" style="font-size:0.8rem">${P.meta}</div>
-      ${P.kond}${P.struktur}${P.chart}${P.plan}${P.checklist}${P.sim}${P.hist}${P.skor}${P.tf}${P.lain}
+      ${P.ring}${P.kond}${P.struktur}${P.chart}${P.plan}${P.fund}${P.peer}${P.checklist}${P.sim}${P.hist}${P.skor}${P.tf}${P.lain}
       <div class="d-actions">${P.star}${P.cmpb}</div>${P.foot}`;
     $("drawer").classList.add("open"); $("scrim").classList.add("open");
     if (!opt.keepFocus) $("drawer").focus();
@@ -6298,6 +6386,11 @@ function openDetail(t, mode, opt = {}) {
   $("d-star").addEventListener("click", e => { e.stopPropagation(); const m = $("wl-menu"); m.hidden = !m.hidden; if (!m.hidden) wlMenu(); });
   $("wl-menu").addEventListener("click", e => e.stopPropagation());
   document.addEventListener("click", () => { const m = $("wl-menu"); if (m) m.hidden = true; }, { once: true });
+  const dp = $("d-peer"); if (dp) dp.addEventListener("click", () => {
+    const L = [t, ...peersOf(DATA.find(x => x.t === t))].slice(0, CMP_MAX);
+    if (cmp.length && cmp.join() !== L.join() && !confirm(`Ganti daftar perbandingan (${cmp.join(", ")}) dengan ${L.join(", ")}?`)) return;
+    cmp = L; saveCmp(); openCompare();
+  });
   $("d-cmp").addEventListener("click", () => { if (toggleCmp(t) !== false) openDetail(t, mode, { keepNav: true, fromPop: true, keepFocus: true }); });
   const co = $("d-cmp-open"); if (co) co.addEventListener("click", () => openCompare());
   const pv = $("d-prev"), nx = $("d-next");
@@ -6352,7 +6445,7 @@ function openIhsg() {
     <div class="full-grid full-grid2">
       ${m.smc ? `<section class="card full-span"><div class="d-sec"><div class="chart-head"><h3 id="smc-title">Chart harian dengan Smart Money Concepts</h3><div id="tf-bar"></div></div>
         <div class="frvp-ctl" id="frvp-ctl"></div><div class="draw-ctl" id="draw-ctl"></div><div id="smc-box"></div><div class="draw-sel" id="draw-sel"></div>
-        <div class="chips smc-toggles" id="smc-toggles"></div><ul class="smc-sum" id="smc-sum"></ul></div></section>` : ""}
+        <div class="lay-wrap"><button type="button" class="icon-btn dw-small" id="lay-btn" aria-haspopup="true">☰ Lapisan chart ▾</button><div class="chips smc-toggles lay-pop" id="smc-toggles" hidden></div></div><ul class="smc-sum" id="smc-sum"></ul></div></section>` : ""}
       <div class="full-col">
         <section class="card"><div class="muted" style="font-size:0.82rem">Ringkasan teknikal harian: ${esc(m.d || "-")}${m.rsi ? `, RSI ${fmtDec(m.rsi, 1)}` : ""}.</div>${msBlock({ ms: m.ms })}</section>
         <section class="card"><div class="d-sec"><h3>Posisi terhadap moving average</h3><ul class="checklist">${pos(m.ma20, "MA20")}${pos(m.ma50, "MA50")}${pos(m.ma200, "MA200")}</ul></div></section>
@@ -6380,7 +6473,7 @@ $("watch-btn").addEventListener("click", () => {
 W.forEach(id => $(id).addEventListener("input", () => { $(id + "-val").textContent = $(id).value; activePreset = null; markPreset(); page = 0; save(); render(); }));
 $("min-score").addEventListener("input", function () { $("min-score-val").textContent = this.value; page = 0; save(); render(); });
 CHECKS.forEach(id => $(id).addEventListener("change", () => { page = 0; save(); render(); }));
-FIELDS.forEach(id => $(id).addEventListener(id === "kd-filter" || id === "sector-filter" ? "change" : "input", () => { page = 0; save(); render(); }));
+FIELDS.forEach(id => $(id).addEventListener(id === "kd-filter" || id === "sector-filter" || id === "ind-filter" ? "change" : "input", () => { page = 0; save(); render(); }));
 $("prev-page").addEventListener("click", () => { page--; save(); render(); });
 $("next-page").addEventListener("click", () => { page++; save(); render(); });
 document.querySelectorAll("thead th[data-key]").forEach(th => th.addEventListener("click", () => {
@@ -6531,6 +6624,17 @@ if (location.protocol === "file:") $("sy-btn").hidden = true;
 function fmtAsing(v) { if (v == null) return "-"; const a = Math.abs(v), t = a >= 1e12 ? fmtDec(a / 1e12, 2) + " T" : a >= 1e9 ? fmtDec(a / 1e9, 1) + " M" : fmtDec(a / 1e6, 0) + " jt"; return (v >= 0 ? "+" : "−") + t; }
 /* ---------- FUNDAMENTAL (Tahap 1) ---------- */
 const FD_SK = ["Laba positif 3 tahun berturut-turut", "Laba tahun terakhir lebih tinggi dari 2 tahun sebelumnya", "ROE di atas 10%", "PER di bawah median sektornya", "Yield dividen ≥ 3%"];
+function fdUang(v, fc) { const a = Math.abs(v), t = a >= 1e12 ? fmtDec(a / 1e12, 2) + " T" : a >= 1e9 ? fmtDec(a / 1e9, 1) + " M" : a >= 1e6 ? fmtDec(a / 1e6, 1) + " jt" : fmtNum(Math.round(a)); return (v < 0 ? "−" : "") + (fc === "USD" ? "US$ " : "Rp ") + t; }
+function fdBukti(r) {                          // angka di balik setiap syarat skor fundamental
+  const f = r.fd, n = f.ni.length, th = f.th, sec = r.sector && r.sector !== "-" ? r.sector : "sektornya";
+  const lab3 = n >= 3 ? th.slice(-3).map((y, i) => `${y} ${fdUang(f.ni[n - 3 + i], f.fc)}`).join(" · ") : `data laba baru ${n} tahun`;
+  const tumbuh = n >= 3 ? `${th[n - 1]} ${fdUang(f.ni[n - 1], f.fc)} vs ${th[n - 3]} ${fdUang(f.ni[n - 3], f.fc)}${f.ni[n - 3] > 0 ? ` (${f.ni[n - 1] >= f.ni[n - 3] ? "+" : ""}${fmtDec((f.ni[n - 1] / f.ni[n - 3] - 1) * 100, 0)}%)` : ""}` : `data laba baru ${n} tahun`;
+  const roe = f.roe != null ? `ROE ${fmtDec(f.roe, 1)}% (laba ÷ ekuitas)` : "ROE tidak tersedia";
+  const per = f.rugi ? "laba per saham negatif, PER tidak bermakna" : f.per == null ? "PER tidak tersedia" : f.mper == null ? `PER ${fmtDec(f.per, 1)}×; median sektor belum bisa dihitung (kurang dari 3 saham berdata)` : `PER ${fmtDec(f.per, 1)}× vs median ${esc(sec)} ${fmtDec(f.mper, 1)}×`;
+  const dps = f.dy && r.p ? f.dy * r.p / 100 : 0;
+  const yld = dps > 0 ? `dividen 12 bulan Rp ${fmtDec(dps, 1)}/saham ÷ harga ${fmtNum(r.p)} = ${fmtDec(f.dy, 1)}%` : "tidak ada dividen dalam 12 bulan terakhir (yield 0%)";
+  return [lab3, tumbuh, roe, per, yld];
+}
 function fdCells(r) {
   const f = r.fd, d = (v, k = 1, suf = "") => v == null ? '<span class="muted">-</span>' : fmtDec(v, k) + suf;
   if (!f) return '<td class="num muted">-</td>'.repeat(6);
@@ -6539,7 +6643,7 @@ function fdCells(r) {
   return `<td class="num ${cheap(f.per, f.mper)}" title="${f.mper != null ? "Median sektor " + fmtDec(f.mper, 1) + "×" : ""}">${per}</td>
     <td class="num ${cheap(f.pbv, f.mpbv)}" title="${f.mpbv != null ? "Median sektor " + fmtDec(f.mpbv, 2) + "×" : ""}">${d(f.pbv, 2, "×")}</td>
     <td class="num">${d(f.roe, 1, "%")}</td><td class="num">${d(f.dy, 1, "%")}</td><td class="num">${f.mcap ? fmtValue(f.mcap) : '<span class="muted">-</span>'}</td>
-    <td class="num"><span class="fsk fsk-${f.skor}" title="${FD_SK.map((t, i) => (f.sk[i] ? "✓ " : "✗ ") + t).join("\n")}">${f.skor}/5</span></td>`;
+    <td class="num"><span class="fsk fsk-${f.skor}" title="${(() => { const B = fdBukti(r); return FD_SK.map((t, i) => (f.sk[i] ? "✓ " : "✗ ") + t + ": " + B[i]).join("\n"); })()}">${f.skor}/5</span></td>`;
 }
 function fdDetail(r) {
   const f = r.fd; if (!f) return "";
@@ -6554,11 +6658,102 @@ function fdDetail(r) {
       <div><small>Market cap</small><b>${f.mcap ? fmtValue(f.mcap) : "-"}</b></div>
       <div><small>Harga wajar (Graham)</small><b>${f.gr ? fmtNum(f.gr) : "-"}</b>${f.mg != null ? ` <span class="${f.mg >= 0 ? "pos" : "neg"}">${f.mg >= 0 ? "+" : ""}${fmtDec(f.mg, 0)}% dari harga</span>` : ""}</div>
     </div>
-    <div class="d-fund-row"><div><div class="hr-lab">Skor fundamental <b class="fsk fsk-${f.skor}">${f.skor}/5</b></div><ul class="fsk-list">${FD_SK.map((t, i) => `<li class="${f.sk[i] ? "pos" : "muted"}">${f.sk[i] ? "✓" : "✗"} ${t}</li>`).join("")}</ul></div>
+    <div class="d-fund-row"><div><div class="hr-lab">Skor fundamental <b class="fsk fsk-${f.skor}">${f.skor}/5</b></div><ul class="fsk-list">${(() => { const B = fdBukti(r); return FD_SK.map((t, i) => `<li class="${f.sk[i] ? "pos" : "muted"}">${f.sk[i] ? "✓" : "✗"} ${t}<div class="fsk-b">${B[i]}</div></li>`).join(""); })()}</ul>
+        <div class="fsk-src">Sumber: Yahoo Finance (laporan laba tahunan, ringkasan rasio, riwayat dividen), diperbarui ${esc(f.tgl || "-")}; harga dari update terakhir aplikasi${f.fc === "USD" ? "; laba dalam US$ sesuai laporan, PER/PBV memakai kurs USD/IDR" : ""}. Median sektor dihitung dari semua saham BEI di sektor yang sama yang datanya tersedia.</div></div>
       <div><div class="hr-lab">Laba bersih ${f.th.length ? esc(f.th[0]) + "–" + esc(f.th[f.th.length - 1]) : ""}</div><div class="fd-bars">${f.ni.map((v, i) => `<div title="${esc(f.th[i])}: ${fmtValue(Math.abs(v))}${v < 0 ? " (rugi)" : ""}${f.fc === "USD" ? " USD" : ""}"><i class="${v >= 0 ? "p" : "n"}" style="height:${Math.max(3, Math.abs(v) / mx * 44)}px"></i><small>${esc(String(f.th[i]).slice(2))}</small></div>`).join("")}</div></div>
       <div><div class="hr-lab">Dividen per saham ${f.dvth[0]}–${f.dvth[f.dvth.length - 1]}</div><div class="fd-bars">${f.dv.map((v, i) => `<div title="${f.dvth[i]}: Rp ${fmtDec(v, 1)}"><i class="p" style="height:${v > 0 ? Math.max(3, v / dmx * 44) : 1}px;${v > 0 ? "" : "opacity:.3"}"></i><small>${String(f.dvth[i]).slice(2)}</small></div>`).join("")}</div></div></div>
     <p class="muted" style="font-size:0.72rem;margin:6px 0 0">Graham Number = √(22,5 × laba per saham × nilai buku per saham): perkiraan kasar harga wajar untuk saham yang stabil, kurang cocok untuk bank, saham bertumbuh, atau laba yang naik-turun. Data Yahoo bisa terlambat atau tidak lengkap; cek laporan keuangan resmi sebelum mengambil keputusan.</p></div>`;
 }
+
+/* ---------- PAKET C: ringkasan keputusan ---------- */
+function pilarOf(r) {
+  const v = vSaham(r), P = [{ k: "Teknikal", s: v.arah === "Bullish" ? 1 : v.arah === "Bearish" ? -1 : 0, t: `${v.arah} · ${v.waktu}` }];
+  if (r.fd) { const f = r.fd; P.push({ k: "Fundamental", s: f.rugi ? -1 : f.skor >= 3 ? 1 : f.skor <= 1 ? -1 : 0, t: `skor ${f.skor}/5${f.rugi ? " · rugi" : ""}` }); }
+  if (r.fa) { const a = r.fa; P.push({ k: "Asing", s: a.n20 > 0 && a.n5 > 0 ? 1 : a.n20 < 0 && a.n5 < 0 ? -1 : 0, t: `20 hari ${fmtAsing(a.n20)}` }); }
+  if (V_IHSG) P.push({ k: "Pasar", s: V_IHSG.arah === "Bullish" ? 1 : V_IHSG.arah === "Bearish" ? -1 : 0, t: `IHSG ${V_IHSG.arah}` });
+  return P;
+}
+function keyakinan(P) {
+  const tech = P[0].s, o = P.slice(1), agree = o.filter(p => p.s === tech && tech !== 0).length, against = o.filter(p => p.s === -tech && tech !== 0).length;
+  if (tech === 0) return ["Rendah", "arah teknikal belum jelas"];
+  if (against === 0 && agree >= Math.max(1, o.length - 1)) return ["Tinggi", `${agree + 1} dari ${P.length} pilar searah`];
+  if (against >= Math.max(2, agree + 1)) return ["Rendah", `${against} dari ${o.length} pilar lain berlawanan`];
+  return ["Sedang", `${agree + 1} dari ${P.length} pilar searah, ${against} berlawanan`];
+}
+function alasanOf(r) {
+  const pro = [], con = [], ms = r.ms || {}, w = (ms.w || {}).tr, d = (ms.d || {}).tr, kd = r.kd ? r.kd.c : "", f = r.fd, a = r.fa, p = r.plan;
+  if (w === 1) pro.push([3, "Struktur mingguan naik"]); else if (w === -1) con.push([3, "Struktur mingguan turun"]);
+  if (d === 1) pro.push([2, "Struktur harian naik"]); else if (d === -1) con.push([2, "Struktur harian turun"]);
+  if (kd === "zone") pro.push([3, "Harga sudah di zona entry"]);
+  if (kd === "ok") pro.push([3, "Setup lengkap (kandidat kuat)"]);
+  if (kd === "hot") con.push([3, "Harga jauh di atas zona entry, rawan koreksi"]);
+  if (kd === "bad") con.push([3, r.kd.why || "Kondisi teknikal lemah"]);
+  if (kd === "notx") con.push([4, "Tidak ada transaksi (kemungkinan disuspensi)"]);
+  if (r.trendOk) pro.push([2, "Susunan MA naik (tren rapi)"]);
+  if (r.rsi > 70) con.push([2, `RSI ${fmtDec(r.rsi, 0)}: jenuh beli`]);
+  if (r.v10 >= 1.5 && r.chg > 0) pro.push([2, `Volume ${fmtDec(r.v10, 1)}× rata-rata dengan harga naik`]);
+  if (r.v10 >= 1.5 && r.chg < 0) con.push([2, `Volume ${fmtDec(r.v10, 1)}× rata-rata saat harga turun`]);
+  if (f) {
+    if (f.rugi) con.push([3, "Perusahaan sedang merugi"]);
+    else if (f.skor >= 4) pro.push([2, `Fundamental kuat (skor ${f.skor}/5)`]);
+    else if (f.skor <= 1) con.push([2, `Fundamental lemah (skor ${f.skor}/5)`]);
+    if (f.per != null && f.mper != null && f.per < f.mper) pro.push([1, `PER ${fmtDec(f.per, 1)}× di bawah median sektor ${fmtDec(f.mper, 1)}×`]);
+    if (f.per != null && f.mper != null && f.per > f.mper * 1.5) con.push([1, `PER ${fmtDec(f.per, 1)}×, jauh di atas median sektor ${fmtDec(f.mper, 1)}×`]);
+    if (f.d5) pro.push([1, "Dividen rutin 5 tahun"]);
+  }
+  if (a) {
+    if (a.n20 > 0 && a.n5 > 0) pro.push([2, `Asing akumulasi (5 hari ${fmtAsing(a.n5)}, 20 hari ${fmtAsing(a.n20)})`]);
+    if (a.n20 < 0 && a.n5 < 0) con.push([2, `Asing distribusi (5 hari ${fmtAsing(a.n5)}, 20 hari ${fmtAsing(a.n20)})`]);
+  }
+  if (V_IHSG && V_IHSG.arah === "Bearish") con.push([2, "IHSG Bearish: melawan arus pasar"]);
+  if (V_IHSG && V_IHSG.arah === "Bullish") pro.push([1, "IHSG mendukung (Bullish)"]);
+  if (p && p.e2 > p.sl) { const rr = (p.tp - p.e2) / (p.e2 - p.sl); if (rr >= 2) pro.push([1, `Rasio untung:rugi ±1:${fmtDec(rr, 1)}`]); else if (rr < 1.2) con.push([1, `Rasio untung:rugi hanya ±1:${fmtDec(Math.max(rr, 0), 1)}`]); }
+  const top = (L, n) => L.sort((x, y) => y[0] - x[0]).slice(0, n).map(x => x[1]);
+  return [top(pro, 3), top(con, 2)];
+}
+function tungguOf(r) {
+  const p = r.plan, kd = r.kd ? r.kd.c : "", z = p ? `${fmtNum(p.e1)}–${fmtNum(p.e2)}` : "";
+  const t = { zone: `Harga sudah di zona entry ${z}. Cari konfirmasi candle sebelum masuk, atau masuk bertahap.`,
+    tz: `Tunggu harga turun ke zona entry ${z} (sekarang ${fmtNum(r.p)}).`, ok: `Setup lengkap; entry bertahap di zona ${z}.`,
+    hot: `Harga sudah lari dari zona entry; tunggu pullback ke ${z}.`, bad: "Hindari dulu sampai struktur membaik.", notx: "Tunggu sampai saham kembali diperdagangkan." }[kd]
+    || (r.kd ? `${r.kd.l}: ${r.kd.why}.` : "Belum ada setup yang jelas.");
+  const b = p && p.sl ? `Batal kalau harga tutup di bawah ${fmtNum(p.sl)} (stop loss).` : "Batal kalau struktur mingguan berbalik turun.";
+  return [t, b];
+}
+const KYK = { Tinggi: "pos", Sedang: "mk-mix", Rendah: "neg" };
+function ringkasKeputusan(r) {
+  const P = pilarOf(r), [k, kw] = keyakinan(P), [pro, con] = alasanOf(r), [tg, bt] = tungguOf(r), p = r.plan;
+  return `<div class="rk"><div class="rk-top"><div><div class="hr-lab">Ringkasan keputusan</div><div class="rk-v">${vBadge(vSaham(r), true)} <span class="rk-k">Keyakinan <b class="${KYK[k]}">${k}</b> <span class="muted">(${esc(kw)})</span></span></div></div>
+      <div class="rk-pil">${P.map(x => `<span class="rk-p ${x.s > 0 ? "pos" : x.s < 0 ? "neg" : "muted"}" title="${esc(x.t)}">${x.s > 0 ? "▲" : x.s < 0 ? "▼" : "–"} ${x.k}<small>${esc(x.t)}</small></span>`).join("")}</div></div>
+    <div class="rk-grid">
+      <div><div class="hr-lab pos">Alasan pendukung</div><ul>${pro.map(x => `<li>✓ ${esc(x)}</li>`).join("") || '<li class="muted">-</li>'}</ul></div>
+      <div><div class="hr-lab neg">Risiko terbesar</div><ul>${con.map(x => `<li>⚠ ${esc(x)}</li>`).join("") || '<li class="muted">Tidak ada risiko menonjol dari data yang tersedia</li>'}</ul></div>
+      <div><div class="hr-lab">Rencana</div>${p ? `<div class="rk-plan">Entry <b>${fmtNum(p.e1)}–${fmtNum(p.e2)}</b> · SL <b class="neg">${fmtNum(p.sl)}</b> · TP <b class="pos">${fmtNum(p.tp)}</b></div>` : '<div class="muted">Belum ada rencana (setup belum layak).</div>'}
+        <div class="rk-t"><b>Yang ditunggu:</b> ${esc(tg)}</div><div class="rk-t"><b>Batal kalau:</b> ${esc(bt.replace(/^Batal kalau /, ""))}</div></div>
+    </div>
+    <p class="muted" style="font-size:0.72rem;margin:8px 0 0">Keyakinan dari kesesuaian 4 pilar (teknikal, fundamental, asing, pasar). Ringkasan otomatis dari data aplikasi, bukan kepastian dan bukan saran beli/jual.</p></div>`;
+}
+function ringkasBar(r) {
+  const [k] = keyakinan(pilarOf(r)), p = r.plan;
+  return `<span class="fh-ring">Keyakinan <b class="${KYK[k]}">${k}</b>${p ? ` · Entry ${fmtNum(p.e1)}–${fmtNum(p.e2)} · SL <span class="neg">${fmtNum(p.sl)}</span> · TP <span class="pos">${fmtNum(p.tp)}</span>` : ""}</span>`;
+}
+function peerTable(r) {
+  const L = peersOf(r); if (!L.length) return "";
+  const rows = [r, ...L.map(t => DATA.find(x => x.t === t)).filter(Boolean)], pc = v => v == null ? "-" : `<span class="${v >= 0 ? "pos" : "neg"}">${v >= 0 ? "+" : ""}${fmtDec(v, 1)}%</span>`;
+  return `<div class="table-wrap" style="max-height:none"><table class="j-tbl peer-tbl"><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">1 hari</th><th class="num">1 bulan</th><th>Kesimpulan</th><th class="num">PER</th><th class="num">PBV</th><th class="num">ROE</th><th class="num">Skor F</th><th class="num">Asing 20H</th></tr></thead><tbody>
+    ${rows.map((x, i) => `<tr class="${i === 0 ? "peer-me" : ""}"><td><button type="button" class="link-btn" data-peer="${x.t}"><b>${x.t}</b></button><div class="muted" style="font-size:0.72rem">${esc((x.nm || "").slice(0, 26))}</div></td>
+      <td class="num">${fmtNum(x.p)}</td><td class="num">${pc(x.chg)}</td><td class="num">${pc(perf(x, 21))}</td><td>${vBadge(vSaham(x))}</td>
+      <td class="num">${x.fd ? (x.fd.rugi ? '<span class="neg">rugi</span>' : x.fd.per != null ? fmtDec(x.fd.per, 1) + "×" : "-") : "-"}</td><td class="num">${x.fd && x.fd.pbv != null ? fmtDec(x.fd.pbv, 2) + "×" : "-"}</td>
+      <td class="num">${x.fd && x.fd.roe != null ? fmtDec(x.fd.roe, 1) + "%" : "-"}</td><td class="num">${x.fd ? `<span class="fsk fsk-${x.fd.skor}">${x.fd.skor}/5</span>` : "-"}</td>
+      <td class="num">${x.fa ? `<span class="${x.fa.n20 >= 0 ? "pos" : "neg"}">${fmtAsing(x.fa.n20)}</span>` : "-"}</td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:0.72rem;margin:6px 0 0">Pesaing = ${r.fd && r.fd.ind ? "industri yang sama" : "sektor yang sama"}, diurutkan dari transaksi terbesar. Klik kode untuk membuka detailnya; tombol ⚖ di atas membuka perbandingan chart.</p>`;
+}
+document.addEventListener("click", e => {
+  const pb = e.target.closest("[data-peer]"); if (pb) { openDetail(pb.dataset.peer, viewMode || "full"); return; }
+  const lb = e.target.closest("#lay-btn"); const pop = $("smc-toggles");
+  if (lb && pop) { e.stopPropagation(); pop.hidden = !pop.hidden; return; }
+  if (pop && !pop.hidden && !e.target.closest("#smc-toggles")) pop.hidden = true;
+});
 
 /* ---------- PAKET B ---------- */
 (function () {
@@ -6650,7 +6845,8 @@ function stSync() {
   sel.value = wOn ? "w" : sig ? "s:" + sig : activePreset ? "p:" + activePreset : "m";
   if (sel.selectedIndex < 0) sel.value = "m";
 }
-const COL_KEY = "idxs:cols", COL_DEF = ["chart", "p", "chg", "vdo", "rencana", "val", "fa5"];
+const COL_KEY = "idxs:cols", COL_DEF = ["chart", "p", "chg", "vdo", "rencana", "val", "fa5", "fsk"];
+(() => { if (ls.get("idxs:cols_v", 1) < 2) { const v = ls.get(COL_KEY, null); if (Array.isArray(v) && !v.includes("fsk")) ls.set(COL_KEY, v.concat("fsk")); ls.set("idxs:cols_v", 2); } })();   // Skor F tampil sekali untuk pilihan kolom lama
 function colList() {
   return [...document.querySelectorAll("#tbl thead th")].map((th, i) => {
     const t = th.textContent.trim(), id = th.dataset.key || (/chart/i.test(t) ? "chart" : /rencana/i.test(t) ? "rencana" : /sinyal/i.test(t) ? "sinyal" : i === 0 ? "star" : "c" + i);
@@ -7305,6 +7501,8 @@ $("sig-filter").addEventListener("change", () => { ls.set("idxs:sig", $("sig-fil
 renderPref();
 $("f-pin").addEventListener("change", () => { ls.set(PIN_KEY, $("f-pin").checked); page = 0; render(); });
 V_IHSG = vIhsg();
+(() => { const c = {}; DATA.forEach(r => { const i = r.fd && r.fd.ind; if (i) c[i] = (c[i] || 0) + 1; });
+  $("ind-filter").insertAdjacentHTML("beforeend", Object.keys(c).sort().map(i => `<option value="${esc(i)}">${esc(i)} (${c[i]})</option>`).join("")); })();
 renderMarket(); load(); render();
 scSum(); stBuild(); colApply();
 (() => { const n = DATA.filter(r => r.fd).length, el = $("fd-cov"); if (el) el.innerHTML = `<small class="muted">Data fundamental tersedia untuk <b>${n}</b> dari ${DATA.length} saham${n < DATA.length * 0.9 ? " (dilengkapi bertahap setiap update)" : ""}. Saham tanpa data tidak lolos filter fundamental.</small>`; })();
