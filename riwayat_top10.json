@@ -1,16 +1,4 @@
 {
- "2026-10-21": [
-  "AALI",
-  "DMAS",
-  "SGER",
-  "DKHH",
-  "RSCH",
-  "PCAR",
-  "PKPK",
-  "BDMN",
-  "ULTJ",
-  "MPXL"
- ],
  "2026-10-22": [
   "AALI",
   "DMAS",
@@ -103,6 +91,11 @@
  "2026-11-03": [
   "PRDA",
   "IDEA",
+  "AALI"
+ ],
+ "2026-11-04": [
+  "TMPO",
+  "PRDA",
   "AALI"
  ]
 }
