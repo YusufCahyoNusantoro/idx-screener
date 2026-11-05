@@ -105,6 +105,9 @@ AGENDA_DEFAULT = [
     ["2027-02-09", "msci", "MSCI: pengumuman review Februari 2027", "", []],
     ["2027-02-26", "msci", "MSCI: rebalancing review Februari (penutupan)", "Efektif 1 Maret 2027.", []],
     ["2027-03-31", "lapkeu", "Batas laporan keuangan tahunan 2026", "Akhir bulan ketiga setelah 31 Desember (POJK 14/2022).", []],
+    ["2026-10-15", "msci", "MSCI: konsultasi reklasifikasi Indonesia dimulai", "MSCI mengusulkan Indonesia diturunkan dari Emerging Market ke Standalone Market. Pembekuan (freeze) perubahan indeks untuk saham Indonesia tetap berlaku sampai ada pemberitahuan lanjutan.", []],
+    ["2027-04-30", "msci", "MSCI: batas masukan konsultasi reklasifikasi Indonesia", "Hari terakhir pelaku pasar menyampaikan masukan atas usulan Indonesia menjadi Standalone Market. MSCI bisa merilis pembaruan sementara selama masa konsultasi.", []],
+    ["2027-06-30", "msci", "MSCI: batas akhir keputusan status pasar Indonesia", "MSCI mengumumkan keputusan paling lambat hari ini (bisa lebih awal). MSCI menyatakan akan melanjutkan reklasifikasi ke Standalone Market kecuali ada bukti jelas perbaikan tata kelola dan fungsi pasar.", []],
     ["2027-05-10", "msci", "MSCI: pengumuman review Mei 2027", "", []],
     ["2027-05-27", "msci", "MSCI: rebalancing review Mei (penutupan)", "Efektif 28 Mei 2027.", []],
     ["2027-08-12", "msci", "MSCI: pengumuman review Agustus 2027", "", []],
@@ -144,6 +147,85 @@ AGENDA_DEFAULT = [
 ]
 
 
+CACHE_BLS = BASE / "cache_bls.json"          # jadwal rilis CPI & NFP AS dari BLS (diperbarui mingguan)
+BLS_ICS = "https://www.bls.gov/schedule/news_release/bls.ics"
+BULAN_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+
+
+def _parse_ics_bls(teks):
+    """Ambil rilis CPI & Employment Situation dari kalender ICS BLS -> list agenda (tanggal & jam WIB)."""
+    ny = ZoneInfo("America/New_York")
+    out, ev = [], {}
+    for raw in teks.replace("\r\n ", "").replace("\n ", "").splitlines():
+        line = raw.strip()
+        if line == "BEGIN:VEVENT":
+            ev = {}
+        elif line == "END:VEVENT":
+            sm = ev.get("SUMMARY", "")
+            jenis = "cpi" if "Consumer Price Index" in sm and "Real" not in sm else "nfp" if "Employment Situation" in sm else None
+            dt = ev.get("DTSTART")
+            if jenis and dt:
+                try:
+                    val, tz = dt
+                    if val.endswith("Z"):
+                        t = datetime.strptime(val, "%Y%m%dT%H%M%SZ").replace(tzinfo=ZoneInfo("UTC"))
+                    elif "T" in val:
+                        t = datetime.strptime(val[:15], "%Y%m%dT%H%M%S").replace(tzinfo=ZoneInfo(tz) if tz else ny)
+                    else:
+                        t = datetime.strptime(val[:8], "%Y%m%d").replace(hour=8, minute=30, tzinfo=ny)
+                    w = t.astimezone(WIB)
+                    bln = BULAN_ID[(w.month - 2) % 12]
+                    jam = f"{w:%H.%M} WIB"
+                    if jenis == "cpi":
+                        out.append({"tgl": w.strftime("%Y-%m-%d"), "jenis": "cpi", "judul": f"CPI AS (inflasi {bln})",
+                                    "ket": f"Dirilis pukul {jam}; dampaknya di BEI hari bursa berikutnya. (Jadwal otomatis dari BLS.)", "saham": []})
+                    else:
+                        out.append({"tgl": w.strftime("%Y-%m-%d"), "jenis": "nfp", "judul": f"NFP AS (data lapangan kerja {bln})",
+                                    "ket": f"Dirilis pukul {jam}; dampaknya di BEI hari bursa berikutnya. (Jadwal otomatis dari BLS.)", "saham": []})
+                except Exception:
+                    pass
+            ev = {}
+        elif ":" in line:
+            k, v = line.split(":", 1)
+            nama, tz = k.split(";")[0], None
+            if "TZID=" in k:
+                tz = k.split("TZID=")[1].split(";")[0]
+            ev[nama] = (v, tz) if nama == "DTSTART" else v
+    uniq = {(a["tgl"], a["jenis"]): a for a in out}
+    return sorted(uniq.values(), key=lambda a: a["tgl"])
+
+
+def jadwal_bls():
+    """Jadwal CPI & NFP AS dari BLS, di-cache 7 hari. Gagal -> pakai cache lama (kalau ada) atau None."""
+    import urllib.request
+    cache = {}
+    if CACHE_BLS.exists():
+        try:
+            cache = json.loads(CACHE_BLS.read_text(encoding="utf-8"))
+        except Exception:
+            cache = {}
+    try:
+        umur = (datetime.now(WIB).date() - datetime.strptime(cache.get("tgl", "2000-01-01"), "%Y-%m-%d").date()).days
+    except Exception:
+        umur = 999
+    if cache.get("agenda") and umur < 7:
+        return cache["agenda"]
+    try:
+        req = urllib.request.Request(BLS_ICS, headers={"User-Agent": "Mozilla/5.0 (DibalikSaham screener; contact: github.com/YusufCahyoNusantoro)",
+                                                        "Accept": "text/calendar,*/*"})
+        with urllib.request.urlopen(req, timeout=40) as f:
+            teks = f.read().decode("utf-8", "replace")
+        ag = _parse_ics_bls(teks)
+        if len(ag) >= 4:
+            CACHE_BLS.write_text(json.dumps({"tgl": datetime.now(WIB).strftime("%Y-%m-%d"), "agenda": ag}, ensure_ascii=False), encoding="utf-8")
+            print(f"  Jadwal BLS: {len(ag)} rilis CPI/NFP")
+            return ag
+        print("  ! Jadwal BLS: format tidak dikenali, memakai jadwal lama")
+    except Exception as e:
+        print(f"  ! Jadwal BLS tidak bisa diambil ({type(e).__name__}); memakai jadwal lama")
+    return cache.get("agenda")
+
+
 def muat_agenda():
     """Agenda bawaan + agenda dari kalender.json (kalau ada). Format tiap item kalender.json:
     {"tgl": "2026-11-05", "jenis": "lain", "judul": "...", "ket": "...", "saham": ["BBRI"]}"""
@@ -158,6 +240,30 @@ def muat_agenda():
                                    "saham": [str(x).upper() for x in it.get("saham", [])]})
         except Exception as e:
             print(f"  ! kalender.json tidak bisa dibaca: {e}")
+    try:                                         # inflasi BPS: hari kerja pertama tiap bulan (perkiraan), 12 bulan ke depan
+        ada = {a["tgl"][:7] for a in agenda if a["jenis"] == "inflasi"}
+        hari = datetime.now(WIB).date()
+        y, mo = hari.year, hari.month
+        for _ in range(13):
+            if f"{y}-{mo:02d}" not in ada:
+                d = datetime(y, mo, 1).date()
+                while d.weekday() >= 5 or (d.month == 1 and d.day == 1):
+                    d = d.fromordinal(d.toordinal() + 1)
+                if d >= hari:
+                    agenda.append({"tgl": d.strftime("%Y-%m-%d"), "jenis": "inflasi", "judul": f"Inflasi Indonesia (BPS, data {BULAN_ID[(mo - 2) % 12]})",
+                                   "ket": "Perkiraan: BPS biasanya merilis inflasi pada hari kerja pertama tiap bulan, sekitar pukul 11.00 WIB. Bisa bergeser karena hari libur.", "saham": []})
+            mo += 1
+            if mo > 12:
+                y, mo = y + 1, 1
+    except Exception as e:
+        print(f"  ! jadwal inflasi: {e}")
+    try:
+        bls = jadwal_bls()
+        if bls:                                  # jadwal BLS menggantikan CPI/NFP manual di rentang yang dicakup BLS
+            lo, hi = bls[0]["tgl"], bls[-1]["tgl"]
+            agenda = [a for a in agenda if not (a["jenis"] in ("cpi", "nfp") and lo <= a["tgl"] <= hi)] + bls
+    except Exception as e:
+        print(f"  ! jadwal BLS: {e}")
     return sorted(agenda, key=lambda a: a["tgl"])
 
 
@@ -3014,6 +3120,18 @@ TEMPLATE = r'''<!DOCTYPE html>
   .lay-wrap { position:relative; display:inline-block; margin-top:6px; }
   .lay-pop { position:absolute; left:0; top:calc(100% + 6px); z-index:35; width:min(560px, 90vw); background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.3); padding:10px; display:flex; flex-wrap:wrap; gap:6px; }
   @media (max-width:900px) { .rk-grid { grid-template-columns:1fr; } }
+  .ag-chips { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px; }
+  .ag-chip { border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:999px; padding:6px 12px; font-weight:700; font-size:0.84rem; cursor:pointer; }
+  .ag-chip b { margin-left:4px; font-size:0.74rem; padding:0 6px; border-radius:999px; background:var(--panel2); }
+  .ag-chip.on { background:var(--accent); border-color:var(--accent); color:#fff; } .ag-chip.on b { background:rgba(255,255,255,.2); }
+  .ag-warn { background:color-mix(in srgb, var(--orange) 14%, transparent); border:1px solid color-mix(in srgb, var(--orange) 45%, var(--line)); border-radius:10px; padding:8px 12px; font-size:0.84rem; margin-bottom:10px; }
+  .ag-why { background:var(--panel2); border-radius:10px; padding:10px 12px; font-size:0.86rem; line-height:1.55; margin-bottom:10px; }
+  .ag-list { list-style:none; padding:0; margin:0; display:grid; gap:2px; max-height:520px; overflow:auto; }
+  .ag-list li { display:grid; grid-template-columns:150px 1fr; gap:12px; padding:9px 8px; border-bottom:1px solid var(--line); cursor:pointer; border-radius:8px; }
+  .ag-list li:hover { background:var(--panel2); } .ag-list li.ag-today { background:color-mix(in srgb, var(--accent) 12%, transparent); }
+  .ag-d { display:grid; gap:2px; font-size:0.86rem; } .ag-d small { color:var(--accent); font-weight:700; }
+  .ag-b { font-size:0.88rem; } .ag-k { font-size:0.8rem; margin-top:3px; }
+  @media (max-width:760px) { .ag-list li { grid-template-columns:1fr; gap:4px; } }
   .hr-head { display:flex; align-items:baseline; gap:12px; margin:4px 0 12px; } .hr-head h2 { margin:0; font-size:1.6rem; }
   .hr-grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-bottom:14px; } .hr-grid3 > .card { margin:0; }
   .hr-lab { font-size:0.8rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink2); }
@@ -3359,6 +3477,12 @@ TEMPLATE = r'''<!DOCTYPE html>
   </div>
 
   <div class="view" id="v-kalender" hidden>
+  <section class="card" id="ag-card" aria-label="Agenda mendatang">
+    <div class="cal-head"><h2>Agenda mendatang</h2><span class="muted" style="font-size:0.8rem">klik jenis agenda, lalu klik salah satu jadwal untuk membukanya di kalender</span></div>
+    <div class="ag-chips" id="ag-chips"></div>
+    <div class="ag-info" id="ag-info"></div>
+    <ul class="ag-list" id="ag-list"></ul>
+  </section>
   <section class="card cal-card" id="kalender" aria-label="Kalender">
     <div class="cal-head">
       <h2>Kalender</h2>
@@ -4317,6 +4441,46 @@ const MOON_NAME = ["Bulan baru", "Kuartal awal", "Purnama", "Kuartal akhir"];
 const MOON_ICON = ["🌑", "🌓", "🌕", "🌗"];
 const JENIS = { msci: "MSCI", ftse: "FTSE", gdx: "GDX", lapkeu: "Lapkeu", lain: "Agenda", bi: "BI", fomc: "FOMC", cpi: "CPI AS", nfp: "NFP AS", inflasi: "Inflasi RI" };
 const MAKRO = new Set(["bi", "fomc", "cpi", "nfp", "inflasi"]);
+const AG_INFO = {
+  msci: "<b>MSCI</b> menyusun indeks yang dipakai dana global (ETF dan manajer investasi) sebagai acuan. Saat review diumumkan, saham yang <b>masuk</b> indeks biasanya diburu dan yang <b>keluar</b> dilepas; transaksi terbesar terjadi di <b>penutupan hari rebalancing</b>. Untuk Indonesia, sorotan utamanya adalah konsultasi penurunan status ke <b>Standalone Market</b>: kalau jadi, saham Indonesia keluar dari indeks Emerging Markets dan dana pasif bisa keluar dalam jumlah besar.",
+  ftse: "<b>FTSE Russell</b> adalah penyusun indeks global lain. Polanya mirip MSCI: file indikatif menunjukkan calon perubahan, file final memastikannya, dan transaksi besar terjadi di penutupan hari rebalancing.",
+  bi: "<b>Rapat Dewan Gubernur Bank Indonesia</b> menentukan <b>BI Rate</b>. Kenaikan bunga biasanya menekan saham bank, properti, dan konsumsi tapi bisa menahan pelemahan rupiah; penurunan bunga umumnya kebalikannya. Keputusan diumumkan sekitar pukul 14.00 WIB di hari kedua rapat.",
+  fomc: "<b>FOMC (The Fed)</b> menentukan suku bunga AS. Bunga AS yang tinggi/naik membuat dolar menguat dan dana asing cenderung keluar dari pasar berkembang seperti Indonesia; penurunan bunga umumnya mendukung. Diumumkan dini hari WIB, jadi dampaknya terlihat di sesi pagi BEI.",
+  cpi: "<b>CPI AS</b> adalah data inflasi Amerika. Inflasi lebih tinggi dari perkiraan memperbesar peluang The Fed menahan atau menaikkan bunga (negatif untuk saham dan rupiah); lebih rendah dari perkiraan umumnya positif.",
+  nfp: "<b>NFP AS</b> adalah data lapangan kerja Amerika. Data yang terlalu kuat bisa membuat The Fed lebih ketat; data yang lemah bisa memicu harapan penurunan bunga, tapi juga kekhawatiran resesi.",
+  inflasi: "<b>Inflasi Indonesia (BPS)</b> menjadi pertimbangan utama BI Rate. Inflasi yang naik di luar target memperbesar peluang BI menaikkan atau menahan bunga.",
+  gdx: "<b>GDX/GDXJ</b> adalah ETF saham tambang emas global. Saham emas BEI yang masuk/keluar ETF ini sering mengalami lonjakan transaksi di hari implementasi.",
+  lapkeu: "<b>Batas laporan keuangan</b> menurut aturan OJK. Menjelang batas ini banyak emiten merilis laporan; laba yang jauh di atas/bawah perkiraan bisa menggerakkan harga.",
+};
+let agJenis = "";
+function renderAgendaPanel() {
+  const box = $("ag-list"); if (!box) return;
+  const today = new Date(Date.now() + WIB_MS).toISOString().slice(0, 10);
+  const up = AGENDA.filter(a => a.tgl >= today).sort((a, b) => a.tgl.localeCompare(b.tgl));
+  const cnt = {}; up.forEach(a => cnt[a.jenis] = (cnt[a.jenis] || 0) + 1);
+  const urut = ["msci", "ftse", "bi", "fomc", "cpi", "nfp", "inflasi", "gdx", "lapkeu", "lain"].filter(k => cnt[k]);
+  $("ag-chips").innerHTML = `<button type="button" class="ag-chip ${agJenis ? "" : "on"}" data-ag="">Semua <b>${up.length}</b></button>` + urut.map(k => `<button type="button" class="ag-chip ev-${k} ${agJenis === k ? "on" : ""}" data-ag="${k}">${esc(JENIS[k] || k)} <b>${cnt[k]}</b></button>`).join("");
+  const akhir = {}; AGENDA.forEach(a => { if (!akhir[a.jenis] || a.tgl > akhir[a.jenis]) akhir[a.jenis] = a.tgl; });
+  const NAMA = { msci: "MSCI", ftse: "FTSE", bi: "RDG Bank Indonesia", fomc: "FOMC The Fed", cpi: "CPI AS", nfp: "NFP AS", inflasi: "inflasi Indonesia (BPS)", gdx: "review GDX", lapkeu: "batas laporan keuangan" };
+  const batas = new Date(Date.parse(today) + 60 * 864e5).toISOString().slice(0, 10);
+  const habis = Object.keys(NAMA).filter(k => akhir[k] && akhir[k] < batas && (!agJenis || agJenis === k));
+  const ingat = habis.length ? `<div class="ag-warn">⚠ ${habis.map(k => `Jadwal <b>${NAMA[k]}</b> hanya tersedia sampai <b>${akhir[k]}</b>`).join("; ")}. Perlu diperbarui: kirim kabar jadwal terbarunya, atau tambahkan lewat <code>kalender.json</code>.</div>` : "";
+  $("ag-info").innerHTML = ingat + (agJenis && AG_INFO[agJenis] ? `<div class="ag-why"><b>Apa artinya untuk pasar?</b> ${AG_INFO[agJenis]}</div>` : "");
+  const L = up.filter(a => !agJenis || a.jenis === agJenis).slice(0, agJenis ? 40 : 15);
+  const dd = t => { const n = Math.round((Date.parse(t) - Date.parse(today)) / 864e5); return n === 0 ? "hari ini" : n === 1 ? "besok" : n < 31 ? `${n} hari lagi` : n < 365 ? `±${Math.round(n / 30.4)} bulan lagi` : `±${fmtDec(n / 365, 1)} tahun lagi`; };
+  const tglTxt = k => { const [yy, mm, d] = k.split("-").map(Number); const w = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][new Date(Date.UTC(yy, mm - 1, d)).getUTCDay()]; return `${w}, ${d} ${["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][mm - 1]} ${yy}`; };
+  box.innerHTML = L.length ? L.map(a => `<li data-agt="${a.tgl}" class="${a.tgl === today ? "ag-today" : ""}"><span class="ag-d"><b>${tglTxt(a.tgl)}</b><small>${dd(a.tgl)}</small></span>
+      <span class="ag-b"><span class="cal-ev ev-${esc(a.jenis)}">${esc(JENIS[a.jenis] || JENIS.lain)}</span> <b>${esc(a.judul)}</b>${a.ket ? `<div class="muted ag-k">${esc(a.ket)}</div>` : ""}${(a.saham || []).length ? `<div class="ag-k">${a.saham.map(t => `<button type="button" class="mk-code" data-go="${t}">${t}</button>`).join(" ")}</div>` : ""}</span></li>`).join("")
+    : `<li class="muted">Belum ada agenda ${agJenis ? JENIS[agJenis] + " " : ""}mendatang di data aplikasi.</li>`;
+  $("ag-chips").querySelectorAll("[data-ag]").forEach(b => b.addEventListener("click", () => { agJenis = b.dataset.ag; renderAgendaPanel(); }));
+  box.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); if (DATA.some(r => r.t === b.dataset.go)) openDrawer(b.dataset.go); }));
+  box.querySelectorAll("[data-agt]").forEach(li => li.addEventListener("click", () => {
+    const [yy, mm] = li.dataset.agt.split("-").map(Number); calMonth = [yy, mm - 1]; calSel = li.dataset.agt;
+    if (agJenis && MAKRO.has(agJenis) && !cal.makro) { cal.makro = true; $("cal-makro").checked = true; }
+    if (agJenis && !MAKRO.has(agJenis) && !cal.agenda) { cal.agenda = true; $("cal-agenda").checked = true; }
+    renderCal(); $("cal-grid").scrollIntoView({ behavior: "smooth", block: "center" });
+  }));
+}
 const HARI_PANJANG = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 /* pola musiman IHSG: panah hanya muncul kalau berbeda signifikan dari 50% (uji binomial, |z| ≥ 1,96) */
 function musimHari(key) {
@@ -4424,6 +4588,7 @@ function renderCal() {
     </button>`;
   }
   $("cal-grid").innerHTML = h;
+  try { renderAgendaPanel(); } catch (e) {}
   $("cal-grid").querySelectorAll("[data-day]").forEach(b => b.addEventListener("click", () => { calSel = calSel === b.dataset.day ? null : b.dataset.day; renderCal(); }));
   // daftar di bawah grid
   const prefix = `${y}-${String(m + 1).padStart(2, "0")}`;
@@ -7509,7 +7674,8 @@ scSum(); stBuild(); colApply();
 $("col-btn").addEventListener("click", e => { e.stopPropagation(); const p = $("col-pop"); p.hidden = !p.hidden; if (!p.hidden) colPop(); });
 $("col-pop").addEventListener("click", e => e.stopPropagation());
 document.addEventListener("click", () => { const p = $("col-pop"); if (p) p.hidden = true; });
-if ($("v-hari") && !$("v-hari").hidden) renderHari();     // halaman awal digambar sebelum kesimpulan IHSG dihitung renderCal(); renderJournal(); renderMakro(); renderMovers();
+renderCal(); renderJournal(); renderMakro(); renderMovers();
+if ($("v-hari") && !$("v-hari").hidden) renderHari();     // halaman awal digambar sebelum kesimpulan IHSG dihitung
 (() => { const d = $("movers-d"); d.open = ls.get("idxs:mvopen", true); d.addEventListener("toggle", () => ls.set("idxs:mvopen", d.open)); })();
 renderCmpBar();
 (() => { const f = $("filt"); f.open = !!ls.get("idxs:filt", false); f.addEventListener("toggle", () => ls.set("idxs:filt", f.open)); })();
