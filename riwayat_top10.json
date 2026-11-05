@@ -1,16 +1,4 @@
 {
- "2026-10-22": [
-  "AALI",
-  "DMAS",
-  "SGER",
-  "DKHH",
-  "SMLE",
-  "PCAR",
-  "BSSR",
-  "MBSS",
-  "RSCH",
-  "ULTJ"
- ],
  "2026-10-23": [
   "AALI",
   "SGER",
@@ -96,6 +84,12 @@
  "2026-11-04": [
   "TMPO",
   "PRDA",
+  "AALI"
+ ],
+ "2026-11-05": [
+  "DEWI",
+  "PRDA",
+  "ULTJ",
   "AALI"
  ]
 }
