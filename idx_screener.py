@@ -226,6 +226,92 @@ def jadwal_bls():
     return cache.get("agenda")
 
 
+CACHE_BERITA = BASE / "cache_berita.json"    # judul berita terkait agenda (Google News), diperbarui maks tiap 6 jam
+BERITA_Q = {"bi": "RDG Bank Indonesia BI Rate", "fomc": "The Fed suku bunga FOMC", "msci": "MSCI Indonesia",
+            "ftse": "FTSE Russell Indonesia", "cpi": "inflasi Amerika CPI", "nfp": "nonfarm payroll tenaga kerja AS",
+            "inflasi": "inflasi Indonesia BPS", "gdx": "GDX VanEck saham emas rebalancing", "lapkeu": "laporan keuangan kuartal emiten"}
+
+
+def _rss_google(q, maks=8, hari=10):
+    """Judul berita terbaru dari Google News RSS (bahasa Indonesia) -> [[judul, sumber, tanggal ISO, tautan], ...]."""
+    import urllib.parse
+    import urllib.request
+    import xml.etree.ElementTree as ET
+    from email.utils import parsedate_to_datetime
+    url = "https://news.google.com/rss/search?" + urllib.parse.urlencode({"q": f"{q} when:{hari}d", "hl": "id", "gl": "ID", "ceid": "ID:id"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (DibalikSaham screener)"})
+    with urllib.request.urlopen(req, timeout=30) as f:
+        root = ET.fromstring(f.read())
+    out = []
+    for it in root.iter("item"):
+        judul = (it.findtext("title") or "").strip()
+        src = it.find("source")
+        sumber = (src.text or "").strip() if src is not None else ""
+        if sumber and judul.endswith(" - " + sumber):
+            judul = judul[: -len(" - " + sumber)]
+        try:
+            tgl = parsedate_to_datetime(it.findtext("pubDate")).astimezone(WIB).strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            tgl = ""
+        if judul:
+            out.append([judul, sumber, tgl, (it.findtext("link") or "").strip()])
+    out.sort(key=lambda x: x[2], reverse=True)
+    return out[:maks]
+
+
+def berita_agenda(agenda):
+    """Kumpulkan judul berita untuk jenis agenda yang jatuh dalam 14 hari ke depan / 3 hari terakhir. Cache 6 jam."""
+    cache = {}
+    if CACHE_BERITA.exists():
+        try:
+            cache = json.loads(CACHE_BERITA.read_text(encoding="utf-8"))
+        except Exception:
+            cache = {}
+    now = datetime.now(WIB)
+    lo, hi = (now.date().toordinal() - 3), (now.date().toordinal() + 14)
+    jenis = sorted({a["jenis"] for a in agenda if a["jenis"] in BERITA_Q
+                    and lo <= datetime.strptime(a["tgl"], "%Y-%m-%d").date().toordinal() <= hi})
+    out, baru = {}, 0
+    for j in jenis:
+        c = cache.get(j) or {}
+        try:
+            umur = (now - datetime.strptime(c.get("waktu", "2000-01-01 00:00"), "%Y-%m-%d %H:%M").replace(tzinfo=WIB)).total_seconds() / 3600
+        except Exception:
+            umur = 999
+        if c.get("items") and umur < 6 and c.get("q") == BERITA_Q[j]:
+            out[j] = c
+            continue
+        try:
+            items = _rss_google(BERITA_Q[j])
+            out[j] = {"q": BERITA_Q[j], "waktu": now.strftime("%Y-%m-%d %H:%M"), "items": items}
+            baru += 1
+            time.sleep(1)
+        except Exception as e:
+            print(f"  ! berita {j}: {type(e).__name__}")
+            if c.get("items"):
+                out[j] = c
+    try:
+        CACHE_BERITA.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    if jenis:
+        print(f"  Berita agenda: {len(out)} jenis ({baru} diperbarui)")
+    return out
+
+
+def _agenda_dan_berita():
+    ag = muat_agenda()
+    try:
+        br = berita_agenda(ag)
+    except Exception as e:
+        print(f"  ! berita agenda: {e}")
+        br = {}
+    for a in ag:
+        if a["jenis"] in br:
+            a["br"] = a["jenis"]
+    return {"list": ag, "berita": br}
+
+
 def muat_agenda():
     """Agenda bawaan + agenda dari kalender.json (kalau ada). Format tiap item kalender.json:
     {"tgl": "2026-11-05", "jenis": "lain", "judul": "...", "ket": "...", "saham": ["BBRI"]}"""
@@ -2241,7 +2327,7 @@ def tulis_html(rows, now, status, n_gagal, pakai_intraday, out_html=OUT_HTML, ar
             .replace("__LOGO96__", LOGO_96).replace("__LOGO32__", LOGO_32)
             .replace("__MARKET__", json.dumps(bersih(pasar or {}), ensure_ascii=False, allow_nan=False))
             .replace("__GEN__", now.strftime("%Y-%m-%d %H:%M"))
-            .replace("__AGENDA__", json.dumps(muat_agenda(), ensure_ascii=False))
+            .replace("__AGENDA__", json.dumps(_agenda_dan_berita(), ensure_ascii=False))
             .replace("__BADGE__", status)
             .replace("__SUB__", sub)
             .replace("__DISCLAIMER__", disc))
@@ -3124,14 +3210,18 @@ TEMPLATE = r'''<!DOCTYPE html>
   .ag-chip { border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:999px; padding:6px 12px; font-weight:700; font-size:0.84rem; cursor:pointer; }
   .ag-chip b { margin-left:4px; font-size:0.74rem; padding:0 6px; border-radius:999px; background:var(--panel2); }
   .ag-chip.on { background:var(--accent); border-color:var(--accent); color:#fff; } .ag-chip.on b { background:rgba(255,255,255,.2); }
+  .ag-news { margin-top:6px; display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; }
+  .ag-nl { flex-basis:100%; list-style:none; padding:0; margin:4px 0; display:grid; gap:5px; font-size:0.84rem; }
+  .ag-nl li { display:block; padding:0; border:0; cursor:auto; line-height:1.4; }
+  .ag-nl a { color:var(--ink); text-decoration:none; font-weight:600; } .ag-nl a:hover { color:var(--accent); text-decoration:underline; }
   .ag-warn { background:color-mix(in srgb, var(--orange) 14%, transparent); border:1px solid color-mix(in srgb, var(--orange) 45%, var(--line)); border-radius:10px; padding:8px 12px; font-size:0.84rem; margin-bottom:10px; }
   .ag-why { background:var(--panel2); border-radius:10px; padding:10px 12px; font-size:0.86rem; line-height:1.55; margin-bottom:10px; }
   .ag-list { list-style:none; padding:0; margin:0; display:grid; gap:2px; max-height:520px; overflow:auto; }
-  .ag-list li { display:grid; grid-template-columns:150px 1fr; gap:12px; padding:9px 8px; border-bottom:1px solid var(--line); cursor:pointer; border-radius:8px; }
-  .ag-list li:hover { background:var(--panel2); } .ag-list li.ag-today { background:color-mix(in srgb, var(--accent) 12%, transparent); }
-  .ag-d { display:grid; gap:2px; font-size:0.86rem; } .ag-d small { color:var(--accent); font-weight:700; }
+  .ag-list > li { display:grid; grid-template-columns:150px 1fr; gap:12px; padding:9px 8px; border-bottom:1px solid var(--line); cursor:pointer; border-radius:8px; }
+  .ag-list > li:hover { background:var(--panel2); } .ag-list > li.ag-today { background:color-mix(in srgb, var(--accent) 12%, transparent); }
+  .ag-d { display:grid; gap:2px; font-size:0.86rem; align-content:start; } .ag-d small { color:var(--accent); font-weight:700; }
   .ag-b { font-size:0.88rem; } .ag-k { font-size:0.8rem; margin-top:3px; }
-  @media (max-width:760px) { .ag-list li { grid-template-columns:1fr; gap:4px; } }
+  @media (max-width:760px) { .ag-list > li { grid-template-columns:1fr; gap:4px; } }
   .hr-head { display:flex; align-items:baseline; gap:12px; margin:4px 0 12px; } .hr-head h2 { margin:0; font-size:1.6rem; }
   .hr-grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-bottom:14px; } .hr-grid3 > .card { margin:0; }
   .hr-lab { font-size:0.8rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink2); }
@@ -4436,7 +4526,9 @@ function moonPhases(from, to) {
 }
 
 /* ---------- kalender (fase bulan + agenda pasar) ---------- */
-const AGENDA = __AGENDA__;
+const AGENDA_RAW = __AGENDA__;
+const AGENDA = Array.isArray(AGENDA_RAW) ? AGENDA_RAW : (AGENDA_RAW.list || []);
+const BERITA = Array.isArray(AGENDA_RAW) ? {} : (AGENDA_RAW.berita || {});
 const MOON_NAME = ["Bulan baru", "Kuartal awal", "Purnama", "Kuartal akhir"];
 const MOON_ICON = ["🌑", "🌓", "🌕", "🌗"];
 const JENIS = { msci: "MSCI", ftse: "FTSE", gdx: "GDX", lapkeu: "Lapkeu", lain: "Agenda", bi: "BI", fomc: "FOMC", cpi: "CPI AS", nfp: "NFP AS", inflasi: "Inflasi RI" };
@@ -4452,7 +4544,22 @@ const AG_INFO = {
   gdx: "<b>GDX/GDXJ</b> adalah ETF saham tambang emas global. Saham emas BEI yang masuk/keluar ETF ini sering mengalami lonjakan transaksi di hari implementasi.",
   lapkeu: "<b>Batas laporan keuangan</b> menurut aturan OJK. Menjelang batas ini banyak emiten merilis laporan; laba yang jauh di atas/bawah perkiraan bisa menggerakkan harga.",
 };
-let agJenis = "";
+let agJenis = "", agOpen = null;
+function agDekat(a) { const n = (Date.parse(a.tgl) - Date.parse(new Date(Date.now() + WIB_MS).toISOString().slice(0, 10))) / 864e5; return n >= -3 && n <= 14; }
+function agBeritaHtml(a) {
+  const B = a.br && BERITA[a.br]; if (!B || !B.items || !B.items.length || !agDekat(a)) return "";
+  const key = a.tgl + a.jenis, open = agOpen === key;
+  return `<div class="ag-news"><button type="button" class="link-btn" data-agn="${esc(key)}">📰 ${B.items.length} berita terkait ${open ? "▴" : "▾"}</button>
+    <button type="button" class="icon-btn dw-small" data-agc="${esc(key)}">📋 Salin untuk analisa</button>
+    ${open ? `<ul class="ag-nl">${B.items.map(x => `<li><a href="${esc(x[3])}" target="_blank" rel="noopener">${esc(x[0])}</a><small class="muted"> · ${esc(x[1] || "")}${x[2] ? " · " + esc(x[2]) : ""}</small></li>`).join("")}</ul>
+      <div class="muted" style="font-size:0.72rem">Dikumpulkan ${esc(B.waktu || "")} dari Google News (kata kunci: "${esc(B.q)}"). Hanya judul & tautan; buka sumbernya untuk isi lengkap.</div>` : ""}</div>`;
+}
+function agSalinTeks(a) {
+  const B = BERITA[a.br] || { items: [] };
+  return [`Agenda: ${a.judul} (${a.tgl})`, a.ket ? `Keterangan: ${a.ket}` : "", `Berita terkait (dikumpulkan ${B.waktu || "-"}, kata kunci "${B.q || ""}"):`,
+    ...B.items.map((x, i) => `${i + 1}. ${x[0]} (${x[1] || "-"}, ${x[2] || "-"}) ${x[3]}`),
+    "", "Tolong rangkum: ekspektasi pasar/konsensus, skenario hasil dan dampaknya ke IHSG & sektor, serta sikap yang sebaiknya diambil."].filter(Boolean).join("\n");
+}
 function renderAgendaPanel() {
   const box = $("ag-list"); if (!box) return;
   const today = new Date(Date.now() + WIB_MS).toISOString().slice(0, 10);
@@ -4470,10 +4577,17 @@ function renderAgendaPanel() {
   const dd = t => { const n = Math.round((Date.parse(t) - Date.parse(today)) / 864e5); return n === 0 ? "hari ini" : n === 1 ? "besok" : n < 31 ? `${n} hari lagi` : n < 365 ? `±${Math.round(n / 30.4)} bulan lagi` : `±${fmtDec(n / 365, 1)} tahun lagi`; };
   const tglTxt = k => { const [yy, mm, d] = k.split("-").map(Number); const w = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][new Date(Date.UTC(yy, mm - 1, d)).getUTCDay()]; return `${w}, ${d} ${["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][mm - 1]} ${yy}`; };
   box.innerHTML = L.length ? L.map(a => `<li data-agt="${a.tgl}" class="${a.tgl === today ? "ag-today" : ""}"><span class="ag-d"><b>${tglTxt(a.tgl)}</b><small>${dd(a.tgl)}</small></span>
-      <span class="ag-b"><span class="cal-ev ev-${esc(a.jenis)}">${esc(JENIS[a.jenis] || JENIS.lain)}</span> <b>${esc(a.judul)}</b>${a.ket ? `<div class="muted ag-k">${esc(a.ket)}</div>` : ""}${(a.saham || []).length ? `<div class="ag-k">${a.saham.map(t => `<button type="button" class="mk-code" data-go="${t}">${t}</button>`).join(" ")}</div>` : ""}</span></li>`).join("")
+      <span class="ag-b"><span class="cal-ev ev-${esc(a.jenis)}">${esc(JENIS[a.jenis] || JENIS.lain)}</span> <b>${esc(a.judul)}</b>${a.ket ? `<div class="muted ag-k">${esc(a.ket)}</div>` : ""}${(a.saham || []).length ? `<div class="ag-k">${a.saham.map(t => `<button type="button" class="mk-code" data-go="${t}">${t}</button>`).join(" ")}</div>` : ""}${agBeritaHtml(a)}</span></li>`).join("")
     : `<li class="muted">Belum ada agenda ${agJenis ? JENIS[agJenis] + " " : ""}mendatang di data aplikasi.</li>`;
   $("ag-chips").querySelectorAll("[data-ag]").forEach(b => b.addEventListener("click", () => { agJenis = b.dataset.ag; renderAgendaPanel(); }));
   box.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); if (DATA.some(r => r.t === b.dataset.go)) openDrawer(b.dataset.go); }));
+  box.querySelectorAll(".ag-news").forEach(n => n.addEventListener("click", e => e.stopPropagation()));
+  box.querySelectorAll("[data-agn]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); agOpen = agOpen === b.dataset.agn ? null : b.dataset.agn; renderAgendaPanel(); }));
+  box.querySelectorAll("[data-agc]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation(); const a = AGENDA.find(x => x.tgl + x.jenis === b.dataset.agc); if (!a) return;
+    const t = agSalinTeks(a), ok = () => { b.textContent = "✓ Tersalin, tempel di chat"; setTimeout(() => { b.textContent = "📋 Salin untuk analisa"; }, 2500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, () => prompt("Salin teks ini:", t)); else prompt("Salin teks ini:", t);
+  }));
   box.querySelectorAll("[data-agt]").forEach(li => li.addEventListener("click", () => {
     const [yy, mm] = li.dataset.agt.split("-").map(Number); calMonth = [yy, mm - 1]; calSel = li.dataset.agt;
     if (agJenis && MAKRO.has(agJenis) && !cal.makro) { cal.makro = true; $("cal-makro").checked = true; }
