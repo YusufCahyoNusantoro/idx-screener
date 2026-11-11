@@ -1,16 +1,4 @@
 {
- "2026-10-28": [
-  "DMAS",
-  "PRDA",
-  "SEMA",
-  "SGER",
-  "MPXL",
-  "AALI",
-  "VICI",
-  "PKPK",
-  "ULTJ",
-  "BSSR"
- ],
  "2026-10-29": [
   "DMAS",
   "AALI",
@@ -74,6 +62,14 @@
   "MBSS",
   "ANDI",
   "MPMX",
+  "AALI"
+ ],
+ "2026-11-11": [
+  "DEWI",
+  "MPMX",
+  "PRDA",
+  "ANDI",
+  "MBSS",
   "AALI"
  ]
 }
