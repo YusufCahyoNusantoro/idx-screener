@@ -1617,6 +1617,169 @@ def ringkasan_hari(rows, saham, makro, db=None):
     return out
 
 
+# ======================= TRADE CEPAT (1-5 hari, chart 1 jam) =======================
+TC_RINGKAS = {}                # hasil backtest gabungan (diisi di main)
+TC_HARI = 5                    # batas waktu posisi (hari bursa)
+TC_BAR_HARI = 7                # jumlah candle 1 jam per hari bursa (perkiraan)
+TC_NAMA = {"brt": "Breakout–retest", "pb": "Pullback dalam tren naik", "rv": "Pembalikan dari discount"}
+
+
+def _fraksi(p):
+    return 1 if p < 200 else 2 if p < 500 else 5 if p < 2000 else 10 if p < 5000 else 25
+
+
+def _bulat(p, naik=False):
+    f = _fraksi(p)
+    return float((math.ceil(p / f) if naik else math.floor(p / f)) * f)
+
+
+def _tc_siap(df):
+    """Hitung indikator 1 jam sekali untuk deteksi & backtest."""
+    d = df.dropna(subset=["Close"]).copy()
+    o, h, l, c, v = (d[k].to_numpy(float) for k in ("Open", "High", "Low", "Close", "Volume"))
+    n = len(c)
+    pc = np.r_[c[0], c[:-1]]
+    tr = np.maximum(h - l, np.maximum(abs(h - pc), abs(l - pc)))
+    atr = pd.Series(tr).rolling(14, min_periods=5).mean().to_numpy()
+    vavg = pd.Series(v).rolling(20, min_periods=5).mean().shift(1).to_numpy()
+    cv = pd.Series(c * v).rolling(20, min_periods=5).sum() / pd.Series(v).rolling(20, min_periods=5).sum().replace(0, np.nan)
+    vw20 = cv.fillna(pd.Series(c).rolling(20, min_periods=5).mean()).to_numpy()
+    e80 = pd.Series(c).ewm(span=80, adjust=False).mean().to_numpy()          # ±EMA20 di chart 4 jam
+    e200 = pd.Series(c).ewm(span=200, adjust=False).mean().to_numpy()        # ±EMA50 di chart 4 jam
+    hi120 = pd.Series(h).rolling(120, min_periods=20).max().to_numpy()
+    lo120 = pd.Series(l).rolling(120, min_periods=20).min().to_numpy()
+    sh = np.zeros(n, bool); sl = np.zeros(n, bool)
+    for k in range(3, n - 3):
+        if h[k] == h[k - 3:k + 4].max(): sh[k] = True
+        if l[k] == l[k - 3:k + 4].min(): sl[k] = True
+    return {"d": d, "o": o, "h": h, "l": l, "c": c, "v": v, "atr": atr, "vavg": vavg, "vw20": vw20, "e80": e80, "e200": e200,
+            "hi120": hi120, "lo120": lo120, "sh": sh, "sl": sl, "n": n}
+
+
+def _tc_deteksi(X, i):
+    """Setup terbaik yang muncul di candle i (hanya memakai data sampai i). None kalau tidak ada."""
+    h, l, c, o, v, atr = X["h"], X["l"], X["c"], X["o"], X["v"], X["atr"][i]
+    if i < 210 or not atr or not fin(atr) or atr <= 0:
+        return None
+    sh_idx = [k for k in range(max(0, i - 300), i - 2) if X["sh"][k]]
+    up4 = X["e80"][i] > X["e200"][i] and c[i] > X["e200"][i]
+    cands = []
+    # 1) breakout-retest: tutup menembus swing high terakhir (60 candle) dengan volume >= 1,5x
+    rec = [k for k in sh_idx if k > i - 60]
+    if rec:
+        lvl = max(h[k] for k in rec)
+        for j in range(max(1, i - 5), i + 1):
+            if c[j] > lvl >= c[j - 1] and X["vavg"][j] and v[j] >= 1.5 * X["vavg"][j]:
+                if c[i] >= lvl - 0.2 * atr:
+                    lo = min(l[j:i + 1]); stop = lo - 0.2 * atr if lo < lvl - 0.3 * atr else lvl - 1.0 * atr
+                    cands.append(("brt", lvl, lvl + 0.25 * atr, stop, v[j] / X["vavg"][j]))
+                break
+    # 2) pullback dalam tren naik (4 jam naik), memantul dari VWMA20 1 jam
+    vw = X["vw20"][i]
+    if up4 and fin(vw) and l[i] <= vw + 0.3 * atr and c[i] > vw and c[i] > o[i] and c[i] > h[i - 1]:
+        cands.append(("pb", vw, c[i], min(l[i - 5:i + 1]) - 0.3 * atr, (v[i] / X["vavg"][i]) if X["vavg"][i] else 1))
+    # 3) pembalikan dari discount: CHoCH naik (tembus lower high terakhir) dengan volume, di separuh bawah range 120 candle
+    if len(sh_idx) >= 2:
+        a, b = sh_idx[-2], sh_idx[-1]
+        rng = X["hi120"][i] - X["lo120"][i]
+        if h[b] < h[a] and c[i] > h[b] >= c[i - 1] and X["vavg"][i] and v[i] >= 1.3 * X["vavg"][i] and rng > 0 and (c[i] - X["lo120"][i]) / rng < 0.5:
+            lo = min(l[max(0, i - 20):i + 1])
+            cands.append(("rv", h[b], h[b] + 0.25 * atr, lo - 0.2 * atr, v[i] / X["vavg"][i]))
+    best = None
+    for jenis, e1, e2, stop, vr in cands:
+        e1, e2 = min(e1, e2), max(e1, e2)
+        if stop >= e1:
+            continue
+        res = sorted(h[k] for k in sh_idx if h[k] > e2 + 0.5 * atr)
+        risk = e2 - stop
+        tp = (res[0] - 0.1 * atr) if res else e2 + 2.2 * risk
+        rr, rk, tg = (tp - e2) / risk, risk / e2 * 100, (tp - e2) / e2 * 100
+        if rr < 1.5 or not (0.8 <= rk <= 4.5) or not (2.0 <= tg <= 12):
+            continue
+        q = int(vr >= 2) + int(up4) + int(rr >= 2) + int(tg >= 3)
+        item = {"jenis": jenis, "e1": e1, "e2": e2, "sl": stop, "tp": tp, "rr": rr, "rk": rk, "tg": tg, "vr": vr, "up4": up4, "q": q}
+        if not best or (item["q"], item["rr"]) > (best["q"], best["rr"]):
+            best = item
+    return best
+
+
+def _tc_uji(X):
+    """Backtest: setiap setup -> masuk bila harga turun ke zona dalam 1 hari, keluar di target / cut loss / setelah 5 hari."""
+    hasil, n, i = [], X["n"], 210
+    h, l, c = X["h"], X["l"], X["c"]
+    while i < n - 2:
+        s = _tc_deteksi(X, i)
+        if not s:
+            i += 1; continue
+        fill = None
+        for j in range(i + 1, min(n, i + 1 + TC_BAR_HARI)):
+            if l[j] <= s["e2"]:
+                fill = j; break
+        if fill is None:
+            i += 1; continue
+        risk, r, akhir = s["e2"] - s["sl"], None, min(n - 1, fill + TC_HARI * TC_BAR_HARI)
+        for j in range(fill, akhir + 1):
+            if l[j] <= s["sl"]: r = -1.0; break
+            if h[j] >= s["tp"]: r = s["rr"]; break
+        if r is None:
+            if akhir >= n - 1 and akhir - fill < TC_HARI * TC_BAR_HARI:
+                break                                    # belum selesai (data habis): tidak dihitung
+            r = (c[akhir] - s["e2"]) / risk
+        hasil.append((s["jenis"], round(r, 3), s["q"]))
+        i = j + 1
+    return hasil
+
+
+def trade_cepat(r, df):
+    """Setup trade cepat terkini untuk satu saham (candle 1 jam) + daftar hasil backtest-nya."""
+    X = _tc_siap(df)
+    n = X["n"]
+    if n < 230:
+        return None, []
+    bt = _tc_uji(X)
+    best, idx = None, None
+    for i in range(n - 1, max(n - 7, 210), -1):            # setup yang muncul dalam ±1 hari terakhir
+        s = _tc_deteksi(X, i)
+        if s:
+            best, idx = s, i; break
+    if not best:
+        return None, bt
+    p = X["c"][-1]
+    if p < best["sl"]:
+        return None, bt
+    e1, e2 = _bulat(best["e1"], True), _bulat(best["e2"])
+    e1, e2 = min(e1, e2), max(e1, e2)
+    sl, tp = _bulat(best["sl"]), _bulat(best["tp"])
+    st = "zona" if e1 <= p <= e2 * 1.005 else "tunggu" if p > e2 and (p - e2) < 0.4 * (tp - e2) else "lari" if p > e2 else "bawah"
+    if st in ("lari", "bawah"):
+        return None, bt
+    cat = []
+    chg = r.get("chg") or 0
+    if chg > 10: cat.append(f"Sudah naik {chg:.1f}% hari ini: jangan kejar, tunggu retest ke zona entry")
+    ara = 35 if p < 200 else 25 if p < 5000 else 20
+    if chg >= 0.8 * ara: cat.append(f"Dekat batas ARA ({ara}%)")
+    if r.get("val", 0) < 5e9: cat.append("Transaksi < Rp 5 M/hari: hati-hati saat keluar posisi")
+    if not best["up4"] and best["jenis"] != "rv": cat.append("Arah 4 jam belum naik")
+    t_sig = X["d"].index[idx]
+    return {"jenis": best["jenis"], "q": best["q"], "st": st, "p": _bulat(p), "e1": e1, "e2": e2, "sl": sl, "tp": tp,
+            "rr": round((tp - e2) / max(e2 - sl, 1e-9), 2), "rk": round((e2 - sl) / e2 * 100, 1), "tg": round((tp - e2) / e2 * 100, 1),
+            "vr": round(best["vr"], 1), "up4": bool(best["up4"]), "sig": pd.Timestamp(t_sig).strftime("%Y-%m-%d %H:%M"), "cat": cat}, bt
+
+
+def ringkas_backtest(semua, n_saham):
+    out = {"n_saham": n_saham, "jenis": {}}
+    for jn in ("brt", "pb", "rv", "semua"):
+        L = [x for x in semua if jn == "semua" or x[0] == jn]
+        if not L:
+            continue
+        R = [x[1] for x in L]
+        win = [x for x in R if x > 0]
+        out["jenis"][jn] = {"n": len(R), "win": round(len(win) / len(R) * 100, 1), "avg": round(sum(R) / len(R), 2),
+                            "tot": round(sum(R), 1), "avgwin": round(sum(win) / len(win), 2) if win else 0,
+                            "byq": {str(q): round(sum(x[1] for x in L if x[2] == q) / max(1, sum(1 for x in L if x[2] == q)), 2) for q in range(5) if any(x[2] == q for x in L)}}
+    return out
+
+
 def _koma(t):
     """Angka desimal gaya Indonesia di dalam kalimat: 2.9% -> 2,9%."""
     import re
@@ -2429,7 +2592,16 @@ def main():
         print(f"  Unduh data 1 jam (6 bulan) untuk {len(calon)} saham (likuid + skor tertinggi)...")
         jam = unduh(calon, "6mo", "60m")                  # 6 bulan: cukup untuk 220 candle 4 jam
         per_t = {r["t"]: r for r in rows}
+        tc_bt, tc_n = [], 0
         for t, df in jam.items():
+            try:                                          # trade cepat: setup 1 jam terkini + backtest 6 bulan
+                if per_t[t]["val"] >= 1e9 and not per_t[t].get("notx"):
+                    tc, bt = trade_cepat(per_t[t], df)
+                    tc_bt += bt; tc_n += 1
+                    if tc:
+                        per_t[t]["tc"] = tc
+            except Exception as e:
+                print(f"  ! trade cepat {t}: {e}")
             try:
                 tambah_intraday(per_t[t], df)
                 tfdata.setdefault(t, {})
@@ -2439,6 +2611,8 @@ def main():
                         tfdata[t][k] = pk
             except Exception as e:
                 print(f"  ! intraday {t}: {e}")
+        TC_RINGKAS.update(ringkas_backtest(tc_bt, tc_n))
+        print(f"  Trade cepat: {sum(1 for r in rows if r.get('tc'))} setup aktif · backtest {len(tc_bt)} trade dari {tc_n} saham")
         print(f"  Unduh data 15 menit (60 hari) untuk {len(calon)} saham...")
         for t, df in unduh(calon, "60d", "15m").items():
             try:
@@ -2525,6 +2699,8 @@ def main():
         pasar["emas"] = emas_r
     if pasar.get("ihsg") is not None:
         pasar["ihsg"]["tfx"] = sorted(ihsg_tf)
+    if TC_RINGKAS:
+        pasar["tc"] = TC_RINGKAS
     try:
         pasar["mx"] = makro_lengkap(harian, rows, ke_tanggal(ihsg10) if ihsg10 is not None else None, pasar.get("makro"))
     except Exception as e:
@@ -3148,7 +3324,7 @@ TEMPLATE = r'''<!DOCTYPE html>
     nav.tabs .tab-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:0.66rem; padding:5px 2px; border-radius:8px; }
     nav.tabs .tab-btn::before { font-size:1.15rem; line-height:1; }
     nav.tabs .tab-btn[data-view="hari"]::before { content:"☀️"; } nav.tabs .tab-btn[data-view="screener"]::before { content:"🔍"; }
-    nav.tabs .tab-btn[data-view="makro"]::before { content:"🌐"; } nav.tabs .tab-btn[data-view="kalender"]::before { content:"📅"; }
+    nav.tabs .tab-btn[data-view="makro"]::before { content:"🌐"; } nav.tabs .tab-btn[data-view="cepat"]::before { content:"⚡"; } nav.tabs .tab-btn[data-view="kalender"]::before { content:"📅"; }
     nav.tabs .tab-btn[data-view="jurnal"]::before { content:"💼"; } nav.tabs .tab-btn[data-view="panduan"]::before { content:"❓"; }
     body { padding-bottom:calc(68px + env(safe-area-inset-bottom, 0px)); }
     .to-top { bottom:calc(78px + env(safe-area-inset-bottom, 0px)) !important; }
@@ -3222,6 +3398,17 @@ TEMPLATE = r'''<!DOCTYPE html>
   .ag-d { display:grid; gap:2px; font-size:0.86rem; align-content:start; } .ag-d small { color:var(--accent); font-weight:700; }
   .ag-b { font-size:0.88rem; } .ag-k { font-size:0.8rem; margin-top:3px; }
   @media (max-width:760px) { .ag-list > li { grid-template-columns:1fr; gap:4px; } }
+  .tc-set { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+  .tc-set label { display:flex; align-items:center; gap:6px; font-weight:700; font-size:0.86rem; }
+  .tc-set input { width:140px; padding:6px 8px; border:1px solid var(--field-line); border-radius:8px; background:var(--field-bg); color:var(--ink); }
+  .tc-tbl tr[data-tc] { cursor:pointer; } .tc-tbl tr[data-tc]:hover td { background:var(--row-hover); }
+  .tc-g { display:inline-block; width:22px; text-align:center; border-radius:6px; font-weight:800; font-size:0.8rem; }
+  .tc-A { background:var(--up); color:#fff; } .tc-B { background:var(--accent); color:#fff; } .tc-C { background:var(--panel2); color:var(--ink2); }
+  .tc-st { display:inline-block; border-radius:999px; padding:3px 9px; font-size:0.76rem; font-weight:800; background:var(--panel2); }
+  .tc-st.on { background:var(--up); color:#fff; }
+  .tc-cat { font-size:0.76rem; color:var(--orange); max-width:240px; }
+  .tc-legend { display:grid; gap:4px; font-size:0.78rem; color:var(--ink2); margin-top:10px; }
+  .tc-all td { border-top:2px solid var(--line); }
   .hr-head { display:flex; align-items:baseline; gap:12px; margin:4px 0 12px; } .hr-head h2 { margin:0; font-size:1.6rem; }
   .hr-grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-bottom:14px; } .hr-grid3 > .card { margin:0; }
   .hr-lab { font-size:0.8rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink2); }
@@ -3378,6 +3565,7 @@ TEMPLATE = r'''<!DOCTYPE html>
       <nav class="tabs" aria-label="Halaman">
         <button class="tab-btn" type="button" data-view="hari">Hari ini</button>
         <button class="tab-btn" type="button" data-view="screener">Screener</button>
+        <button class="tab-btn" type="button" data-view="cepat">Trade cepat</button>
         <button class="tab-btn" type="button" data-view="makro">Makro</button>
         <button class="tab-btn" type="button" data-view="kalender">Kalender</button>
         <button class="tab-btn" type="button" data-view="jurnal">Portofolio</button>
@@ -3544,6 +3732,12 @@ TEMPLATE = r'''<!DOCTYPE html>
   <section class="card" id="hr-kom" aria-label="Komoditas"></section>
   <section class="card" id="mk-arus" aria-label="Transaksi dan tekanan pasar"></section>
   <div class="hr-grid3"><section class="card" id="hr-up"></section><section class="card" id="hr-dn"></section><section class="card" id="hr-val"></section></div>
+  </div>
+
+  <div class="view" id="v-cepat" hidden>
+  <section class="card" id="tc-head" aria-label="Trade cepat"></section>
+  <section class="card" id="tc-list" aria-label="Setup trade cepat"></section>
+  <section class="card" id="tc-bt" aria-label="Backtest trade cepat"></section>
   </div>
 
   <div class="view" id="v-makro" hidden>
@@ -3770,6 +3964,12 @@ TEMPLATE = r'''<!DOCTYPE html>
       <div class="guide-body">
         <p><b>Strategi</b> menggabungkan empat kelompok dalam satu pilihan: <b>Gaya screening</b> (Tampilkan semua, Struktur searah naik, Tren naik rapi, dan seterusnya), <b>Fundamental</b> (Jangka panjang, Trading + fundamental, Profit+, Growth+, Undervalued, harga wajar Graham, Asset Growth), <b>Dividen</b> (rutin 3/5 tahun, yield tinggi di atas BI Rate), dan <b>Sinyal teknikal</b> (Conversion break, MACD, EMA, MACD Golden Cross harian, Stochastic RSI, Bollinger Bands). Angka dalam kurung = jumlah saham yang lolos. Saat memakai screener fundamental/dividen/teknikal, filter lain diabaikan dan penjelasan syaratnya tampil di bawah pilihan. Syarat tambahan (harga, RSI, sektor, skor, kondisi) ada di <b>Filter pencarian</b> dan berlaku di atas Strategi yang dipilih. Tombol <b>⚙ Kolom</b> di atas tabel memilih kolom yang tampil (tersimpan di browser): bawaannya ringkas (Chart, Harga, Chg%, Kesimpulan, Rencana, Transaksi, Asing 5H, Skor F); label Kondisi tampil kecil di bawah Kesimpulan. Ringkasan IHSG satu baris di atas Screener; ringkasan lengkap ada di tab Hari ini.</p>
         <p><b>Chart:</b> alat gambar ada di bilah vertikal di kiri chart (garis, horizontal, catatan, Fibonacci, Elliott Wave, rentang harga/tanggal, magnet 🧲, hapus semua 🗑); pilihan warna dan ketebalan muncul di atas chart saat sedang menggambar atau saat sebuah gambar dipilih. Lapisan Fase bulan kini mati secara bawaan (bisa dinyalakan di daftar lapisan). Tombol Sinkron, Perbarui, dan Tema ada di menu ⚙ di kanan atas (titik hijau = tersinkron, merah = gagal). Di HP, tab utama ada di bilah bawah.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Trade cepat (1–5 hari)</summary>
+      <div class="guide-body">
+        <p>Tab <b>⚡ Trade cepat</b> mencari setup jangka sangat pendek di chart 1 jam, terpisah dari label tren: <b>Breakout–retest</b>, <b>Pullback dalam tren naik</b>, dan <b>Pembalikan dari discount</b>. Setiap setup punya zona entry, cut loss, target (berhenti sebelum resistance/supply terdekat), R:R minimal 1:1,5, kualitas A/B/C, dan jumlah lot sesuai modal & risiko per trade. Keluar paling lambat 5 hari bursa setelah masuk. Peringatan muncul kalau saham sudah naik >10% sehari (jangan kejar), dekat batas ARA, transaksinya kecil, atau IHSG Bearish. Bagian <b>Backtest 6 bulan</b> menguji setup yang sama ke data 1 jam: lihat <b>rata-rata per trade (R)</b>; di atas 0 berarti menguntungkan dalam jangka panjang. Biaya broker belum dihitung.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -6944,6 +7144,53 @@ function fdDetail(r) {
     <p class="muted" style="font-size:0.72rem;margin:6px 0 0">Graham Number = √(22,5 × laba per saham × nilai buku per saham): perkiraan kasar harga wajar untuk saham yang stabil, kurang cocok untuk bank, saham bertumbuh, atau laba yang naik-turun. Data Yahoo bisa terlambat atau tidak lengkap; cek laporan keuangan resmi sebelum mengambil keputusan.</p></div>`;
 }
 
+/* ---------- TRADE CEPAT (1-5 hari) ---------- */
+const TC_NM = { brt: "Breakout–retest", pb: "Pullback dalam tren naik", rv: "Pembalikan dari discount" };
+const TC_DESC = { brt: "Harga menembus swing high 1 jam dengan volume ≥ 1,5× rata-rata; entry saat harga kembali menguji level yang ditembus.",
+  pb: "Arah 4 jam naik; harga di 1 jam turun ke VWMA20 lalu memantul (candle naik menembus high candle sebelumnya).",
+  rv: "Harga di separuh bawah range ±3 minggu (discount), lalu CHoCH naik: menembus lower high terakhir dengan volume ≥ 1,3×." };
+const tcGrade = q => q >= 3 ? "A" : q === 2 ? "B" : "C";
+function renderCepat() {
+  if (!$("v-cepat")) return;
+  const c = ls.get(CALC, { modal: 10000000, risk: 1 }), BT = (MARKET.tc || {}).jenis || {};
+  const L = DATA.filter(r => r.tc).sort((a, b) => (a.tc.st === "zona" ? 0 : 1) - (b.tc.st === "zona" ? 0 : 1) || b.tc.q - a.tc.q || b.tc.rr - a.tc.rr);
+  const ih = V_IHSG && V_IHSG.arah === "Bearish";
+  $("tc-head").innerHTML = `<div class="cal-head"><h2>⚡ Trade cepat <span class="muted" style="font-size:0.85rem;font-weight:600">· 1–5 hari bursa</span></h2></div>
+    <p style="margin:0 0 10px;font-size:0.9rem">Setup jangka sangat pendek dari <b>chart 1 jam</b> (arah 4 jam sebagai penyaring), <b>terpisah dari label tren</b>. Saham bisa bertren Bearish tetapi punya setup cepat, begitu pula sebaliknya. Target ±3–8%, cut loss ±2–4%, R:R minimal 1:1,5, dan <b>keluar paling lambat 5 hari bursa</b> setelah masuk, apa pun hasilnya.</p>
+    <div class="tc-set"><label>Modal (Rp) <input type="number" id="tc-modal" value="${c.modal}" min="0" step="100000"></label>
+      <label>Risiko per trade (%) <input type="number" id="tc-risk" value="${c.risk}" min="0.1" max="5" step="0.1"></label>
+      <span class="muted" style="font-size:0.8rem">Risiko Rp ${fmtNum(Math.round(c.modal * c.risk / 100))} per trade · sama dengan kalkulator lot di detail saham</span></div>
+    ${ih ? `<div class="ag-warn" style="margin-top:10px">⚠ IHSG sedang <b>Bearish</b>: setup cepat lebih sering gagal saat pasar turun. Pertimbangkan risiko per trade lebih kecil atau lebih selektif (kualitas A saja).</div>` : ""}`;
+  const save = () => { ls.set(CALC, { modal: Math.max(0, +$("tc-modal").value || 0), risk: Math.min(5, Math.max(0.1, +$("tc-risk").value || 1)) }); renderCepat(); };
+  $("tc-modal").addEventListener("change", save); $("tc-risk").addEventListener("change", save);
+  const lot = t => { const perLot = (t.e2 - t.sl) * 100; let n = perLot > 0 ? Math.floor(c.modal * c.risk / 100 / perLot) : 0; n = Math.min(n, Math.floor(c.modal / (t.e2 * 100))); return Math.max(0, n); };
+  $("tc-list").innerHTML = `<div class="cal-head"><h2>Setup hari ini <span class="muted" style="font-size:0.85rem;font-weight:600">· ${L.length} saham</span></h2><span class="muted" style="font-size:0.78rem">dari saham dengan data 1 jam (transaksi ≥ Rp 1 M/hari) · klik baris untuk chart 1 jam</span></div>
+    ${L.length ? `<div class="table-wrap" style="max-height:none"><table class="j-tbl tc-tbl"><thead><tr><th>Saham</th><th>Setup</th><th>Status</th><th class="num">Harga</th><th class="num">Zona entry</th><th class="num">Cut loss</th><th class="num">Target</th><th class="num">R:R</th><th class="num">Lot</th><th>Catatan</th></tr></thead><tbody>
+      ${L.map(r => { const t = r.tc, n = lot(t), g = tcGrade(t.q), notes = [...t.cat]; if (ih) notes.push("IHSG Bearish");
+        return `<tr data-tc="${r.t}"><td><b>${r.t}</b><div class="muted" style="font-size:0.72rem">${esc((r.nm || "").slice(0, 24))}</div><div style="margin-top:3px">${vBadge(vSaham(r))}</div></td>
+        <td><span class="tc-g tc-${g}" title="Kualitas dari: volume ≥ 2×, arah 4 jam naik, R:R ≥ 2, target ≥ 3%">${g}</span> ${TC_NM[t.jenis]}<div class="muted" style="font-size:0.72rem">sinyal ${esc(t.sig.slice(5))} · vol ${fmtDec(t.vr, 1)}×</div></td>
+        <td>${t.st === "zona" ? '<span class="tc-st on">Di zona entry</span>' : '<span class="tc-st">Tunggu retest</span>'}</td>
+        <td class="num">${fmtNum(t.p || r.p)}<div class="muted" style="font-size:0.7rem">1 jam</div></td><td class="num"><b>${fmtNum(t.e1)}${t.e2 !== t.e1 ? "–" + fmtNum(t.e2) : ""}</b></td>
+        <td class="num neg">${fmtNum(t.sl)}<div style="font-size:0.72rem">−${fmtDec(t.rk, 1)}%</div></td><td class="num pos">${fmtNum(t.tp)}<div style="font-size:0.72rem">+${fmtDec(t.tg, 1)}%</div></td>
+        <td class="num"><b>1:${fmtDec(t.rr, 1)}</b></td><td class="num">${n ? `<b>${fmtNum(n)}</b><div class="muted" style="font-size:0.72rem">Rp ${fmtValue(n * 100 * t.e2).replace("Rp ", "")}</div>` : '<span class="muted">modal kurang</span>'}</td>
+        <td class="tc-cat">${notes.length ? notes.map(x => `<div>⚠ ${esc(x)}</div>`).join("") : '<span class="muted">-</span>'}</td></tr>`; }).join("")}</tbody></table></div>`
+      : `<p class="muted">Belum ada setup yang memenuhi syarat saat ini. Ini normal: setup yang bagus tidak muncul setiap hari.</p>`}
+    <div class="tc-legend">${Object.keys(TC_NM).map(k => `<div><b>${TC_NM[k]}</b>: ${TC_DESC[k]}</div>`).join("")}
+      <div><b>Status</b>: "Di zona entry" = harga sudah di zona; "Tunggu retest" = harga di atas zona, pasang antrean beli di zona entry, jangan kejar. <b>Lot</b> = jumlah lot supaya kerugian kalau kena cut loss sesuai risiko per trade (dibatasi modal).</div></div>`;
+  $("tc-list").querySelectorAll("[data-tc]").forEach(tr => tr.addEventListener("click", () => {
+    openDetail(tr.dataset.tc, "full");
+    setTimeout(() => { const b = document.querySelector('#tf-bar [data-tf="1h"]'); if (b && !b.disabled) b.click(); }, 350);
+  }));
+  const row = (k, lab) => { const x = BT[k]; if (!x) return ""; const exp = x.avg * c.modal * c.risk / 100;
+    return `<tr class="${k === "semua" ? "tc-all" : ""}"><td><b>${lab}</b></td><td class="num">${fmtNum(x.n)}</td><td class="num">${fmtDec(x.win, 0)}%</td><td class="num">${fmtDec(x.avgwin, 2)}R</td>
+      <td class="num ${x.avg >= 0 ? "pos" : "neg"}"><b>${x.avg >= 0 ? "+" : ""}${fmtDec(x.avg, 2)}R</b></td><td class="num ${exp >= 0 ? "pos" : "neg"}">${exp >= 0 ? "+" : "−"}Rp ${fmtNum(Math.abs(Math.round(exp)))}</td>
+      <td class="num">${x.tot >= 0 ? "+" : ""}${fmtDec(x.tot, 1)}R</td></tr>`; };
+  $("tc-bt").innerHTML = `<div class="cal-head"><h2>Backtest 6 bulan</h2><span class="muted" style="font-size:0.8rem">${(MARKET.tc || {}).n_saham || 0} saham · data 1 jam</span></div>
+    ${Object.keys(BT).length ? `<div class="table-wrap" style="max-height:none"><table class="j-tbl"><thead><tr><th>Setup</th><th class="num">Jumlah trade</th><th class="num">Win rate</th><th class="num">Rata-rata saat untung</th><th class="num">Rata-rata per trade</th><th class="num">Per trade (risiko kamu)</th><th class="num">Total</th></tr></thead><tbody>
+      ${row("brt", TC_NM.brt)}${row("pb", TC_NM.pb)}${row("rv", TC_NM.rv)}${row("semua", "Semua setup")}</tbody></table></div>` : '<p class="muted">Belum ada hasil backtest.</p>'}
+    <p class="muted" style="font-size:0.76rem;margin:8px 0 0"><b>R</b> = kelipatan risiko: +2R berarti untung 2× jarak cut loss, −1R berarti kena cut loss. Aturan uji: masuk kalau harga turun ke zona entry dalam 1 hari setelah sinyal, keluar di target, cut loss, atau setelah 5 hari bursa (di harga penutupan). <b>Rata-rata per trade di atas 0</b> berarti setup itu menguntungkan dalam jangka panjang; win rate rendah bisa tetap untung kalau rata-rata untungnya besar. Belum memperhitungkan biaya broker (±0,4% pulang-pergi), selisih harga eksekusi, dan antrean; data 1 jam Yahoo bisa tidak sempurna. Hasil masa lalu tidak menjamin hasil ke depan; catat trade sungguhanmu di Portofolio untuk membuktikannya.</p>`;
+}
+
 /* ---------- PAKET C: ringkasan keputusan ---------- */
 function pilarOf(r) {
   const v = vSaham(r), P = [{ k: "Teknikal", s: v.arah === "Bullish" ? 1 : v.arah === "Bearish" ? -1 : 0, t: `${v.arah} · ${v.waktu}` }];
@@ -7741,7 +7988,7 @@ function renderMovers() {
 }
 
 /* ---------- halaman (tab): screener, kalender, jurnal, panduan ---------- */
-const VIEWS = ["hari", "screener", "makro", "kalender", "jurnal", "panduan"];
+const VIEWS = ["hari", "screener", "cepat", "makro", "kalender", "jurnal", "panduan"];
 function viewFromHash() { const h = location.hash.replace("#", ""); return VIEWS.includes(h) ? h : "hari"; }
 function showView(v) {
   VIEWS.forEach(k => { $("v-" + k).hidden = k !== v; });
@@ -7749,6 +7996,7 @@ function showView(v) {
   $("cmp-bar").style.visibility = v === "screener" ? "" : "hidden";
   if (v === "makro") renderMakroView();
   if (v === "hari") renderHari();
+  if (v === "cepat") renderCepat();
   if (v === "jurnal") pfLockUI();
   else { try { sessionStorage.removeItem("idxs:pfok"); } catch (e) {} const dm = $("pf-detail"); if (dm) dm.hidden = true; pfClose(); }   // keluar dari Portofolio = terkunci lagi
 }
