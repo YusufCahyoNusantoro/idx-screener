@@ -1780,6 +1780,70 @@ def ringkas_backtest(semua, n_saham):
     return out
 
 
+GRUP_FILE = BASE / "grup.json"                # opsional: ubah/tambah peta grup & komoditas tanpa mengubah kode
+GRUP_DEFAULT = [
+    # anak: [kode, keterangan, induk langsung (kode tercatat) atau "" = terhubung lewat pemilik/induk tak tercatat]
+    {"nama": "Astra", "akar": "Jardine Matheson (pemilik)", "induk": ["ASII"], "anak": [["UNTR", "alat berat, tambang batubara & emas", "ASII"], ["AALI", "perkebunan sawit", "ASII"], ["AUTO", "komponen otomotif", "ASII"], ["ASGR", "solusi TI", "ASII"], ["ACST", "konstruksi", "UNTR"]]},
+    {"nama": "Barito (Prajogo Pangestu)", "akar": "Prajogo Pangestu (pemilik)", "induk": ["BRPT"], "anak": [["TPIA", "petrokimia", "BRPT"], ["BREN", "energi panas bumi", "BRPT"], ["CDIA", "infrastruktur", "TPIA"], ["CUAN", "tambang batubara", ""], ["PTRO", "jasa tambang", "CUAN"]]},
+    {"nama": "Salim", "akar": "Keluarga Salim (pemilik)", "induk": ["INDF"], "anak": [["ICBP", "makanan & mi instan", "INDF"], ["SIMP", "agribisnis sawit", "INDF"], ["LSIP", "perkebunan sawit", "SIMP"]]},
+    {"nama": "Sinar Mas", "akar": "Keluarga Widjaja (pemilik)", "induk": [], "anak": [["DSSA", "energi & infrastruktur", ""], ["INKP", "kertas & pulp", ""], ["TKIM", "kertas", ""], ["SMAR", "sawit & minyak nabati", ""], ["BSDE", "properti", ""], ["DUTI", "properti", "BSDE"], ["DMAS", "kawasan industri", ""]]},
+    {"nama": "Adaro / Alamtri", "akar": "Keluarga Thohir & pemegang saham Adaro", "induk": ["ADRO"], "anak": [["ADMR", "batubara metalurgi", "ADRO"], ["AADI", "batubara (dipisah dari ADRO 2024)", ""]]},
+    {"nama": "Bakrie", "akar": "Keluarga Bakrie", "induk": ["BNBR"], "anak": [["VKTR", "kendaraan listrik", "BNBR"], ["BUMI", "batubara", ""], ["BRMS", "emas & mineral", ""], ["ENRG", "minyak & gas", ""], ["DEWA", "jasa tambang", ""], ["UNSP", "perkebunan", ""]]},
+    {"nama": "MNC (Hary Tanoesoedibjo)", "akar": "Hary Tanoesoedibjo (pemilik)", "induk": ["BHIT"], "anak": [["BMTR", "media", "BHIT"], ["MNCN", "televisi", "BMTR"], ["MSIN", "konten & digital", "MNCN"], ["KPIG", "properti & pariwisata", "BHIT"], ["BABP", "bank", ""]]},
+    {"nama": "Lippo", "akar": "Keluarga Riady", "induk": ["LPKR"], "anak": [["LPCK", "properti Cikarang", "LPKR"], ["SILO", "rumah sakit", ""], ["MLPL", "investasi", ""]]},
+    {"nama": "Emtek", "akar": "Keluarga Sariaatmadja", "induk": ["EMTK"], "anak": [["SCMA", "televisi & media", "EMTK"]]},
+    {"nama": "CT Corp", "akar": "Chairul Tanjung (pemilik)", "induk": [], "anak": [["MEGA", "bank", ""], ["BBHI", "bank digital (Allo Bank)", ""]]},
+    {"nama": "Panin", "akar": "Keluarga Gunawan", "induk": [], "anak": [["PNIN", "investasi & asuransi", ""], ["PNBN", "bank", ""], ["PNLF", "jasa keuangan", ""]]},
+    {"nama": "Djarum / Hartono", "akar": "Keluarga Hartono (pemilik)", "induk": [], "anak": [["BBCA", "bank", ""], ["TOWR", "menara telekomunikasi", ""]]},
+    {"nama": "BUMN Tambang (MIND ID)", "akar": "MIND ID (holding BUMN, tidak tercatat)", "induk": [], "anak": [["ANTM", "nikel & emas", ""], ["PTBA", "batubara", ""], ["TINS", "timah", ""], ["INCO", "nikel (MIND ID pemegang saham besar)", ""]]},
+    {"nama": "BUMN Energi (Pertamina)", "akar": "Pertamina (BUMN, tidak tercatat)", "induk": [], "anak": [["PGAS", "gas", ""], ["PGEO", "panas bumi", ""], ["ELSA", "jasa migas", ""]]},
+    {"nama": "Telkom", "akar": "Pemerintah RI", "induk": ["TLKM"], "anak": [["MTEL", "menara telekomunikasi", "TLKM"]]},
+    {"nama": "Semen Indonesia", "akar": "Pemerintah RI", "induk": ["SMGR"], "anak": [["SMBR", "semen", "SMGR"], ["SMCB", "semen", "SMGR"]]},
+]
+KOMODITAS_DEFAULT = [
+    {"nama": "Batubara", "sym": "NCF=F", "alt": ["MTF=F", "PCOALAUUSDM"], "saham": ["PTBA", "ITMG", "ADRO", "AADI", "BUMI", "HRUM", "INDY", "UNTR", "GEMS", "BSSR", "CUAN"], "ket": "Harga batubara naik umumnya mengangkat laba penambang; UNTR terkait lewat tambang & alat berat."},
+    {"nama": "CPO (sawit)", "sym": "PPOILUSDM", "saham": ["AALI", "LSIP", "SIMP", "SSMS", "TAPG", "DSNG", "SMAR", "SGRO"], "ket": "Harga CPO naik menguntungkan emiten perkebunan; tekanan biaya pupuk dan pungutan ekspor ikut menentukan."},
+    {"nama": "Nikel", "sym": "PNICKUSDM", "saham": ["INCO", "ANTM", "MBMA", "NCKL", "HRUM"], "ket": "Harga nikel menentukan laba penambang & smelter; terkait juga dengan permintaan baterai kendaraan listrik."},
+    {"nama": "Emas", "sym": "GC=F", "saham": ["ANTM", "MDKA", "BRMS", "PSAB", "ARCI", "EMAS", "UNTR"], "ket": "Emas naik saat dolar/bunga riil turun atau saat ketidakpastian meningkat."},
+    {"nama": "Minyak", "sym": "BZ=F", "saham": ["MEDC", "ENRG", "ELSA", "AKRA", "RAJA", "PGAS"], "ket": "Minyak naik menguntungkan produsen migas; distributor BBM/gas bisa terdampak berbeda."},
+    {"nama": "Tembaga", "sym": "HG=F", "saham": ["AMMN", "MDKA"], "ket": "Tembaga mencerminkan permintaan industri global (China, listrik, kendaraan listrik)."},
+    {"nama": "Timah", "sym": "", "saham": ["TINS"], "ket": "TINS adalah emiten timah utama BEI; harga timah global belum tersedia di data aplikasi."},
+]
+
+
+def ambil_kom_ohlc(syms=("NCF=F", "MTF=F", "GC=F", "BZ=F", "HG=F")):
+    """OHLC harian 1 tahun untuk chart candle komoditas."""
+    out = {}
+    try:
+        raw = unduh(list(syms), "1y", "1d", mentah=True)
+        for sy in syms:
+            df = raw.get(sy)
+            if df is None or len(df) < 30:
+                continue
+            df = ke_tanggal(df).dropna(subset=["Close"])
+            df = df[(df["High"] >= df["Low"]) & (df["Close"] > 0)]
+            r2 = lambda x: [round(float(v), 4) for v in x]
+            out[sy] = {"d": [t.strftime("%Y-%m-%d") for t in df.index], "o": r2(df["Open"].fillna(df["Close"])), "h": r2(df["High"]),
+                       "l": r2(df["Low"]), "c": r2(df["Close"])}
+    except Exception as e:
+        print(f"  ! OHLC komoditas: {e}")
+    hilang = [sy for sy in syms if sy not in out]
+    print(f"  OHLC komoditas: {', '.join(out) or '-'}{' · tidak tersedia: ' + ', '.join(hilang) if hilang else ''}")
+    return out
+
+
+def muat_grup():
+    g, k = GRUP_DEFAULT, KOMODITAS_DEFAULT
+    if GRUP_FILE.exists():
+        try:
+            j = json.loads(GRUP_FILE.read_text(encoding="utf-8"))
+            g, k = j.get("grup", g), j.get("komoditas", k)
+            print(f"  grup.json dipakai: {len(g)} grup, {len(k)} komoditas")
+        except Exception as e:
+            print(f"  ! grup.json tidak bisa dibaca: {e}")
+    return {"grup": g, "komoditas": k}
+
+
 def _koma(t):
     """Angka desimal gaya Indonesia di dalam kalimat: 2.9% -> 2,9%."""
     import re
@@ -2701,6 +2765,8 @@ def main():
         pasar["ihsg"]["tfx"] = sorted(ihsg_tf)
     if TC_RINGKAS:
         pasar["tc"] = TC_RINGKAS
+    pasar["grup"] = muat_grup()
+    pasar["kom_ohlc"] = ambil_kom_ohlc()
     try:
         pasar["mx"] = makro_lengkap(harian, rows, ke_tanggal(ihsg10) if ihsg10 is not None else None, pasar.get("makro"))
     except Exception as e:
@@ -3409,6 +3475,43 @@ TEMPLATE = r'''<!DOCTYPE html>
   .tc-cat { font-size:0.76rem; color:var(--orange); max-width:240px; }
   .tc-legend { display:grid; gap:4px; font-size:0.78rem; color:var(--ink2); margin-top:10px; }
   .tc-all td { border-top:2px solid var(--line); }
+  .kc-tr { display:inline-block; border-radius:999px; padding:2px 9px; font-size:0.76rem; font-weight:800; background:var(--panel2); }
+  .kc-Naik { background:color-mix(in srgb, var(--up) 20%, transparent); color:var(--up); } .kc-Turun { background:color-mix(in srgb, var(--down) 20%, transparent); color:var(--down); } .kc-Datar { color:var(--ink2); }
+  .kc-leg { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:0.84rem; } .kc-leg i { display:inline-block; width:12px; height:3px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+  .kc-rm { background:none; border:0; color:var(--muted); cursor:pointer; font-size:0.95rem; padding:0 2px; }
+  .kc-add { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; font-size:0.82rem; margin:6px 0; } .kc-add input { width:130px; padding:4px 8px; border:1px solid var(--field-line); border-radius:7px; background:var(--field-bg); color:var(--ink); }
+  .kp-grid { display:grid; grid-template-columns:minmax(0, 2.2fr) minmax(220px, 1fr); gap:14px; align-items:start; }
+  .kp-pick { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; font-size:0.82rem; }
+  .kp-tg { display:inline-flex; align-items:center; gap:5px; border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:999px; padding:3px 10px; font-weight:700; font-size:0.8rem; cursor:pointer; }
+  .kp-tg i { width:10px; height:10px; border-radius:3px; display:inline-block; } .kp-tg.off { opacity:.4; text-decoration:line-through; }
+  .kp-dim { opacity:.45; } .kp-ihsg { border-top:1px dashed var(--line); padding-top:4px; } .kp-tg-ih { font-weight:800; }
+  .gk-tbl th, .gk-tbl td { white-space:normal !important; } .gk-tbl td:first-child { min-width:220px; max-width:320px; overflow-wrap:anywhere; }
+  .gk-tbl td:first-child .muted { max-width:none !important; line-height:1.4; }
+  .kp-rank { list-style:none; padding:0; margin:0; display:grid; gap:7px; font-size:0.88rem; } .kp-dot { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; }
+  @media (max-width:900px) { .kp-grid { grid-template-columns:1fr; } }
+  .kc-spark { background:none; border:0; padding:0; cursor:pointer; } .kc-spark .hr-spark { width:110px; height:32px; }
+  .kc-pop { justify-content:center; align-items:center; } .kc-card { width:min(980px, 96vw); height:auto; max-height:92vh; border-radius:14px; border:1px solid var(--line); }
+  .gk-chips { white-space:normal !important; }
+  .gk-tbl td.gk-chips { text-align:left !important; min-width:420px; width:46%; } .gk-tree { text-align:left; }
+  .gk-grp { margin:0 0 3px !important; } .gk-grp .gk-ownl { font-size:0.7rem; }
+  .tier { display:inline-block; min-width:14px; height:14px; line-height:14px; border-radius:4px; font-style:normal; font-size:0.62rem; font-weight:800; text-align:center; margin-right:3px; color:#fff; }
+  .tier.t1 { background:#2563EB; } .tier.t2 { background:#0D9488; } .tier.t3 { background:#9CA3AF; }
+  .gk-chip.me { outline:2px solid var(--accent); }
+  .gk-tree, .gk-tree ul { list-style:none; margin:0; padding:0; } .gk-tree ul { margin-left:16px; padding-left:8px; border-left:1px solid var(--line); }
+  .gk-tree li { margin:1px 0; } .gk-tree li > .gk-k { margin-left:6px; font-size:0.78rem; }
+  .gk-own > ul { border-left:1px dashed var(--line); } .gk-ownl { font-size:0.74rem; color:var(--muted); font-weight:700; }
+  .gk-ctx > .gk-chip { opacity:.55; }
+  .gk-grp { display:grid; grid-template-columns:auto 1fr; gap:2px 8px; align-items:start; text-align:left; margin:2px 0 6px; } .gk-gl { font-size:0.72rem; font-weight:800; color:var(--ink2); padding-top:5px; white-space:nowrap; }
+  .gk-flat { display:flex; flex-wrap:wrap; }
+  .gk-line { display:flex; flex-wrap:wrap; align-items:center; gap:2px 6px; margin:1px 0 3px; } .gk-line .gk-gl { min-width:118px; padding-top:0; }
+  .gk-rt { display:inline-flex; align-items:center; gap:1px; margin-right:8px; } .gk-ar { color:var(--muted); font-weight:800; margin:0 1px; }
+  .gk-own1 { color:var(--muted); font-weight:800; margin-right:2px; } .gk-ctx1 > .gk-chip { opacity:.55; } .gk-tbl td { vertical-align:top; }
+  .gk-chip { display:inline-flex; align-items:center; gap:4px; margin:2px; padding:2px 7px; border-radius:7px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font-weight:800; font-size:0.76rem; cursor:pointer; }
+  .gk-chip small { font-weight:700; font-size:0.7rem; } .gk-chip.up small { color:var(--up); } .gk-chip.dn small { color:var(--down); }
+  .gk-chip.up { border-color:color-mix(in srgb, var(--up) 45%, var(--line)); } .gk-chip.dn { border-color:color-mix(in srgb, var(--down) 45%, var(--line)); }
+  .gk-chip.ind { background:var(--panel2); } .gk-chip.off { opacity:.45; cursor:default; }
+  .gk-row { margin-top:8px; font-size:0.86rem; display:grid; gap:4px; } .gk-row > span { margin-right:10px; }
+  .gk-list { display:grid; gap:3px; } .gk-li { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; font-size:0.82rem; }
   .hr-head { display:flex; align-items:baseline; gap:12px; margin:4px 0 12px; } .hr-head h2 { margin:0; font-size:1.6rem; }
   .hr-grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-bottom:14px; } .hr-grid3 > .card { margin:0; }
   .hr-lab { font-size:0.8rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink2); }
@@ -3634,6 +3737,7 @@ TEMPLATE = r'''<!DOCTYPE html>
           <option value="bad">Hindari dulu</option>
         </select></div>
       <div class="f"><label for="sector-filter">Sektor</label><select id="sector-filter"><option value="">Semua sektor</option></select></div>
+      <div class="f"><label for="grp-filter">Grup</label><select id="grp-filter"><option value="">Semua grup</option></select></div>
       <div class="f"><label for="ind-filter">Industri <span class="muted" style="font-weight:600">(Yahoo)</span></label><select id="ind-filter"><option value="">Semua industri</option></select></div>
       <div class="f"><label>Harga (Rp)</label><div class="pair"><input type="number" id="price-min" placeholder="Min" min="0"><input type="number" id="price-max" placeholder="Maks" min="0"></div></div>
       <div class="f"><label>RSI</label><div class="pair"><input type="number" id="rsi-min" placeholder="0" min="0" max="100"><input type="number" id="rsi-max" placeholder="100" min="0" max="100"></div></div>
@@ -3744,7 +3848,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   <nav class="mk-jump" id="mk-jump" aria-label="Lompat ke bagian">
     <a href="#mk-hero" data-j="mk-hero">Rezim</a><a href="#mk-gli-card" data-j="mk-gli-card">Likuiditas</a><a href="#makro-card" data-j="makro-card">Pasar global</a>
     <a href="#mk-indo" data-j="mk-indo">Indonesia</a><a href="#mk-ihsg" data-j="mk-ihsg">IHSG</a><a href="#mk-pulih" data-j="mk-pulih">Pemulihan</a>
-    <a href="#mk-rotasi" data-j="mk-rotasi">Rotasi</a><a href="#mk-sektor" data-j="mk-sektor">Sektor</a><a href="#mk-alarm" data-j="mk-alarm">Alarm</a><a href="#mk-skenario" data-j="mk-skenario">Skenario</a></nav>
+    <a href="#mk-rotasi" data-j="mk-rotasi">Rotasi</a><a href="#mk-sektor" data-j="mk-sektor">Sektor</a><a href="#mk-grup" data-j="mk-grup">Grup & komoditas</a><a href="#mk-alarm" data-j="mk-alarm">Alarm</a><a href="#mk-skenario" data-j="mk-skenario">Skenario</a></nav>
   <section class="card mk-hero" id="mk-hero" aria-label="Rezim makro"></section>
   <section class="card" id="mk-gli-card" aria-label="Likuiditas global"><div class="cal-head"><h2>Likuiditas global</h2></div><div id="mk-gli"></div></section>
   <section class="card" id="makro-card" aria-label="Pasar global dan makro">
@@ -3757,6 +3861,7 @@ TEMPLATE = r'''<!DOCTYPE html>
   <section class="card" id="mk-pulih" aria-label="Pemulihan setelah koreksi besar"></section>
   <section class="card" id="mk-rotasi" aria-label="Rotasi sektor dan saham"></section>
   <section class="card" id="mk-sektor" aria-label="Dampak makro ke sektor"></section>
+  <section class="card" id="mk-grup" aria-label="Grup dan komoditas penggerak"></section>
   <div class="mk-two"><section class="card" id="mk-alarm" aria-label="Alarm makro"></section><section class="card" id="mk-skenario" aria-label="Skenario"></section></div>
   </div>
 
@@ -3964,6 +4069,12 @@ TEMPLATE = r'''<!DOCTYPE html>
       <div class="guide-body">
         <p><b>Strategi</b> menggabungkan empat kelompok dalam satu pilihan: <b>Gaya screening</b> (Tampilkan semua, Struktur searah naik, Tren naik rapi, dan seterusnya), <b>Fundamental</b> (Jangka panjang, Trading + fundamental, Profit+, Growth+, Undervalued, harga wajar Graham, Asset Growth), <b>Dividen</b> (rutin 3/5 tahun, yield tinggi di atas BI Rate), dan <b>Sinyal teknikal</b> (Conversion break, MACD, EMA, MACD Golden Cross harian, Stochastic RSI, Bollinger Bands). Angka dalam kurung = jumlah saham yang lolos. Saat memakai screener fundamental/dividen/teknikal, filter lain diabaikan dan penjelasan syaratnya tampil di bawah pilihan. Syarat tambahan (harga, RSI, sektor, skor, kondisi) ada di <b>Filter pencarian</b> dan berlaku di atas Strategi yang dipilih. Tombol <b>⚙ Kolom</b> di atas tabel memilih kolom yang tampil (tersimpan di browser): bawaannya ringkas (Chart, Harga, Chg%, Kesimpulan, Rencana, Transaksi, Asing 5H, Skor F); label Kondisi tampil kecil di bawah Kesimpulan. Ringkasan IHSG satu baris di atas Screener; ringkasan lengkap ada di tab Hari ini.</p>
         <p><b>Chart:</b> alat gambar ada di bilah vertikal di kiri chart (garis, horizontal, catatan, Fibonacci, Elliott Wave, rentang harga/tanggal, magnet 🧲, hapus semua 🗑); pilihan warna dan ketebalan muncul di atas chart saat sedang menggambar atau saat sebuah gambar dipilih. Lapisan Fase bulan kini mati secara bawaan (bisa dinyalakan di daftar lapisan). Tombol Sinkron, Perbarui, dan Tema ada di menu ⚙ di kanan atas (titik hijau = tersinkron, merah = gagal). Di HP, tab utama ada di bilah bawah.</p>
+      </div>
+    </details>
+    <details class="guide-item">
+      <summary>Grup usaha &amp; komoditas penggerak</summary>
+      <div class="guide-body">
+        <p>Menu Makro → <b>Grup &amp; komoditas</b> menampilkan <b>tren</b> setiap komoditas (Naik/Turun/Datar dari posisi harga terhadap MA20/MA50 dan arah 1 bulan; untuk CPO &amp; nikel dari rata-rata 3 vs 6 bulan), grafik mini, dan grafik besar saat nama komoditas diklik (rentang 3 bulan/6 bulan/1 tahun, garis MA, info harga per tanggal), serta kinerja komoditas (batubara, CPO, nikel, emas, minyak, tembaga, timah) dibanding saham-saham terkaitnya, serta grup usaha (Astra, Barito, Salim, Sinar Mas, Adaro/Alamtri, Bakrie, MNC, Lippo, Emtek, CT Corp, Panin, Djarum/Hartono, BUMN tambang, Pertamina, Telkom, Semen Indonesia) dengan induk (▲) dan anak usahanya. Di detail saham, bagian <b>Grup &amp; komoditas</b> menunjukkan saudara satu grup beserta kinerja dan kesimpulannya, serta komoditas penggeraknya. Screener punya filter <b>Grup</b>. Peta ini disusun manual dan bisa berubah; untuk mengubah/menambah, buat file <code>grup.json</code> di repo dengan format {"grup": [{"nama": "...", "akar": "pemilik", "induk": ["KODE"], "anak": [["KODE", "keterangan", "KODE induk langsung atau kosong"]]}], "komoditas": [{"nama": "...", "sym": "...", "saham": ["KODE"], "ket": "..."}]}.</p>
       </div>
     </details>
     <details class="guide-item">
@@ -4412,7 +4523,7 @@ function planCell(r) {
 }
 
 /* ---------- state ---------- */
-const FIELDS = ["search", "kd-filter", "sector-filter", "ind-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min", "per-max", "pbv-max", "dy-min", "fs-min"];
+const FIELDS = ["search", "kd-filter", "sector-filter", "ind-filter", "grp-filter", "price-min", "price-max", "rsi-min", "rsi-max", "val-min", "streak-min", "per-max", "pbv-max", "dy-min", "fs-min"];
 const CHECKS = ["f-watch", "f-trend", "f-breakout", "f-pattern", "f-confirmed", "f-allgreen", "f-ms", "f-top"];
 const W = ["w-trend", "w-brk", "w-pa", "w-mom", "w-st"];
 function save() {
@@ -4500,6 +4611,8 @@ function filtered() {
   if (q) rows = rows.filter(r => r.t.includes(q) || (r.nm || "").toUpperCase().includes(q));
   const sec = $("sector-filter").value;
   if (sec) rows = rows.filter(r => (r.sector || "-") === sec);
+  const grpf = $("grp-filter").value;
+  if (grpf) { const g = GRUP.find(x => x.nama === grpf); const S = new Set(g ? [...g.induk, ...g.anak.map(a => a[0])] : []); rows = rows.filter(r => S.has(r.t)); }
   const indf = $("ind-filter").value;
   if (indf) rows = rows.filter(r => r.fd && r.fd.ind === indf);
   if (kd === "nobad") rows = rows.filter(r => !r.kd || r.kd.c !== "bad");
@@ -6758,6 +6871,7 @@ function detailParts(r, r0, w) {
     sub, up,
     price: `${fmtNum(r.p)} <span class="${up ? "pos" : "neg"}" style="font-size:1rem">${up ? "+" : ""}${fmtDec(r.chg, 2)}%</span>`,
     meta: `Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.${r.top ? ` <span class="top-badge">Top 10 #${r.top}</span>` : ""}`,
+    terkait: terkaitHtml(r),
     fund: (fdDetail(r) || r.fa) ? `<div class="d-sec">${fdDetail(r)}${r.fa ? (() => { const S = r.fa.s, mx = Math.max(0.01, ...S.map(Math.abs)), w = 220 / S.length;
         return `<div class="d-asing"><div class="hr-lab">Asing (data BEI ${esc(r.fa.d)})</div><div class="d-asing-k"><span>1 hari <b class="${r.fa.n1 >= 0 ? "pos" : "neg"}">${fmtAsing(r.fa.n1)}</b></span><span>5 hari <b class="${r.fa.n5 >= 0 ? "pos" : "neg"}">${fmtAsing(r.fa.n5)}</b></span><span>20 hari <b class="${r.fa.n20 >= 0 ? "pos" : "neg"}">${fmtAsing(r.fa.n20)}</b></span></div>
           <svg viewBox="0 0 220 40" width="220" height="40">${S.map((v, i) => { const h = Math.abs(v) / mx * 18; return `<rect x="${(i * w + w * 0.15).toFixed(1)}" y="${(v >= 0 ? 20 - h : 20).toFixed(1)}" width="${(w * 0.7).toFixed(1)}" height="${Math.max(1, h).toFixed(1)}" fill="${v >= 0 ? "var(--up)" : "var(--down)"}"/>`; }).join("")}<line x1="0" x2="220" y1="20" y2="20" stroke="var(--line)"/></svg></div>`; })() : ""}</div>` : "",
@@ -6827,6 +6941,7 @@ function openDetail(t, mode, opt = {}) {
           <section class="card"><h3 class="d-grp">Teknikal</h3><div class="muted" style="font-size:0.82rem">Candle terakhir ${esc(r.tgl)}. Skor ${fmtDec(r.score, 0)} dengan bobot saat ini.</div>${P.kond}${P.skor}${P.checklist}</section>
           ${P.fund ? `<section class="card"><h3 class="d-grp">Fundamental &amp; arus dana</h3>${P.fund}</section>` : ""}
         </div>
+        ${P.terkait ? `<section class="card full-span"><h3 class="d-grp">Grup &amp; komoditas</h3>${P.terkait}</section>` : ""}
         ${P.peer ? `<section class="card full-span"><h3 class="d-grp">Dibanding pesaing</h3>${P.peer}</section>` : ""}
         <section class="card full-span">${P.sim}</section>
         <section class="card full-span">${P.hist}</section>
@@ -6847,7 +6962,7 @@ function openDetail(t, mode, opt = {}) {
       </div>
       <div class="d-price">${P.price} ${r.t !== "IHSG" && r.t !== "XAUIDR" ? vBadge(vSaham(r), true) : ""}</div>
       <div class="muted" style="font-size:0.8rem">${P.meta}</div>
-      ${P.ring}${P.kond}${P.struktur}${P.chart}${P.plan}${P.fund}${P.peer}${P.checklist}${P.sim}${P.hist}${P.skor}${P.tf}${P.lain}
+      ${P.ring}${P.kond}${P.struktur}${P.chart}${P.plan}${P.fund}${P.terkait}${P.peer}${P.checklist}${P.sim}${P.hist}${P.skor}${P.tf}${P.lain}
       <div class="d-actions">${P.star}${P.cmpb}</div>${P.foot}`;
     $("drawer").classList.add("open"); $("scrim").classList.add("open");
     if (!opt.keepFocus) $("drawer").focus();
@@ -6952,7 +7067,7 @@ $("watch-btn").addEventListener("click", () => {
 W.forEach(id => $(id).addEventListener("input", () => { $(id + "-val").textContent = $(id).value; activePreset = null; markPreset(); page = 0; save(); render(); }));
 $("min-score").addEventListener("input", function () { $("min-score-val").textContent = this.value; page = 0; save(); render(); });
 CHECKS.forEach(id => $(id).addEventListener("change", () => { page = 0; save(); render(); }));
-FIELDS.forEach(id => $(id).addEventListener(id === "kd-filter" || id === "sector-filter" || id === "ind-filter" ? "change" : "input", () => { page = 0; save(); render(); }));
+FIELDS.forEach(id => $(id).addEventListener(id === "kd-filter" || id === "sector-filter" || id === "ind-filter" || id === "grp-filter" ? "change" : "input", () => { page = 0; save(); render(); }));
 $("prev-page").addEventListener("click", () => { page--; save(); render(); });
 $("next-page").addEventListener("click", () => { page++; save(); render(); });
 document.querySelectorAll("thead th[data-key]").forEach(th => th.addEventListener("click", () => {
@@ -7144,6 +7259,229 @@ function fdDetail(r) {
     <p class="muted" style="font-size:0.72rem;margin:6px 0 0">Graham Number = √(22,5 × laba per saham × nilai buku per saham): perkiraan kasar harga wajar untuk saham yang stabil, kurang cocok untuk bank, saham bertumbuh, atau laba yang naik-turun. Data Yahoo bisa terlambat atau tidak lengkap; cek laporan keuangan resmi sebelum mengambil keputusan.</p></div>`;
 }
 
+/* ---------- GRUP & KOMODITAS PENGGERAK ---------- */
+const GRUP = ((MARKET.grup || {}).grup) || [], KOMOD = ((MARKET.grup || {}).komoditas) || [];
+const D_ = t => DATA.find(r => r.t === t);
+function grupOf(t) { return GRUP.filter(g => g.induk.includes(t) || g.anak.some(a => a[0] === t)); }
+function komodOf(t) { return KOMOD.filter(k => k.saham.includes(t)); }
+function komodChg(k) {
+  const S = komodSer(k); if (!S) return null; const c = S.c, n = c.length;
+  return S.harian ? (n > 22 ? (c[n - 1] / c[n - 22] - 1) * 100 : null) : (n > 1 ? (c[n - 1] / c[n - 2] - 1) * 100 : null);
+}
+const pctH = v => v == null ? '<span class="muted">-</span>' : `<span class="${v >= 0 ? "pos" : "neg"}">${v >= 0 ? "+" : ""}${fmtDec(v, 1)}%</span>`;
+function tierOf(r) {                         // 1 = first liner, 2 = second liner, 3 = third liner (patokan umum, bukan definisi resmi BEI)
+  if (!r) return null;
+  const mc = r.fd && r.fd.mcap, v = r.val || 0, T = v => fmtDec(v / 1e12, v >= 1e13 ? 0 : 1) + " T";
+  if (mc) { const n = mc >= 1e13 ? (v >= 5e9 ? 1 : 2) : mc >= 1e12 ? 2 : 3; return [n, `market cap Rp ${T(mc)}, transaksi ${fmtValue(v)}/hari`]; }
+  const n = v >= 5e10 ? 1 : v >= 5e9 ? 2 : 3; return [n, `perkiraan dari transaksi ${fmtValue(v)}/hari (market cap belum tersedia)`];
+}
+const TIER_NM = ["", "First liner", "Second liner", "Third liner"];
+function chipSaham(t, ket, induk, sorot) {
+  const r = D_(t); if (!r) return `<span class="gk-chip off" title="${esc(ket || "")} · tidak ada di data">${t}</span>`;
+  const c = r.chg || 0, tr = tierOf(r);
+  return `<button type="button" class="gk-chip ${c > 0 ? "up" : c < 0 ? "dn" : ""}${induk ? " ind" : ""}${sorot ? " me" : ""}" data-go="${t}" title="${esc(r.nm || "")}${ket ? " · " + esc(ket) : ""}${tr ? ` · ${TIER_NM[tr[0]]} (${esc(tr[1])})` : ""}">${tr ? `<i class="tier t${tr[0]}">${tr[0]}</i>` : ""}${t} <small>${c >= 0 ? "+" : ""}${fmtDec(c, 1)}%</small></button>`;
+}
+function pohon(g, opt = {}) {                  // susunan induk -> anak; opt.only: Set kode yang ditampilkan (leluhurnya ikut sebagai konteks)
+  const par = {}, ket = {}; g.anak.forEach(a => { par[a[0]] = a[2] || ""; ket[a[0]] = a[1]; }); g.induk.forEach(t => { par[t] = par[t] || null; ket[t] = ket[t] || "induk"; });
+  const anakDari = {}; Object.keys(par).forEach(t => { const p = par[t]; if (p) (anakDari[p] = anakDari[p] || []).push(t); });
+  const ada = t => !opt.only || opt.only.has(t) || (anakDari[t] || []).some(ada);
+  const node = (t, lv) => { if (!ada(t)) return ""; const konteks = opt.only && !opt.only.has(t), x = D_(t);
+    return `<li class="${konteks ? "gk-ctx" : ""}">${chipSaham(t, ket[t], g.induk.includes(t), opt.me === t)}${opt.rich && x && t !== opt.me ? `<span class="muted gk-k">${esc(ket[t] || "")}</span><span class="gk-k">1 bln ${pctH(perf(x, 21))}</span>${vBadge(vSaham(x))}` : opt.rich ? `<span class="muted gk-k">${esc(ket[t] || "")}</span>` : ""}
+      ${(anakDari[t] || []).length ? `<ul>${anakDari[t].map(c => node(c, lv + 1)).join("")}</ul>` : ""}</li>`; };
+  const akarAnak = Object.keys(par).filter(t => par[t] === "");
+  const top = g.induk.map(t => node(t, 0)).join(""), own = akarAnak.map(t => node(t, 0)).join("");
+  return `<ul class="gk-tree">${top}${own ? `<li class="gk-own"><span class="gk-ownl" title="Terhubung lewat pemilik/induk yang sama, bukan anak usaha emiten di atas">┄ ${esc(g.akar || "pemilik sama")}</span><ul>${own}</ul></li>` : ""}</ul>`;
+}
+function rantai(g, only) {                    // jalur induk -> anak dalam satu baris, hanya untuk kode di "only" (+ leluhurnya)
+  const par = {}; g.anak.forEach(a => { par[a[0]] = a[2] || ""; }); g.induk.forEach(t => { if (!(t in par)) par[t] = null; });
+  const jalur = t => { const p = [t]; let c = t, n = 0; while (par[c] && n++ < 6) { c = par[c]; p.unshift(c); } return p; };
+  let P = [...only].map(jalur).sort((a, b) => b.length - a.length);
+  P = P.filter((p, i) => !P.some((q, j) => j < i && q.length > p.length && p.every((x, k) => q[k] === x)));      // buang jalur yang sudah tercakup
+  return P.sort((a, b) => (par[a[0]] === "" ? 1 : 0) - (par[b[0]] === "" ? 1 : 0)).map(p => `<span class="gk-rt">${par[p[0]] === "" ? `<span class="gk-own1" title="Terhubung lewat ${esc(g.akar || "pemilik sama")}, bukan anak usaha">┄</span>` : ""}${p.map((t, i) => (i ? '<span class="gk-ar">›</span>' : "") + `<span class="${only.has(t) ? "" : "gk-ctx1"}">${chipSaham(t, (g.anak.find(a => a[0] === t) || [])[1], g.induk.includes(t))}</span>`).join("")}</span>`).join("");
+}
+function komodPohon(k) {                      // saham terkait komoditas: satu baris per grup (induk › anak), sisanya dijajarkan
+  const set = new Set(k.saham), pakai = new Set(), out = [];
+  GRUP.forEach(g => { const mem = [...g.induk, ...g.anak.map(a => a[0])].filter(t => set.has(t)); if (!mem.length) return; mem.forEach(t => pakai.add(t));
+    out.push(`<div class="gk-line"><span class="gk-gl">${esc(g.nama)}</span>${rantai(g, new Set(mem))}</div>`); });
+  const sisa = k.saham.filter(t => !pakai.has(t));
+  if (sisa.length) out.push(`<div class="gk-line"><span class="gk-gl">Lainnya</span>${sisa.sort((a, b) => ((tierOf(D_(a)) || [9])[0] - (tierOf(D_(b)) || [9])[0])).map(t => chipSaham(t)).join("")}</div>`);
+  return out.join("");
+}
+const KOM_LABEL = { "NCF=F": "Batubara Newcastle (USD/ton)", "MTF=F": "Batubara Rotterdam (USD/ton)", "GC=F": "Emas (USD/oz)", "BZ=F": "Minyak Brent (USD/barel)", "HG=F": "Tembaga (USD/lb)" };
+function komodSumber(k) { return [k.sym, ...(k.alt || [])].filter(Boolean); }
+function komodSer(k) {                      // {c, t (ms), harian, sym}: sumber pertama yang tersedia
+  for (const sy of komodSumber(k)) {
+    const O = (MARKET.kom_ohlc || {})[sy];
+    if (O && O.c.length > 20) return { c: O.c, t: O.d.map(d => Date.parse(d + "T00:00:00Z")), harian: true, dec: 2, nama: KOM_LABEL[sy] || sy, sym: sy };
+    const m = (MARKET.makro || []).find(x => x.sym === sy);
+    if (m && m.c && m.c.length > 20) { const ser = makroSeries(m); return { c: m.c, t: ser.map(x => x.t), harian: true, dec: m.dec, nama: m.nama, sym: sy }; }
+    const b = ((MARKET.hari || {}).kom_bulanan || []).find(x => x.id === sy);
+    if (b && b.v.length > 3) return { c: b.v, t: b.d.map(d => Date.parse(d)), harian: false, dec: 0, nama: `${b.nama} (${b.sat}, bulanan)`, sym: sy };
+  }
+  return null;
+}
+const maArr = (c, n) => c.map((_, i) => i + 1 < n ? null : c.slice(i + 1 - n, i + 1).reduce((a, b) => a + b, 0) / n);
+function komodTren(k) {
+  const S = komodSer(k); if (!S || S.c.length < 8) return null;
+  const c = S.c, last = c[c.length - 1];
+  if (S.harian) {
+    if (c.length < 55) return null;
+    const m20 = maArr(c, 20).pop(), m50 = maArr(c, 50).pop(), b1 = (last / c[c.length - 22] - 1) * 100, b3 = c.length > 64 ? (last / c[c.length - 64] - 1) * 100 : null;
+    const naik = last > m50 && m20 > m50 && b1 > 0, turun = last < m50 && m20 < m50 && b1 < 0;
+    return { lab: naik ? "Naik" : turun ? "Turun" : "Datar", b3, why: `Harga ${last > m50 ? "di atas" : "di bawah"} MA50; MA20 ${m20 > m50 ? "di atas" : "di bawah"} MA50; 1 bulan ${b1 >= 0 ? "+" : ""}${fmtDec(b1, 1)}%` };
+  }
+  const a3 = c.slice(-3).reduce((a, b) => a + b, 0) / 3, a6 = c.slice(-6).reduce((a, b) => a + b, 0) / 6, b3 = (last / c[c.length - 4] - 1) * 100;
+  const naik = a3 > a6 * 1.01 && last >= a3 * 0.99, turun = a3 < a6 * 0.99 && last <= a3 * 1.01;
+  return { lab: naik ? "Naik" : turun ? "Turun" : "Datar", b3, why: `Rata-rata 3 bulan ${a3 > a6 ? "di atas" : "di bawah"} rata-rata 6 bulan; 3 bulan ${b3 >= 0 ? "+" : ""}${fmtDec(b3, 1)}% (data bulanan IMF)` };
+}
+let kcN = 0, kcOv = null, kcNama = null, kpN = 63, KP_LAST = null;
+const kpOff = new Set(ls.get("idxs:kpoff", []));
+const KC_COL = ["#3B82F6", "#F59E0B", "#A855F7", "#EC4899", "#14B8A6", "#EF4444"];
+function stokPada(r, tglList) {                 // harga penutupan saham pada tiap tanggal (atau hari bursa sebelumnya)
+  const s = seriesOf(r); if (!s) return tglList.map(() => null);
+  let j = 0; return tglList.map(d => { while (j + 1 < s.tgl.length && s.tgl[j + 1] <= d) j++; return s.tgl[j] <= d ? s.c[j] : null; });
+}
+function komodOHLC(k) {
+  const S0 = komodSer(k), O = S0 && (MARKET.kom_ohlc || {})[S0.sym];
+  if (O && O.c.length > 20) return { tgl: O.d, o: O.o, h: O.h, l: O.l, c: O.c, candle: true };
+  const S = komodSer(k); if (!S) return null;
+  return { tgl: S.t.map(t => new Date(t).toISOString().slice(0, 10)), c: S.c, candle: false };
+}
+function komodChart(nama) {
+  const k = KOMOD.find(x => x.nama === nama), S = k && komodSer(k), O = k && komodOHLC(k); if (!S || !O) return;
+  if (kcNama !== nama) { kcNama = nama; kcOv = k.saham.map(D_).filter(Boolean).sort((a, b) => b.val - a.val).slice(0, 2).map(r => r.t); }
+  let pop = $("kc-pop"); if (!pop) { pop = document.createElement("div"); pop.id = "kc-pop"; pop.className = "pf-detail kc-pop"; document.body.appendChild(pop); pop.addEventListener("click", e => { if (e.target === pop) pop.hidden = true; }); }
+  const lens = O.candle || S.harian ? [[22, "1 bulan"], [63, "3 bulan"], [126, "6 bulan"], [0, "1 tahun"]] : [[6, "6 bulan"], [12, "1 tahun"], [0, "Semua"]];
+  if (!lens.some(x => x[0] === kcN)) kcN = O.candle || S.harian ? 63 : 0;
+  const N = O.c.length, n = kcN && kcN < N ? kcN : N, o0 = N - n, tg = O.tgl.slice(o0), base = O.c[o0], P = v => v == null ? null : (v / base - 1) * 100;
+  const cc = O.c.slice(o0).map(P), oo = O.candle ? O.o.slice(o0).map(P) : null, hh = O.candle ? O.h.slice(o0).map(P) : null, ll = O.candle ? O.l.slice(o0).map(P) : null;
+  const ov = kcOv.map((t, i) => { const r = D_(t); if (!r) return null; const v = stokPada(r, tg), b0 = v.find(x => x != null); return b0 ? { t, col: KC_COL[i % KC_COL.length], raw: v, p: v.map(x => x == null ? null : (x / b0 - 1) * 100) } : null; }).filter(Boolean);
+  const tr = komodTren(k), W = 1000, H = 380, L = 10, R = 64, T = 14, B = 26, iw = W - L - R, ih = H - T - B;
+  const vals = [...(O.candle ? [...hh, ...ll] : cc), ...ov.flatMap(x => x.p)].filter(v => v != null && isFinite(v));
+  let mn = Math.min(0, ...vals), mx = Math.max(0, ...vals); const pad = (mx - mn) * 0.06 || 1; mn -= pad; mx += pad;
+  const x = i => L + (i + 0.5) / n * iw, y = v => T + (mx - v) / (mx - mn) * ih, cw = Math.max(1, iw / n * 0.62);
+  const ln = a => a.map((v, i) => v == null ? "" : `${i === 0 || a[i - 1] == null ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  const pc = v => v == null ? "-" : `${v >= 0 ? "+" : ""}${fmtDec(v, 1)}%`, fm = v => fmtDec(v, S.dec != null ? S.dec : 2), fd = d => { const [a, b, c] = d.split("-"); return `${+c} ${BLN3[+b - 1]} ${a}`; };
+  let g = ""; const st = (() => { const raw = (mx - mn) / 6, mag = Math.pow(10, Math.floor(Math.log10(raw || 1))); return [1, 2, 2.5, 5, 10].map(q => q * mag).find(q => q >= raw) || mag * 10; })();
+  for (let v = Math.ceil(mn / st) * st; v <= mx; v += st) g += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${Math.abs(v) < 1e-9 ? "var(--ink2)" : "var(--line)"}" ${Math.abs(v) < 1e-9 ? 'stroke-dasharray="4 3"' : ""}/><text x="${L + iw + 6}" y="${(y(v) + 4).toFixed(1)}" font-size="11" fill="var(--muted)">${v > 0 ? "+" : ""}${fmtDec(v, Math.abs(st) < 1 ? 1 : 0)}%</text>`;
+  const kc = O.candle ? cc.map((c, i) => { const up = c >= oo[i], col = up ? "var(--up)" : "var(--down)", yt = y(Math.max(c, oo[i])), yb = y(Math.min(c, oo[i]));
+      return `<line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${y(hh[i]).toFixed(1)}" y2="${y(ll[i]).toFixed(1)}" stroke="${col}"/><rect x="${(x(i) - cw / 2).toFixed(1)}" y="${yt.toFixed(1)}" width="${cw.toFixed(1)}" height="${Math.max(1, yb - yt).toFixed(1)}" fill="${col}"/>`; }).join("")
+    : `<path d="${ln(cc)}" fill="none" stroke="var(--ink)" stroke-width="2.2"/>`;
+  const last = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; return null; };
+  const sisa = k.saham.filter(t => D_(t) && !kcOv.includes(t));
+  pop.innerHTML = `<div class="pfd-card kc-card"><div class="pfd-head"><div><div class="pfd-tk">${esc(k.nama)}</div><div class="muted">${esc(S.nama)}${O.candle ? " · candle harian" : ""}</div></div>
+      <div style="text-align:right"><div class="pfd-px">${fm(O.c[N - 1])}</div>${tr ? `<span class="kc-tr kc-${tr.lab}">${tr.lab}</span>` : ""}</div><button type="button" class="icon-btn dw-small pfd-x" id="kc-x" aria-label="Tutup">✕</button></div>
+    <div class="pfd-body"><div class="mk-ctl"><div class="seg">${lens.map(([v, l]) => `<button type="button" data-kcn="${v}" class="${kcN === v ? "on" : ""}">${l}</button>`).join("")}</div>
+      <div class="kc-leg"><span><i style="background:var(--ink)"></i>${esc(k.nama)} <b class="${last(cc) >= 0 ? "pos" : "neg"}">${pc(last(cc))}</b></span>
+        ${ov.map(s2 => `<span><i style="background:${s2.col}"></i>${s2.t} <b class="${last(s2.p) >= 0 ? "pos" : "neg"}">${pc(last(s2.p))}</b> <button type="button" class="kc-rm" data-kcrm="${s2.t}" title="Hapus">×</button></span>`).join("")}</div></div>
+      <div class="kc-add">Tumpuk saham: ${sisa.slice(0, 10).map(t => `<button type="button" class="gk-chip" data-kcadd="${t}">+ ${t}</button>`).join("")}
+        <input type="text" id="kc-kode" placeholder="kode lain, mis. BBRI" maxlength="6"><button type="button" class="icon-btn dw-small" id="kc-tambah">Tambah</button><span class="muted" id="kc-msg"></span></div>
+      <div class="mk-gli-wrap"><svg viewBox="0 0 ${W} ${H}" class="mk-svg" id="kc-svg">${g}${kc}${ov.map(s2 => `<path d="${ln(s2.p)}" fill="none" stroke="${s2.col}" stroke-width="2"/>`).join("")}
+        <line id="kc-v" y1="${T}" y2="${T + ih}" stroke="var(--ink2)" stroke-dasharray="4 3" style="display:none"/>
+        <text x="${L}" y="${H - 6}" font-size="11" fill="var(--muted)">${fd(tg[0])}</text><text x="${L + iw}" y="${H - 6}" font-size="11" text-anchor="end" fill="var(--muted)">${fd(tg[tg.length - 1])}</text></svg><div class="mk-tip" id="kc-tip" hidden></div></div>
+      <p class="muted" style="font-size:0.76rem;margin:6px 0 0">Semua seri dalam <b>% perubahan sejak awal rentang</b> (garis putus-putus = 0%), jadi komoditas dan saham bisa dibandingkan langsung. Arahkan kursor untuk harga & persen per tanggal.</p>
+      ${tr ? `<p style="font-size:0.88rem;margin:8px 0 0"><b>Tren ${tr.lab}:</b> ${esc(tr.why)}.</p>` : ""}<p class="muted" style="font-size:0.84rem;margin:4px 0 0">${esc(k.ket || "")}</p>
+      ${k.sym === "GC=F" && MARKET.emas ? '<button type="button" class="icon-btn" id="kc-emas" style="margin-top:8px">Analisa lengkap emas (Rp/gram): SMC, Fibonacci →</button>' : ""}
+      <p class="muted" style="font-size:0.72rem;margin:8px 0 0">${O.candle ? "Candle harian 1 tahun (Yahoo)." : "Data rata-rata bulanan IMF (FRED), jadi tampil sebagai garis; saham disejajarkan ke tanggal tiap bulan."} Data saham ±220 hari bursa terakhir.</p></div></div>`;
+  pop.hidden = false;
+  const redraw = () => komodChart(nama);
+  $("kc-x").addEventListener("click", () => { pop.hidden = true; });
+  pop.querySelectorAll("[data-kcn]").forEach(b => b.addEventListener("click", () => { kcN = +b.dataset.kcn; redraw(); }));
+  pop.querySelectorAll("[data-kcadd]").forEach(b => b.addEventListener("click", () => { kcOv.push(b.dataset.kcadd); redraw(); }));
+  pop.querySelectorAll("[data-kcrm]").forEach(b => b.addEventListener("click", () => { kcOv = kcOv.filter(t => t !== b.dataset.kcrm); redraw(); }));
+  const add = () => { const t = ($("kc-kode").value || "").trim().toUpperCase(); if (!t) return; if (!D_(t)) { $("kc-msg").textContent = `${t} tidak ada di data.`; return; } if (!kcOv.includes(t)) kcOv.push(t); redraw(); };
+  $("kc-tambah").addEventListener("click", add); $("kc-kode").addEventListener("keydown", e => { if (e.key === "Enter") add(); });
+  const ke = $("kc-emas"); if (ke) ke.addEventListener("click", () => { pop.hidden = true; openEmas(); });
+  const svg = $("kc-svg"), vl = $("kc-v"), tip = $("kc-tip");
+  const show = (cx, cy) => { const rc = svg.getBoundingClientRect(), sx = (cx - rc.left) * W / rc.width, i = Math.max(0, Math.min(n - 1, Math.floor((sx - L) / iw * n)));
+    vl.setAttribute("x1", x(i)); vl.setAttribute("x2", x(i)); vl.style.display = "";
+    tip.innerHTML = `<b>${fd(tg[i])}</b><br>${esc(k.nama)} ${fm(O.c[o0 + i])} <b class="${cc[i] >= 0 ? "pos" : "neg"}">${pc(cc[i])}</b>${ov.map(s2 => s2.raw[i] != null ? `<br><span style="color:${s2.col}">■</span> ${s2.t} ${fmtNum(s2.raw[i])} <b class="${s2.p[i] >= 0 ? "pos" : "neg"}">${pc(s2.p[i])}</b>` : "").join("")}`; tip.hidden = false;
+    const wr = tip.parentElement.getBoundingClientRect(), px = cx - wr.left; tip.style.left = (px + 14 + tip.offsetWidth > wr.width ? px - tip.offsetWidth - 14 : px + 14) + "px"; tip.style.top = Math.max(0, cy - wr.top - 20) + "px"; };
+  svg.addEventListener("mousemove", e => show(e.clientX, e.clientY)); svg.addEventListener("mouseleave", () => { tip.hidden = true; vl.style.display = "none"; });
+  svg.addEventListener("touchstart", e => show(e.touches[0].clientX, e.touches[0].clientY), { passive: true }); svg.addEventListener("touchmove", e => show(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+}
+function komodBanding() {                      // semua komoditas dalam satu grafik (% sejak awal rentang) + peringkat
+  const daily = KOMOD.map(k => ({ k, O: komodOHLC(k) })).filter(x => x.O);
+  const ref = daily.find(x => x.O.candle || x.O.c.length > 100); if (!ref) return "";
+  const N = ref.O.tgl.length, n = kpN && kpN < N ? kpN : N, tg = ref.O.tgl.slice(N - n), d0 = tg[0];
+  const avg = L => { const v = L.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const S = daily.map((x, i) => {
+    const O = x.O; let j0 = O.tgl.findIndex(d => d >= d0); if (j0 < 0) return null; if (j0 > 0 && O.tgl[j0] > d0) j0--;
+    const b0 = O.c[j0], pts = []; for (let j = j0; j < O.tgl.length; j++) pts.push([O.tgl[j], (O.c[j] / b0 - 1) * 100]);
+    const tr = komodTren(x.k), ada = x.k.saham.map(D_).filter(Boolean), hb = Math.min(n, 210);
+    return { k: x.k, col: ({ "Batubara": "#D97706", "CPO (sawit)": "#22C55E", "Nikel": "#A78BFA", "Emas": "#FACC15", "Minyak": "#EF4444", "Tembaga": "#38BDF8" })[x.k.nama] || ["#E879F9", "#94A3B8", "#14B8A6"][i % 3], pts, last: pts.length ? pts[pts.length - 1][1] : null, tr, bulanan: !O.candle && O.c.length < 100, sah: avg(ada.map(r => perf(r, hb))) };
+  }).filter(s2 => s2 && s2.pts.length > 1);
+  const IH = seriesOf(MARKET.ihsg);                     // IHSG sebagai pembanding
+  if (IH && IH.c.length > 10) {
+    let j0 = IH.tgl.findIndex(d => d >= d0); if (j0 > 0 && IH.tgl[j0] > d0) j0--;
+    if (j0 >= 0) { const b0 = IH.c[j0], pts = []; for (let j = j0; j < IH.tgl.length; j++) pts.push([IH.tgl[j], (IH.c[j] / b0 - 1) * 100]);
+      if (pts.length > 1) S.push({ k: { nama: "IHSG", saham: [] }, col: "var(--ink)", pts, last: pts[pts.length - 1][1], tr: null, bulanan: false, sah: null, ihsg: true }); }
+  }
+  S.sort((a, b) => b.last - a.last);
+  const V = S.filter(s2 => !kpOff.has(s2.k.nama)), W = 1000, H = 300, L = 10, R = 60, T = 12, B = 24, iw = W - L - R, ih = H - T - B, t0 = Date.parse(tg[0]), t1 = Date.parse(tg[tg.length - 1]);
+  const vals = V.flatMap(s2 => s2.pts.map(p => p[1])).concat([0]); let mn = Math.min(0, ...vals), mx = Math.max(0, ...vals); const pad = (mx - mn) * 0.06 || 1; mn -= pad; mx += pad;
+  const x = d => L + (Date.parse(d) - t0) / Math.max(1, t1 - t0) * iw, y = v => T + (mx - v) / (mx - mn) * ih;
+  let g = ""; for (let q = 0; q <= 4; q++) { const v = mn + (mx - mn) * q / 4; g += `<line x1="${L}" x2="${L + iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)"/><text x="${L + iw + 6}" y="${(y(v) + 4).toFixed(1)}" font-size="11" fill="var(--muted)">${v > 0 ? "+" : ""}${fmtDec(v, 0)}%</text>`; }
+  g += `<line x1="${L}" x2="${L + iw}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="var(--ink2)" stroke-dasharray="4 3"/>`;
+  const pc = v => v == null ? "-" : `<span class="${v >= 0 ? "pos" : "neg"}">${v >= 0 ? "+" : ""}${fmtDec(v, 1)}%</span>`;
+  KP_LAST = { V, W, L, iw, T, ih, t0, t1, tg, x, y };
+  return `<div class="hr-lab" style="margin-top:4px">Komoditas mana yang paling kuat?</div>
+    <div class="mk-ctl" style="margin:6px 0"><div class="seg">${[[22, "1 bulan"], [63, "3 bulan"], [126, "6 bulan"], [0, "1 tahun"]].map(([v, l]) => `<button type="button" data-kpn="${v}" class="${kpN === v ? "on" : ""}">${l}</button>`).join("")}</div>
+      <div class="kp-pick"><span class="muted">Bandingkan:</span>${S.map(s2 => `<button type="button" class="kp-tg ${kpOff.has(s2.k.nama) ? "off" : ""}${s2.ihsg ? " kp-tg-ih" : ""}" data-kpt="${esc(s2.k.nama)}" title="Klik untuk ${kpOff.has(s2.k.nama) ? "menampilkan" : "menyembunyikan"}"><i style="background:${s2.col}"></i>${esc(s2.k.nama)}</button>`).join("")}</div></div>
+    <div class="kp-grid"><div class="mk-gli-wrap"><svg viewBox="0 0 ${W} ${H}" class="mk-svg" id="kp-svg">${g}${V.map(s2 => `<path d="${s2.pts.map((p, i) => `${i ? "L" : "M"}${x(p[0] < tg[0] ? tg[0] : p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join("")}" fill="none" stroke="${s2.col}" stroke-width="${s2.ihsg ? 2.8 : s2.bulanan ? 1.6 : 2}" ${s2.bulanan ? 'stroke-dasharray="6 3"' : ""} ${s2.ihsg ? 'stroke-opacity="0.85"' : ""}/>`).join("")}
+      <line id="kp-v" y1="${T}" y2="${T + ih}" stroke="var(--ink2)" stroke-dasharray="4 3" style="display:none"/>
+      <text x="${L}" y="${H - 6}" font-size="11" fill="var(--muted)">${tg[0]}</text><text x="${L + iw}" y="${H - 6}" font-size="11" text-anchor="end" fill="var(--muted)">${tg[tg.length - 1]}</text></svg><div class="mk-tip" id="kp-tip" hidden></div></div>
+    <ol class="kp-rank">${S.map((s2, i) => `<li class="${kpOff.has(s2.k.nama) ? "kp-dim" : ""}${s2.ihsg ? " kp-ihsg" : ""}"><span class="kp-dot" style="background:${s2.col}"></span>${s2.ihsg ? `<b>${i + 1}. IHSG</b>` : `<button type="button" class="link-btn" data-kc="${esc(s2.k.nama)}"><b>${i + 1}. ${esc(s2.k.nama)}</b></button>`} ${pc(s2.last)}${s2.tr ? ` <span class="kc-tr kc-${s2.tr.lab}">${s2.tr.lab}</span>` : ""}
+      <div class="muted" style="font-size:0.74rem">${s2.ihsg ? "pembanding: indeks saham BEI" : `saham terkait rata-rata ${pc(s2.sah)}${s2.bulanan ? " · data bulanan" : ""}`}</div></li>`).join("")}</ol></div>
+    <p class="muted" style="font-size:0.74rem;margin:4px 0 12px">Semua komoditas dalam % sejak awal rentang. Urutan = kenaikan terbesar. "Saham terkait rata-rata" = rata-rata kinerja saham di sektor itu pada rentang yang sama: kalau komoditasnya kuat tapi sahamnya tertinggal, sektor itu bisa jadi kandidat untuk dipantau (tetap cek teknikal & fundamental sahamnya). Garis putus-putus = data bulanan (CPO, nikel). Garis tebal netral = IHSG sebagai pembanding: komoditas di atas garis IHSG berarti lebih kuat daripada pasar saham secara umum.</p>`;
+}
+
+function mkGrup() {
+  const box = $("mk-grup"); if (!box) return;
+  const avg = L => { const v = L.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const gRows = GRUP.map(g => { const kode = [...g.induk, ...g.anak.map(a => a[0])], ada = kode.map(D_).filter(Boolean);
+    return { g, d1: avg(ada.map(r => r.chg)), m1: avg(ada.map(r => perf(r, 21))), n: ada.length, tot: kode.length }; });
+  const kRows = KOMOD.map(k => { const ada = k.saham.map(D_).filter(Boolean); return { k, kc: komodChg(k), m1: avg(ada.map(r => perf(r, 21))), d1: avg(ada.map(r => r.chg)) }; });
+  box.innerHTML = `<div class="cal-head"><h2>Grup &amp; komoditas penggerak</h2><span class="muted" style="font-size:0.8rem">klik kode untuk detail · ▲ = induk</span></div>
+    ${komodBanding()}
+    <div class="hr-lab" style="margin-top:4px">Komoditas → saham terkait</div>
+    <div class="table-wrap" style="max-height:none"><table class="j-tbl gk-tbl"><thead><tr><th>Komoditas</th><th>Tren</th><th>Grafik</th><th class="num" title="Perubahan harga komoditas ±21 hari bursa (CPO & nikel: bulan terakhir)">Komoditas 1 bln</th><th class="num" title="Perubahan harga komoditas ±3 bulan">Komoditas 3 bln</th><th class="num" title="Rata-rata sederhana persen hari ini dari chip saham di kolom kanan (yang berdata)">Rata-rata saham hari ini</th><th class="num" title="Rata-rata sederhana kinerja ±21 hari bursa saham-saham yang sama">Rata-rata saham 1 bln</th><th title="Satu baris per grup: induk › anak; ┄ = terhubung lewat pemilik yang sama; saham tanpa grup dijajarkan di Lainnya. Persen di chip = perubahan hari ini; angka berwarna di depan kode = kelas (1 first liner, 2 second liner, 3 third liner); chip abu-abu = tidak ada di data">Saham terkait (per grup · perubahan hari ini)</th></tr></thead><tbody>
+      ${kRows.map(x => { const tr = komodTren(x.k), S = komodSer(x.k); return `<tr><td>${S ? `<button type="button" class="link-btn kc-open" data-kc="${esc(x.k.nama)}"><b>${esc(x.k.nama)}</b> 📈</button>` : `<b>${esc(x.k.nama)}</b>`}<div class="muted" style="font-size:0.72rem;max-width:260px">${esc(x.k.ket || "")}</div></td>
+        <td>${tr ? `<span class="kc-tr kc-${tr.lab}" title="${esc(tr.why)}">${tr.lab}</span>` : '<span class="muted">-</span>'}</td>
+        <td>${S ? `<button type="button" class="kc-spark" data-kc="${esc(x.k.nama)}" title="Buka grafik">${hrSpark(S.c.slice(S.harian ? -120 : -24), tr && tr.lab === "Turun" ? "var(--down)" : tr && tr.lab === "Naik" ? "var(--up)" : "var(--ink2)", 110, 32)}</button>` : ""}</td>
+        <td class="num">${pctH(x.kc)}</td><td class="num">${pctH(tr ? tr.b3 : null)}</td><td class="num">${pctH(x.d1)}</td><td class="num">${pctH(x.m1)}</td>
+        <td class="gk-chips">${komodPohon(x.k)}</td></tr>`; }).join("")}</tbody></table></div>
+    <div class="hr-lab" style="margin-top:14px">Grup usaha (induk → anak)</div>
+    <div class="table-wrap" style="max-height:none"><table class="j-tbl gk-tbl"><thead><tr><th>Grup</th><th class="num" title="Rata-rata sederhana persen hari ini anggota grup">Rata-rata hari ini</th><th class="num" title="Rata-rata kinerja ±21 hari bursa anggota grup">Rata-rata 1 bulan</th><th>Anggota (perubahan hari ini)</th></tr></thead><tbody>
+      ${gRows.sort((a, b) => (b.d1 ?? -99) - (a.d1 ?? -99)).map(x => `<tr><td><b>${esc(x.g.nama)}</b><div class="muted" style="font-size:0.72rem">${x.n} dari ${x.tot} saham ada di data</div></td><td class="num">${pctH(x.d1)}</td><td class="num">${pctH(x.m1)}</td>
+        <td class="gk-chips">${pohon(x.g)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0"><b>Kelas</b> (angka di depan kode): <i class="tier t1">1</i> first liner (market cap ≥ Rp 10 T &amp; transaksi ≥ Rp 5 M/hari), <i class="tier t2">2</i> second liner (Rp 1–10 T), <i class="tier t3">3</i> third liner (&lt; Rp 1 T); kalau market cap belum ada, diperkirakan dari nilai transaksi. Ini patokan umum, bukan definisi resmi BEI. <b>Susunan grup</b>: di kolom Saham terkait, "ASII › UNTR" = UNTR anak usaha ASII; "┄" = terhubung lewat pemilik/induk yang sama (bukan anak usaha); chip redup = induk yang ditampilkan sebagai konteks. Di tabel Grup usaha, garis lurus = anak usaha, "┄ pemilik" = pemilik yang sama. Persen di setiap chip = perubahan harga saham itu <b>hari ini</b>; kolom "Rata-rata saham hari ini" = rata-rata sederhana dari chip-chip itu (chip abu-abu tidak dihitung), dan "Rata-rata saham 1 bln" = rata-rata kinerja ±21 hari bursa saham yang sama. Kinerja grup juga rata-rata sederhana anggotanya. Komoditas 1 bulan: batubara, emas, minyak, tembaga harian (Yahoo); CPO & nikel bulanan (FRED/IMF, perubahan bulan terakhir). Peta grup disusun dari struktur kepemilikan yang dikenal luas dan bisa berubah (akuisisi, divestasi); ubah atau tambah lewat file grup.json di repo.</p>`;
+  box.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => openDrawer(b.dataset.go)));
+  box.querySelectorAll("[data-kc]").forEach(b => b.addEventListener("click", () => { kcN = 63; komodChart(b.dataset.kc); }));
+  box.querySelectorAll("[data-kpn]").forEach(b => b.addEventListener("click", () => { kpN = +b.dataset.kpn; mkGrup(); }));
+  box.querySelectorAll("[data-kpt]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.kpt; kpOff.has(k) ? kpOff.delete(k) : kpOff.add(k); ls.set("idxs:kpoff", [...kpOff]); mkGrup(); }));
+  const svg = $("kp-svg"), tip = $("kp-tip"), vl = $("kp-v");
+  if (svg && KP_LAST) {
+    const K = KP_LAST, fd = d => { const [a, b, c] = d.split("-"); return `${+c} ${BLN3[+b - 1]} ${a}`; };
+    const show = (cx, cy) => { const rc = svg.getBoundingClientRect(), sx = (cx - rc.left) * K.W / rc.width, fr = Math.max(0, Math.min(1, (sx - K.L) / K.iw));
+      const i = Math.round(fr * (K.tg.length - 1)), d = K.tg[i]; vl.setAttribute("x1", K.x(d)); vl.setAttribute("x2", K.x(d)); vl.style.display = "";
+      const rows = K.V.map(s2 => { let p = null; for (const q of s2.pts) { if (q[0] <= d) p = q; else break; } return p ? [s2, p] : null; }).filter(Boolean).sort((a, b) => b[1][1] - a[1][1]);
+      tip.innerHTML = `<b>${fd(d)}</b>` + rows.map(([s2, p]) => `<br><span style="color:${s2.col}">■</span> ${esc(s2.k.nama)} <b class="${p[1] >= 0 ? "pos" : "neg"}">${p[1] >= 0 ? "+" : ""}${fmtDec(p[1], 1)}%</b>${s2.bulanan ? ` <span class="muted">(data ${p[0].slice(0, 7)})</span>` : ""}`).join("");
+      tip.hidden = false; const wr = tip.parentElement.getBoundingClientRect(), px = cx - wr.left;
+      tip.style.left = (px + 14 + tip.offsetWidth > wr.width ? px - tip.offsetWidth - 14 : px + 14) + "px"; tip.style.top = Math.max(0, cy - wr.top - 20) + "px"; };
+    svg.addEventListener("mousemove", e => show(e.clientX, e.clientY)); svg.addEventListener("mouseleave", () => { tip.hidden = true; vl.style.display = "none"; });
+    svg.addEventListener("touchstart", e => show(e.touches[0].clientX, e.touches[0].clientY), { passive: true }); svg.addEventListener("touchmove", e => show(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  }
+}
+function terkaitHtml(r) {
+  const G = grupOf(r.t), K = komodOf(r.t); if (!G.length && !K.length) return "";
+  const vs = t => { const x = D_(t); return x ? `<span style="margin-left:4px">${vBadge(vSaham(x))}</span>` : ""; };
+  return `<div class="d-sec gk-det"><div class="hr-lab">Keterkaitan</div>
+    ${G.map(g => `<div class="gk-row"><b>Grup ${esc(g.nama)}</b> ${(() => { const a = g.anak.find(x => x[0] === r.t); return g.induk.includes(r.t) ? '<span class="muted">(induk)</span>' : a && a[2] ? `<span class="muted">(anak ${esc(a[2])})</span>` : a ? `<span class="muted">(${esc(g.akar || "pemilik sama")})</span>` : ""; })()}${pohon(g, { rich: true, me: r.t })}</div>`).join("")}
+    ${K.map(k => `<div class="gk-row"><b>Penggerak: ${esc(k.nama)}</b> ${(() => { const tr = komodTren(k); return tr ? `<span class="kc-tr kc-${tr.lab}" title="${esc(tr.why)}">${tr.lab}</span>` : ""; })()} ${komodSer(k) ? `<button type="button" class="link-btn" data-kcd="${esc(k.nama)}">📈 lihat grafik</button>` : ""} ${komodSer(k) ? `<span>komoditas 1 bln ${pctH(komodChg(k))}</span>` : ""} <span>saham ini 1 bln ${pctH(perf(r, 21))}</span><div class="muted" style="font-size:0.78rem">${esc(k.ket || "")}</div></div>`).join("")}
+  </div>`;
+}
+
 /* ---------- TRADE CEPAT (1-5 hari) ---------- */
 const TC_NM = { brt: "Breakout–retest", pb: "Pullback dalam tren naik", rv: "Pembalikan dari discount" };
 const TC_DESC = { brt: "Harga menembus swing high 1 jam dengan volume ≥ 1,5× rata-rata; entry saat harga kembali menguji level yang ditembus.",
@@ -7276,6 +7614,7 @@ function peerTable(r) {
 }
 document.addEventListener("click", e => {
   const pb = e.target.closest("[data-peer]"); if (pb) { openDetail(pb.dataset.peer, viewMode || "full"); return; }
+  const kd = e.target.closest("[data-kcd]"); if (kd) { kcN = 63; komodChart(kd.dataset.kcd); return; }
   const lb = e.target.closest("#lay-btn"); const pop = $("smc-toggles");
   if (lb && pop) { e.stopPropagation(); pop.hidden = !pop.hidden; return; }
   if (pop && !pop.hidden && !e.target.closest("#smc-toggles")) pop.hidden = true;
@@ -7526,7 +7865,7 @@ function mkAlarmState(a) { const v = mkLast(a.sym); if (v == null) return null; 
 
 function renderMakroView() {
   if (!$("v-makro")) return;
-  mkHero(); mkGli(); mkIndo(); mkIhsg(); mkPulih(); mkRotasi(); mkSektor(); mkAlarm(); mkSken(); infoize($("v-makro"));
+  mkHero(); mkGli(); mkIndo(); mkIhsg(); mkPulih(); mkRotasi(); mkSektor(); mkGrup(); mkAlarm(); mkSken(); infoize($("v-makro"));
 }
 function mkBlocks() {
   const mx = MARKET.mx || {}, d = mkGet();
@@ -8028,6 +8367,7 @@ $("sig-filter").addEventListener("change", () => { ls.set("idxs:sig", $("sig-fil
 renderPref();
 $("f-pin").addEventListener("change", () => { ls.set(PIN_KEY, $("f-pin").checked); page = 0; render(); });
 V_IHSG = vIhsg();
+$("grp-filter").insertAdjacentHTML("beforeend", GRUP.map(g => `<option value="${esc(g.nama)}">${esc(g.nama)}</option>`).join(""));
 (() => { const c = {}; DATA.forEach(r => { const i = r.fd && r.fd.ind; if (i) c[i] = (c[i] || 0) + 1; });
   $("ind-filter").insertAdjacentHTML("beforeend", Object.keys(c).sort().map(i => `<option value="${esc(i)}">${esc(i)} (${c[i]})</option>`).join("")); })();
 renderMarket(); load(); render();
