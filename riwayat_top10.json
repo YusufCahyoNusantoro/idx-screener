@@ -1,10 +1,4 @@
 {
- "2026-11-05": [
-  "DEWI",
-  "ULTJ",
-  "PRDA",
-  "AALI"
- ],
  "2026-11-06": [
   "PRDA",
   "AALI",
@@ -73,5 +67,13 @@
   "AALI",
   "MPMX",
   "ANDI"
+ ],
+ "2026-11-19": [
+  "INTP",
+  "ANDI",
+  "MPMX",
+  "TMPO",
+  "AALI",
+  "DEWI"
  ]
 }
