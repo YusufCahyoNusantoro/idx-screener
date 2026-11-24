@@ -1,12 +1,4 @@
 {
- "2026-11-10": [
-  "DEWI",
-  "PRDA",
-  "MBSS",
-  "ANDI",
-  "MPMX",
-  "AALI"
- ],
  "2026-11-11": [
   "AALI",
   "ANDI",
@@ -77,5 +69,14 @@
   "ASGR",
   "MPMX",
   "INTP"
+ ],
+ "2026-11-24": [
+  "ASGR",
+  "INDF",
+  "BDMN",
+  "MPMX",
+  "DEWI",
+  "INTP",
+  "LSIP"
  ]
 }
